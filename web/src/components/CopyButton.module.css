@@ -1,0 +1,43 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: none;
+  padding: 0.3rem 0.65rem 0.3rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--raised);
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.button:hover {
+  border-color: color-mix(in srgb, var(--ink) 25%, var(--line));
+  color: var(--ink);
+}
+
+.button:active {
+  transform: translateY(1px);
+}
+
+.button[data-outcome="copied"] {
+  border-color: color-mix(in srgb, var(--tide) 45%, var(--line));
+  background: var(--tide-wash);
+  color: var(--tide-strong);
+}
+
+.button[data-outcome="failed"] {
+  border-color: color-mix(in srgb, var(--rose) 45%, var(--line));
+  color: var(--rose);
+}
+
+.icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}

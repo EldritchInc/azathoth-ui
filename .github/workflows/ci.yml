@@ -1,0 +1,154 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: web (Node 22)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  server:
+    name: server (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+        python-version:
+          - "3.11"
+          - "3.12"
+          - "3.13"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      # Azathoth comes from PyPI, never from its repository: the editor is
+      # built against released Azathoth, and never runs its test suite.
+      # Naming its first pre-release admits Azathoth's pre-releases only.
+      - name: Install project
+        run: python -m pip install "azathoth-ai>=1.4.0a1,==1.4.*" -e ".[dev]"
+
+      - name: Lint
+        run: python -m ruff check .
+
+      - name: Check formatting
+        run: python -m ruff format --check .
+
+      - name: Type check
+        run: python -m mypy src/azathoth_ui tests
+
+      - name: Test
+        run: python -m pytest
+
+  # The wheel is what people install: it must hold the built web app, and
+  # the editor it installs must start and serve it.
+  wheel:
+    name: wheel
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs:
+      - web
+      - server
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Build the web app
+        run: make install-web build-web
+
+      - name: Build the wheel
+        run: |
+          python -m pip install build
+          python -m build
+
+      - name: Check the wheel
+        run: python scripts/check_wheel.py dist/*.whl
+
+      - name: Install the wheel alone
+        run: |
+          python -m venv "$RUNNER_TEMP/editor"
+          "$RUNNER_TEMP/editor/bin/python" -m pip install "azathoth-ai>=1.4.0a1,==1.4.*" dist/*.whl
+
+      # Run outside the checkout, so the editor comes from the wheel.
+      - name: Start the editor and use it
+        working-directory: ${{ runner.temp }}
+        run: '"$RUNNER_TEMP/editor/bin/python" "$GITHUB_WORKSPACE/scripts/smoke.py"'
+
+      - name: Keep the wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: azathoth-ui-wheel
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
