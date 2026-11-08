@@ -49,8 +49,9 @@ def built(
     """Write a stand-in web build under one folder, and return it."""
 
     (root / "assets").mkdir(parents=True)
-    (root / "index.html").write_text("<!doctype html><title>app</title>", encoding="utf-8")
-    (root / "assets" / "app.js").write_text("export {};\n", encoding="utf-8")
+    # Bytes, as the build writes them: text mode would end lines with \r\n on Windows.
+    (root / "index.html").write_bytes(b"<!doctype html><title>app</title>")
+    (root / "assets" / "app.js").write_bytes(b"export {};\n")
 
     return root
 
