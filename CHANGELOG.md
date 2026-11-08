@@ -11,3 +11,8 @@
   (ADR 0001).
 - `GET /api/instance` describes the instance the editor serves. Service API
   errors answer in JSON with their code and message.
+- The editor's web app: React and TypeScript, built by Vite into the package
+  with `make build-web`, and checked by `make check-web` (ESLint, Prettier,
+  TypeScript and Vitest). Its overview shows the instance the editor serves,
+  says when the server stops answering or the browser's key is out of date,
+  and offers light and dark themes (ADR 0002).

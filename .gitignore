@@ -18,6 +18,9 @@ venv/
 
 # Web
 web/node_modules/
+web/coverage/
+# Built by `make build-web`, and into the wheel by its build.
+src/azathoth_ui/static/
 
 # Editors
 .vscode/

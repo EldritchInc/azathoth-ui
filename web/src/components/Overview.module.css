@@ -1,0 +1,147 @@
+.overview {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  max-width: 60rem;
+}
+
+.problem {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--rose) 35%, var(--line));
+  border-left: 3px solid var(--rose);
+  border-radius: var(--radius);
+  background: var(--rose-wash);
+  animation: appear 260ms var(--ease-out);
+}
+
+.problemTitle {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.problemDetail {
+  max-width: 62ch;
+  color: var(--muted);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, 22rem);
+  align-items: center;
+  gap: clamp(1.5rem, 5vw, 4rem);
+}
+
+.titles {
+  display: grid;
+  gap: 1rem;
+}
+
+.heading {
+  font-size: clamp(2.6rem, 6.5vw, 4.75rem);
+  font-weight: 400;
+  font-variation-settings:
+    "SOFT" 60,
+    "WONK" 1;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
+}
+
+.heading[data-pending="true"] {
+  color: var(--muted);
+}
+
+.lead {
+  max-width: 42ch;
+  color: var(--muted);
+  font-size: 1.125rem;
+}
+
+.drawing {
+  width: 100%;
+  max-width: 22rem;
+  justify-self: end;
+}
+
+.details {
+  display: grid;
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.row dt {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.row dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.location {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.path {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.badge {
+  display: inline-block;
+  margin-right: 0.6rem;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  background: var(--amber-wash);
+  color: var(--amber);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.badge[data-stable="true"] {
+  background: var(--tide-wash);
+  color: var(--tide-strong);
+}
+
+.note {
+  color: var(--muted);
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (max-width: 48rem) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .drawing {
+    order: -1;
+    max-width: 11rem;
+    justify-self: start;
+  }
+
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.3rem;
+  }
+}

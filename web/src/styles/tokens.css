@@ -1,0 +1,78 @@
+/*
+ * The editor's design tokens. The server's own pages (src/azathoth_ui/assets/page.css)
+ * use the same palette, so signing in and the editor read as one place.
+ *
+ * Light is a cool mist with deep indigo ink; dark is an indigo night. The
+ * tide teal is the one accent: what is live, chosen or connected.
+ */
+
+:root {
+  color-scheme: light;
+
+  --paper: #eef0f5;
+  --surface: #f6f7fa;
+  --raised: #ffffff;
+  --ink: #1b2043;
+  --muted: #555c7b;
+  --faint: #8a90aa;
+  --line: #d6d9e4;
+  --tide: #1d776d;
+  --tide-strong: #155f57;
+  --tide-wash: color-mix(in srgb, var(--tide) 11%, transparent);
+  --on-tide: #ffffff;
+  --amber: #9a6410;
+  --amber-wash: color-mix(in srgb, var(--amber) 12%, transparent);
+  --rose: #b0294a;
+  --rose-wash: color-mix(in srgb, var(--rose) 10%, transparent);
+  --orbit: #2a3163;
+  --focus: #2f6fd6;
+
+  --display: "Fraunces Variable", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --sans: "Hanken Grotesk Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --radius-small: 6px;
+  --radius: 10px;
+  --rail-width: 15.5rem;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --paper: #121731;
+    --surface: #161c3a;
+    --raised: #1c2348;
+    --ink: #e5e7f1;
+    --muted: #9aa0bd;
+    --faint: #6a7194;
+    --line: #2a3158;
+    --tide: #72d1c2;
+    --tide-strong: #9be3d7;
+    --on-tide: #0f2a29;
+    --amber: #e3b45c;
+    --rose: #f07a8e;
+    --orbit: #b4bbe4;
+    --focus: #8fb4ff;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --paper: #121731;
+  --surface: #161c3a;
+  --raised: #1c2348;
+  --ink: #e5e7f1;
+  --muted: #9aa0bd;
+  --faint: #6a7194;
+  --line: #2a3158;
+  --tide: #72d1c2;
+  --tide-strong: #9be3d7;
+  --on-tide: #0f2a29;
+  --amber: #e3b45c;
+  --rose: #f07a8e;
+  --orbit: #b4bbe4;
+  --focus: #8fb4ff;
+}

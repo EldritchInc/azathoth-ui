@@ -1,0 +1,103 @@
+.orbits {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  color: var(--orbit);
+  transition: opacity 600ms ease;
+}
+
+.quiet {
+  opacity: 0.45;
+}
+
+.turning {
+  transform-origin: 0 0;
+  animation: turn 360s linear infinite;
+}
+
+.orbit {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.45;
+  stroke-opacity: 0.55;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 1.6s var(--ease-out) forwards;
+}
+
+.piper {
+  fill: var(--tide);
+  opacity: 0;
+  animation: arrive 700ms var(--ease-out) forwards;
+}
+
+.centre {
+  fill: currentColor;
+  opacity: 0.9;
+}
+
+.ring:nth-child(2) .orbit {
+  animation-delay: 140ms;
+}
+
+.ring:nth-child(3) .orbit {
+  animation-delay: 280ms;
+}
+
+.ring:nth-child(4) .orbit {
+  animation-delay: 420ms;
+}
+
+.ring:nth-child(1) .piper {
+  animation-delay: 700ms;
+}
+
+.ring:nth-child(2) .piper {
+  animation-delay: 840ms;
+}
+
+.ring:nth-child(3) .piper {
+  animation-delay: 980ms;
+}
+
+.ring:nth-child(4) .piper {
+  animation-delay: 1120ms;
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit {
+    stroke-dashoffset: 0;
+  }
+
+  .piper {
+    opacity: 1;
+  }
+
+  .turning {
+    animation: none;
+  }
+}

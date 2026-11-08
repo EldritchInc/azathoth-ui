@@ -8,3 +8,4 @@ the editor follows them, and the one it rests on is
 | ADR | Title | Status |
 | --- | --- | --- |
 | [0001](0001-local-server-security.md) | Local Server Security | Accepted |
+| [0002](0002-web-app.md) | Web App | Accepted |

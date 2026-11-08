@@ -33,15 +33,30 @@ The editor is built against released Azathoth from PyPI. While 1.4 is in
 pre-release, `make install` takes Azathoth's pre-release, and no other
 package's:
 
+The web app needs Node `^20.19.0 || >=22.12.0`, and npm.
+
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 make install
+make install-web
+make build-web
 make check
 ```
 
-`make check` lints, type-checks and tests the Python package. It never runs
-Azathoth's own test suite.
+`make build-web` builds the web app into the package, where `azathoth-ui`
+serves it. `make check` lints, type-checks and tests both halves: the Python
+package, and the web app with ESLint, Prettier, TypeScript and Vitest. It
+never runs Azathoth's own test suite.
+
+To work on the web app with hot reloading, start the server on a fixed port,
+open the address it prints once, then start Vite and open
+<http://127.0.0.1:5173>:
+
+```bash
+azathoth-ui --port 8765 --no-browser
+cd web && npm run dev
+```
 
 ## License
 

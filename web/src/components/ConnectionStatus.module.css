@@ -1,0 +1,71 @@
+.status {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.dot {
+  position: relative;
+  width: 0.55rem;
+  height: 0.55rem;
+  flex: none;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+.status[data-tone="live"] .dot {
+  background: var(--tide);
+}
+
+.status[data-tone="live"] .dot::after {
+  content: "";
+  position: absolute;
+  inset: -0.25rem;
+  border-radius: 50%;
+  background: var(--tide);
+  opacity: 0;
+  animation: ripple 1.4s var(--ease-out) 1;
+}
+
+.status[data-tone="waiting"] .dot {
+  background: var(--amber);
+  animation: wait 1.2s ease-in-out infinite alternate;
+}
+
+.status[data-tone="lost"] .dot {
+  background: var(--rose);
+}
+
+.status[data-tone="lost"] {
+  color: var(--ink);
+}
+
+@keyframes ripple {
+  from {
+    opacity: 0.45;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+@keyframes wait {
+  to {
+    opacity: 0.35;
+  }
+}
+
+@media (max-width: 48rem) {
+  .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
