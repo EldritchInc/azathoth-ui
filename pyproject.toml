@@ -29,7 +29,12 @@ classifiers = [
 ]
 dependencies = [
     "azathoth-ai==1.4.*",
+    "starlette>=0.40",
+    "uvicorn>=0.30",
 ]
+
+[project.scripts]
+azathoth-ui = "azathoth_ui.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/EldritchInc/azathoth-ui"
@@ -38,6 +43,7 @@ Repository = "https://github.com/EldritchInc/azathoth-ui"
 [project.optional-dependencies]
 dev = [
     "build",
+    "httpx",
     "mypy",
     "pytest",
     "ruff",
@@ -52,7 +58,7 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-azathoth_ui = ["py.typed"]
+azathoth_ui = ["py.typed", "assets/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

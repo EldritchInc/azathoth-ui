@@ -1,0 +1,172 @@
+/*
+ * The server's own pages: the one that asks for the launch key, and the one
+ * shown when no web app is built. The web app brings its own styles.
+ */
+
+:root {
+  color-scheme: light dark;
+  --paper: #eef0f5;
+  --ink: #1b2043;
+  --muted: #555c7b;
+  --line: #c9cddb;
+  --tide: #1d776d;
+  --orbit: #1b2043;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #121731;
+    --ink: #e5e7f1;
+    --muted: #9aa0bd;
+    --line: #2c335a;
+    --tide: #72d1c2;
+    --orbit: #aeb6e0;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--paper);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 1rem/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.orbits {
+  position: fixed;
+  right: -20vmax;
+  bottom: -24vmax;
+  width: 80vmax;
+  height: 80vmax;
+  color: var(--orbit);
+  opacity: 0.14;
+  pointer-events: none;
+  transform-origin: 50% 50%;
+  animation: drift 300s linear infinite;
+}
+
+.orbits .piper {
+  fill: var(--tide);
+}
+
+.nucleus {
+  fill: currentColor;
+}
+
+@keyframes drift {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbits {
+    animation: none;
+  }
+}
+
+main {
+  position: relative;
+  max-width: 38rem;
+  margin-left: clamp(0rem, 9vw, 8rem);
+  padding: clamp(3rem, 14vh, 9rem) 1.5rem 4rem;
+}
+
+@media (max-width: 40rem) {
+  main {
+    margin-left: 0;
+  }
+}
+
+.mark {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 3.5rem;
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+}
+
+.mark svg {
+  width: 1.9rem;
+  height: 1.9rem;
+  color: var(--ink);
+}
+
+h1 {
+  margin: 0 0 1.1rem;
+  font-family: var(--serif);
+  font-size: clamp(1.9rem, 4.6vw, 2.7rem);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+p {
+  max-width: 34em;
+  margin: 0 0 1rem;
+  color: var(--muted);
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  color: var(--ink);
+}
+
+.command {
+  display: block;
+  margin: 1.6rem 0;
+  padding: 0.85rem 1.1rem;
+  border-left: 2px solid var(--tide);
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.4rem 1.5rem;
+  margin: 2.5rem 0 0;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+a {
+  color: var(--tide);
+  text-underline-offset: 0.2em;
+}
+
+a:focus-visible {
+  outline: 2px solid var(--tide);
+  outline-offset: 3px;
+}

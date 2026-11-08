@@ -68,7 +68,21 @@ def test_the_package_and_its_metadata_declare_one_version() -> None:
 
 
 def test_it_requires_exactly_its_own_minor_release_of_azathoth() -> None:
-    assert project()["dependencies"] == [f"azathoth-ai=={minor_release(__version__)}.*"]
+    dependencies = project()["dependencies"]
+
+    assert isinstance(dependencies, list)
+    assert [name for name in dependencies if name.startswith("azathoth")] == [
+        f"azathoth-ai=={minor_release(__version__)}.*"
+    ]
+
+
+def test_its_server_is_starlette_on_uvicorn() -> None:
+    assert project()["dependencies"] == [
+        "azathoth-ai==1.4.*",
+        "starlette>=0.40",
+        "uvicorn>=0.30",
+    ]
+    assert project()["scripts"] == {"azathoth-ui": "azathoth_ui.cli:main"}
 
 
 def test_the_installed_azathoth_is_that_minor_release() -> None:
