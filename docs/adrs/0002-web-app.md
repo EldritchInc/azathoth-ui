@@ -25,9 +25,11 @@ same `make check`.
 - **npm, with a committed lock.** `web/package-lock.json` pins every
   dependency; `make install-web` installs exactly that with `npm ci`.
 - **Built into the package, never committed.** `make build-web` builds into
-  `src/azathoth_ui/static/`, which is ignored. The wheel's build runs it, so an
-  installed editor has its web app. A checkout without a build serves a page
-  that says to run it.
+  `src/azathoth_ui/static/`, which is ignored, and the wheel takes all of it as
+  package data. Building a wheel refuses until the web app is built, so an
+  installed editor always has it; an editable install does not need it, and a
+  checkout without a build serves a page that says to run it. `make wheel`
+  builds both, in order. Building the wheel itself needs no Node.
 - **Fonts are bundled.** Fraunces, a variable serif, sets the headings and the
   instance's name; Hanken Grotesk, a variable sans, sets the interface. Both
   come from Fontsource as npm packages, so the editor looks the same on every
@@ -53,7 +55,10 @@ same `make check`.
 
 - A checkout needs Node (`^20.19.0 || >=22.12.0`) to build or check the web
   app; an installed editor does not.
-- `make check` checks both halves; CI checks them in separate jobs.
+- `make check` checks both halves; CI checks them in separate jobs, then
+  builds the wheel, checks that it holds the whole web app and loads nothing
+  from elsewhere (`scripts/check_wheel.py`), installs it alone, and starts the
+  editor it installs and uses it once (`scripts/smoke.py`).
 - Running the web app in development is `npm run dev`, which sends `/api` to a
   running `azathoth-ui --port 8765`. Opening that server's printed address
   once gives this browser the cookie both use.

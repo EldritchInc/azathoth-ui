@@ -49,6 +49,9 @@ serves it. `make check` lints, type-checks and tests both halves: the Python
 package, and the web app with ESLint, Prettier, TypeScript and Vitest. It
 never runs Azathoth's own test suite.
 
+`make wheel` builds the web app, then the wheel with it, into `dist/`.
+Building a wheel refuses until the web app is built.
+
 To work on the web app with hot reloading, start the server on a fixed port,
 open the address it prints once, then start Vite and open
 <http://127.0.0.1:5173>:

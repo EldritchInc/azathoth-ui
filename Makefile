@@ -1,4 +1,4 @@
-.PHONY: install install-web check check-server check-web build-web
+.PHONY: install install-web check check-server check-web build-web wheel
 
 # Azathoth itself comes from PyPI. While 1.4 is in pre-release, naming its
 # first pre-release lets pip take Azathoth's pre-releases, and no other
@@ -27,3 +27,7 @@ check-web:
 # Builds the web app into src/azathoth_ui/static, where the server serves it.
 build-web:
 	cd web && npm run build
+
+# Builds the wheel, with the web app in it, into dist/.
+wheel: build-web
+	python -m build

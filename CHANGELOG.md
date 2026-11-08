@@ -16,3 +16,6 @@
   TypeScript and Vitest). Its overview shows the instance the editor serves,
   says when the server stops answering or the browser's key is out of date,
   and offers light and dark themes (ADR 0002).
+- The wheel holds the built web app: `make wheel` builds both, and building a
+  wheel refuses without it. CI checks the web app, the server and the wheel in
+  separate jobs, and starts the editor the wheel installs.
