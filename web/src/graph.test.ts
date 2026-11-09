@@ -7,6 +7,7 @@ import {
   crossings,
   INPUT_NODE,
   RESULT_NODE,
+  LANE_GAP,
   ROW_GAP,
   stepNode,
   type WorkflowGraph,
@@ -52,7 +53,7 @@ describe("buildGraph", () => {
     expect(columnsOf(triage)).toEqual([
       [INPUT_NODE],
       ["classify"],
-      ["log", "draft-bug", "draft-feature", "draft-question"],
+      ["draft-question", "log", "draft-bug", "draft-feature"],
       ["merge"],
       ["polish"],
       [RESULT_NODE],
@@ -212,14 +213,35 @@ describe("buildGraph", () => {
     expect(buildGraph(describeWorkflow(REVIEW_DOCUMENT))).toBeNull();
   });
 
-  it("places each node by its column and row, each column centred", () => {
+  it("places each node by its column, each column's rows and lanes centred", () => {
     const at = Object.fromEntries(triage.nodes.map((node) => [short(node.id), [node.x, node.y]]));
 
     expect(at[INPUT_NODE]).toEqual([0, 0]);
-    expect(at.classify).toEqual([COLUMN_GAP, 0]);
-    expect(at.log).toEqual([2 * COLUMN_GAP, -1.5 * ROW_GAP]);
-    expect(at["draft-question"]).toEqual([2 * COLUMN_GAP, 1.5 * ROW_GAP]);
+    expect(at.classify).toEqual([COLUMN_GAP, -LANE_GAP / 2]);
+    expect(at["draft-question"]).toEqual([2 * COLUMN_GAP, -ROW_GAP - LANE_GAP]);
+    expect(at.log).toEqual([2 * COLUMN_GAP, -LANE_GAP]);
+    expect(at["draft-feature"]).toEqual([2 * COLUMN_GAP, 2 * ROW_GAP - LANE_GAP]);
     expect(at[RESULT_NODE]).toEqual([5 * COLUMN_GAP, 0]);
+  });
+
+  it("passes an edge that spans columns through a lane in each, clear of the steps", () => {
+    const route = (source: string, target: string) =>
+      triage.edges.find((edge) => edge.source === source && edge.target === target)?.points;
+
+    expect(route(stepNode("classify"), stepNode("polish"))?.map((point) => point.x)).toEqual([
+      2 * COLUMN_GAP,
+      3 * COLUMN_GAP,
+    ]);
+    expect(route(INPUT_NODE, stepNode("classify"))).toEqual([]);
+    expect(route(stepNode("merge"), RESULT_NODE)).toEqual([{ x: 4 * COLUMN_GAP, y: 60 }]);
+
+    for (const point of triage.edges.flatMap((edge) => edge.points)) {
+      const near = triage.nodes.filter(
+        (node) => node.x === point.x && Math.abs(node.y - point.y) < (ROW_GAP + LANE_GAP) / 2,
+      );
+
+      expect(near.map((node) => node.id)).toEqual([]);
+    }
   });
 });
 
@@ -308,6 +330,7 @@ describe("crossings", () => {
     names: [],
     conditions: [],
     label: "",
+    points: [] as { x: number; y: number }[],
   });
 
   it("counts edges that cross, and not edges that only share an end", () => {
@@ -332,5 +355,21 @@ describe("crossings", () => {
 
     expect(crossings(graph)).toBe(0);
     expect(crossings({ ...graph, edges: [edge("c", "d"), edge("a", "b")] })).toBe(0);
+  });
+
+  it("follows an edge through its lanes", () => {
+    const graph: WorkflowGraph = {
+      nodes: [node("a", 0, 0), node("b", 2, 0), node("c", 1, -1), node("d", 1, 1)],
+      edges: [edge("a", "b"), edge("c", "d")],
+      columns: 3,
+    };
+
+    expect(crossings(graph)).toBe(1);
+    expect(
+      crossings({
+        ...graph,
+        edges: [{ ...edge("a", "b"), points: [{ x: 1, y: 2 }] }, edge("c", "d")],
+      }),
+    ).toBe(0);
   });
 });

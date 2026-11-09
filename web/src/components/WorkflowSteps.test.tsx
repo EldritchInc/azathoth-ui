@@ -1,8 +1,11 @@
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { LAYERED_DOCUMENT, REVIEW_DOCUMENT } from "../test/documents";
+import { NARROW_QUERY, STEPS_VIEW_KEY } from "../stepsView";
+import { LAYERED_DOCUMENT, REVIEW_DOCUMENT, TRIAGE_DOCUMENT } from "../test/documents";
 import { WorkflowSteps } from "./WorkflowSteps";
+
+const GRAPH = "The workflow's steps as a graph";
 
 function step(name: string): HTMLElement {
   const item = screen.getByRole("heading", { level: 3, name }).closest("li");
@@ -60,6 +63,10 @@ describe("WorkflowSteps", () => {
 });
 
 describe("WorkflowSteps in layers", () => {
+  beforeEach(() => {
+    window.localStorage.setItem(STEPS_VIEW_KEY, "outline");
+  });
+
   function layer(name: string): HTMLElement {
     return screen.getByRole("listitem", { name });
   }
@@ -101,5 +108,57 @@ describe("WorkflowSteps in layers", () => {
 
     expect(screen.queryByRole("listitem", { name: /^Layer/ })).toBeNull();
     expect(screen.getByText(/^3 steps, with/)).toBeVisible();
+    expect(screen.getByText(/can’t be drawn as a graph or set out in layers/)).toBeVisible();
+  });
+});
+
+describe("WorkflowSteps as a graph or an outline", () => {
+  it("draws the steps as a graph on a wide window", () => {
+    render(<WorkflowSteps document={TRIAGE_DOCUMENT} />);
+
+    expect(screen.getByLabelText(GRAPH)).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Graph" })).toBeChecked();
+    expect(screen.queryByRole("listitem", { name: /^Layer/ })).toBeNull();
+  });
+
+  it("sets the steps out as an outline on a phone-narrow window", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === NARROW_QUERY }));
+    render(<WorkflowSteps document={TRIAGE_DOCUMENT} />);
+
+    expect(screen.queryByLabelText(GRAPH)).toBeNull();
+    expect(screen.getByRole("radio", { name: "Outline" })).toBeChecked();
+    expect(screen.getByRole("listitem", { name: /^Layer 2: 4 steps/ })).toBeInTheDocument();
+  });
+
+  it("switches between the two, and remembers the choice", () => {
+    const { unmount } = render(<WorkflowSteps document={TRIAGE_DOCUMENT} />);
+
+    fireEvent.click(screen.getByRole("radio", { name: "Outline" }));
+
+    expect(screen.queryByLabelText(GRAPH)).toBeNull();
+    expect(screen.getByRole("listitem", { name: /^Layer 1/ })).toBeInTheDocument();
+    expect(window.localStorage.getItem(STEPS_VIEW_KEY)).toBe("outline");
+
+    unmount();
+    render(<WorkflowSteps document={TRIAGE_DOCUMENT} />);
+
+    expect(screen.getByRole("radio", { name: "Outline" })).toBeChecked();
+    fireEvent.click(screen.getByRole("radio", { name: "Graph" }));
+    expect(screen.getByLabelText(GRAPH)).toBeInTheDocument();
+    expect(window.localStorage.getItem(STEPS_VIEW_KEY)).toBe("graph");
+  });
+
+  it("offers no graph for steps it cannot layer", () => {
+    window.localStorage.setItem(STEPS_VIEW_KEY, "graph");
+    render(<WorkflowSteps document={REVIEW_DOCUMENT} />);
+
+    expect(screen.queryByLabelText(GRAPH)).toBeNull();
+    expect(screen.queryByRole("radiogroup", { name: "Show the steps as" })).toBeNull();
+  });
+
+  it("offers no choice for a workflow without steps", () => {
+    render(<WorkflowSteps document={{}} />);
+
+    expect(screen.queryByRole("radiogroup", { name: "Show the steps as" })).toBeNull();
   });
 });

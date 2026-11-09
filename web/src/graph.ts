@@ -16,8 +16,10 @@
  *   for nothing starts from the input node.
  *
  * Each pair of nodes has one edge at most, which carries every value and
- * condition between them. Within each column the rows are ordered so edges
- * cross as little as a few barycentre sweeps can make them.
+ * condition between them. An edge that spans columns passes each column it
+ * crosses through a lane of its own, between that column's nodes, so it never
+ * runs behind a step. Within each column the nodes and lanes are ordered so
+ * edges cross as little as a few barycentre sweeps can make them.
  */
 
 import { layers, type SourceView, type StepView, type WorkflowView } from "./documents";
@@ -50,7 +52,16 @@ export interface GraphNode {
  */
 export type EdgeKind = "data" | "order" | "condition";
 
-/** One edge, with the names of the values it carries and the conditions it decides. */
+/** A point in the graph's coordinates. */
+export interface GraphPoint {
+  readonly x: number;
+  readonly y: number;
+}
+
+/**
+ * One edge, with the names of the values it carries, the conditions it
+ * decides, and the centre of each lane it passes through on its way.
+ */
 export interface GraphEdge {
   readonly id: string;
   readonly source: string;
@@ -59,6 +70,7 @@ export interface GraphEdge {
   readonly names: readonly string[];
   readonly conditions: readonly string[];
   readonly label: string;
+  readonly points: readonly GraphPoint[];
 }
 
 /** A workflow's graph: its nodes, its edges, and how many columns they take. */
@@ -75,10 +87,13 @@ export const INPUT_NODE = "workflow:input";
 export const RESULT_NODE = "workflow:result";
 
 /** The distance between two columns' centres. */
-export const COLUMN_GAP = 300;
+export const COLUMN_GAP = 360;
 
-/** The distance between two rows' centres. */
+/** The height of a node's row. */
 export const ROW_GAP = 120;
+
+/** The height of a lane an edge passes a column through. */
+export const LANE_GAP = 40;
 
 const SWEEPS = 8;
 
@@ -116,24 +131,17 @@ function nameOf(source: SourceView): string {
 
 type Point = readonly [number, number];
 
+type Segment = readonly [string, string];
+
 function turn(a: Point, b: Point, c: Point): number {
   return Math.sign((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]));
 }
 
-function countCrossings(
-  at: ReadonlyMap<string, Point>,
-  edges: readonly { readonly source: string; readonly target: string }[],
-): number {
-  const segments = edges.flatMap((edge): [Point, Point][] => {
-    const from = at.get(edge.source);
-    const to = at.get(edge.target);
-
-    return from === undefined || to === undefined ? [] : [[from, to]];
-  });
+function countCrossings(lines: readonly (readonly [Point, Point])[]): number {
   let count = 0;
 
-  segments.forEach(([a, b], index) => {
-    for (const [c, d] of segments.slice(index + 1)) {
+  lines.forEach(([a, b], index) => {
+    for (const [c, d] of lines.slice(index + 1)) {
       if (turn(a, b, c) * turn(a, b, d) < 0 && turn(c, d, a) * turn(c, d, b) < 0) {
         count += 1;
       }
@@ -142,11 +150,35 @@ function countCrossings(
   return count;
 }
 
-/** Returns how many pairs of a graph's edges cross, drawn straight between node centres. */
+function linesOf(at: ReadonlyMap<string, Point>, segments: readonly Segment[]): [Point, Point][] {
+  return segments.flatMap(([source, target]): [Point, Point][] => {
+    const from = at.get(source);
+    const to = at.get(target);
+
+    return from === undefined || to === undefined ? [] : [[from, to]];
+  });
+}
+
+/**
+ * Returns how many pairs of a graph's edges cross, each drawn straight from
+ * its source's centre through its lanes to its target's centre.
+ */
 export function crossings(graph: WorkflowGraph): number {
+  const at = new Map(graph.nodes.map((node) => [node.id, [node.x, node.y] as const]));
+
   return countCrossings(
-    new Map(graph.nodes.map((node) => [node.id, [node.x, node.y] as const])),
-    graph.edges,
+    graph.edges.flatMap((edge): [Point, Point][] => {
+      const from = at.get(edge.source);
+      const to = at.get(edge.target);
+
+      if (from === undefined || to === undefined) {
+        return [];
+      }
+
+      const path = [from, ...edge.points.map(({ x, y }) => [x, y] as const), to];
+
+      return path.slice(1).map((point, index): [Point, Point] => [path[index] ?? point, point]);
+    }),
   );
 }
 
@@ -163,22 +195,25 @@ function pointsOf(columns: readonly (readonly string[])[]): Map<string, Point> {
 }
 
 /**
- * Returns the columns with each one's rows reordered: each node at the mean
- * row of its neighbours, those before it on the sweep from left to right and
- * those after it on the sweep back, keeping the order with fewest crossings.
- * Every edge runs from a column to a later one.
+ * Returns the columns with each one's nodes and lanes reordered: each at the
+ * mean row of its neighbours, those before it on the sweep from left to
+ * right and those after it on the sweep back, keeping the order with fewest
+ * crossings. Every segment runs from one column to the next.
  */
-function arrange(columns: readonly (readonly string[])[], links: readonly Link[]): string[][] {
+function arrange(
+  columns: readonly (readonly string[])[],
+  segments: readonly Segment[],
+): string[][] {
   let current = columns.map((ids) => [...ids]);
   let best = current;
-  let fewest = countCrossings(pointsOf(current), links);
+  let fewest = countCrossings(linesOf(pointsOf(current), segments));
 
   const reorder = (column: number, before: boolean): void => {
     const at = pointsOf(current);
     const ids = current[column] ?? [];
     const neighbours = (id: string): number[] =>
-      links.flatMap((link) => {
-        const [self, other] = before ? [link.target, link.source] : [link.source, link.target];
+      segments.flatMap(([source, target]) => {
+        const [self, other] = before ? [target, source] : [source, target];
         const point = at.get(other);
 
         return self === id && point !== undefined ? [point[1]] : [];
@@ -206,7 +241,7 @@ function arrange(columns: readonly (readonly string[])[], links: readonly Link[]
       reorder(column, false);
     }
 
-    const count = countCrossings(pointsOf(current), links);
+    const count = countCrossings(linesOf(pointsOf(current), segments));
 
     if (count < fewest) {
       fewest = count;
@@ -214,6 +249,27 @@ function arrange(columns: readonly (readonly string[])[], links: readonly Link[]
     }
   }
   return best;
+}
+
+/** Returns where each node and lane is: its column's x, and a y that centres the column. */
+function place(
+  columns: readonly (readonly string[])[],
+  lanes: ReadonlySet<string>,
+): Map<string, Point> {
+  return new Map(
+    columns.flatMap((ids, column) => {
+      const heights = ids.map((id) => (lanes.has(id) ? LANE_GAP : ROW_GAP));
+      let top = -heights.reduce((sum, height) => sum + height, 0) / 2;
+
+      return ids.map((id, index): [string, Point] => {
+        const height = heights[index] ?? ROW_GAP;
+        const point: Point = [column * COLUMN_GAP, top + height / 2];
+
+        top += height;
+        return [id, point];
+      });
+    }),
+  );
 }
 
 /**
@@ -322,32 +378,63 @@ export function buildGraph(
     ...grouped.map((layer) => layer.map((step) => stepNode(step.id))),
     ...(result === null ? [] : [[RESULT_NODE]]),
   ];
-  const ordered = arranged ? arrange(columns, [...links.values()]) : columns;
+  const columnOf = new Map(columns.flatMap((ids, column) => ids.map((id) => [id, column])));
+  const lanes = new Set<string>();
+  const routes = new Map<string, string[]>();
+  const segments: Segment[] = [];
+
+  for (const [id, { source, target }] of links) {
+    const from = columnOf.get(source) ?? 0;
+    const to = columnOf.get(target) ?? from;
+    const route = Array.from({ length: Math.max(0, to - from - 1) }, (_, index) => {
+      const lane = `${id}@${String(from + index + 1)}`;
+
+      lanes.add(lane);
+      columns[from + index + 1]?.push(lane);
+      return lane;
+    });
+    const path = [source, ...route, target];
+
+    routes.set(id, route);
+    segments.push(...path.slice(1).map((point, index): Segment => [path[index] ?? point, point]));
+  }
+
+  const ordered = arranged ? arrange(columns, segments) : columns;
+  const at = place(ordered, lanes);
   const steps = new Map(view.steps.map((step) => [stepNode(step.id), step]));
+  const pointOf = (id: string): Point => at.get(id) ?? [0, 0];
 
   const nodes = ordered.flatMap((ids, column) =>
-    ids.map((id, row): GraphNode => {
-      const step = steps.get(id) ?? null;
+    ids
+      .filter((id) => !lanes.has(id))
+      .map((id, row): GraphNode => {
+        const step = steps.get(id) ?? null;
+        const [x, y] = pointOf(id);
 
-      return {
-        id,
-        kind: step !== null ? "step" : id === INPUT_NODE ? "input" : "result",
-        label: step?.title ?? (id === INPUT_NODE ? "Input" : (result ?? "")),
-        step,
-        column,
-        row,
-        x: column * COLUMN_GAP,
-        y: centred(row, ids.length) * ROW_GAP,
-        alsoProducedBy: step === null ? [] : (also.get(step.id) ?? []),
-      };
-    }),
+        return {
+          id,
+          kind: step !== null ? "step" : id === INPUT_NODE ? "input" : "result",
+          label: step?.title ?? (id === INPUT_NODE ? "Input" : (result ?? "")),
+          step,
+          column,
+          row,
+          x,
+          y,
+          alsoProducedBy: step === null ? [] : (also.get(step.id) ?? []),
+        };
+      }),
   );
   const edges = [...links.entries()].map(([id, { source, target, names, conditions }]) => {
     const kind: EdgeKind =
       conditions.length > 0 ? "condition" : names.length > 0 ? "data" : "order";
     const label = kind === "condition" ? conditions.join("; ") : names.join(", ");
+    const points = (routes.get(id) ?? []).map((lane) => {
+      const [x, y] = pointOf(lane);
 
-    return { id, source, target, kind, names, conditions, label };
+      return { x, y };
+    });
+
+    return { id, source, target, kind, names, conditions, label, points };
   });
 
   return { nodes, edges, columns: ordered.length };

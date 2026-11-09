@@ -49,5 +49,13 @@
   per layer, and its result, with an edge for each value, condition or
   dependency between them. A value read from the context by name comes from
   every step in an earlier layer that produces it, or else from the
-  workflow's input; each column's rows are ordered so edges cross as little
-  as they can.
+  workflow's input; an edge that spans columns passes each through a lane of
+  its own, clear of the steps, and each column's rows and lanes are ordered so
+  edges cross as little as they can.
+- A workflow's page draws its steps as that graph, with React Flow: the input,
+  a card for each step with its kind, what it writes and the constants it
+  reads, and the result, joined by arrows for values, dashed arrows labelled
+  with the conditions they decide, and dotted arrows for order alone. It pans,
+  zooms and has a map of the whole; a wide graph opens at its start. The
+  graph and the layered outline are a click apart: the graph is the default,
+  the outline on a phone-narrow window, and the choice is remembered.
