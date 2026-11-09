@@ -42,5 +42,33 @@
 - The Eldritch, Inc. logo replaces the orbit mark in the rail, the browser
   tab and the server's own pages, in the theme's own colours.
 - A workflow's steps are laid out in layers: the steps that can run at once
-  side by side, and each layer after the deepest step its steps depend on. A
-  workflow that cannot be layered is listed in its document's order.
+  side by side, and each layer after the deepest step its steps depend on or
+  read a named step's output from. A workflow that cannot be layered is listed
+  in its document's order.
+- The web app models a workflow as a graph: its input, its steps in a column
+  per layer, and its result, with an edge for each value, condition or
+  dependency between them. A value read from the context by name comes from
+  every step in an earlier layer that produces it, or else from the
+  workflow's input; an edge that spans columns passes each through a lane of
+  its own, clear of the steps, and each column's rows and lanes are ordered so
+  edges cross as little as they can.
+- A workflow's page draws its steps as that graph, with React Flow: the input,
+  a card for each step with its kind, what it writes and the constants it
+  reads, and the result, joined by arrows for values, dashed arrows labelled
+  with the conditions they decide, and dotted arrows for order alone. It pans,
+  zooms and has a map of the whole; a wide graph opens at its start. The
+  graph and the layered outline are a click apart: the graph is the default,
+  the outline on a phone-narrow window, and the choice is remembered.
+- Choosing a step on the graph lights every path that leads to it and from
+  it, dims the rest, and opens its details beside the graph (below it on a
+  narrow canvas): what it comes from and leads to, each a link to that step,
+  the constants it reads, the writers of a name it reads that it does not
+  wait for, its model's needs, retries and prompt. The arrow keys move
+  between steps, Enter chooses the step in focus and Escape lets it go. The
+  chosen step is named in the address as `?step=`, so a link opens the graph
+  on it, and the outline marks it.
+- Wide graphs stay readable: as the canvas zooms out a step shows its name
+  alone, then its shape; a layer of six or more steps can be folded into one
+  node that names a few of them, and unfolded again; edges from one node
+  share their lanes until they part; and a graph of more than 150 nodes
+  draws only what is in view. ADR 0004 records how the graph is drawn.

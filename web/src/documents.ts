@@ -42,10 +42,28 @@ export function preview(value: unknown): string {
   return shown.length > PREVIEW_LENGTH ? `${shown.slice(0, PREVIEW_LENGTH - 1)}…` : shown;
 }
 
-/** One input of a step, and where its value comes from. */
+/**
+ * Where a value a step reads comes from: the workflow's input, an output of
+ * a named step, whatever the context holds under a name, or a constant.
+ */
+export type SourceView =
+  | { readonly kind: "input"; readonly field: string }
+  | { readonly kind: "step"; readonly step: string; readonly name: string | null }
+  | { readonly kind: "context"; readonly name: string }
+  | { readonly kind: "constant"; readonly value: string }
+  | { readonly kind: "unknown" };
+
+/** One input of a step, and where its value comes from, in words and as a source. */
 export interface InputView {
   readonly name: string;
   readonly from: string;
+  readonly source: SourceView;
+}
+
+/** One condition a step runs on: the value it tests, and the test, such as "is true". */
+export interface ConditionView {
+  readonly source: SourceView;
+  readonly test: string;
 }
 
 /** One step of a workflow, as a person reads it. */
@@ -65,6 +83,7 @@ export interface StepView {
   readonly inputs: readonly InputView[];
   readonly outputs: readonly string[];
   readonly conditions: readonly string[];
+  readonly when: readonly ConditionView[];
   readonly attempts: number | null;
   readonly onFailure: string | null;
 }
@@ -136,6 +155,38 @@ function stepTitle(step: Record_): string {
   );
 }
 
+function sourceOf(value: unknown): SourceView {
+  const source = record(value) ?? {};
+
+  if (text(source.event_type) !== null) {
+    return { kind: "input", field: text(source.field_name) ?? "input" };
+  }
+  if ("producer_step_id" in source) {
+    const step = text(source.producer_step_id);
+
+    return step === null ? { kind: "unknown" } : { kind: "step", step, name: text(source.name) };
+  }
+  if ("value" in source) {
+    return { kind: "constant", value: preview(source.value) };
+  }
+
+  const name = text(source.name);
+
+  return name === null ? { kind: "unknown" } : { kind: "context", name };
+}
+
+/**
+ * Returns the ids of the steps a step must run after: those it depends on,
+ * and those whose outputs it reads by name, in its inputs or its conditions.
+ */
+export function precursorsOf(step: StepView): string[] {
+  const named = [...step.inputs, ...step.when].flatMap(({ source }) =>
+    source.kind === "step" ? [source.step] : [],
+  );
+
+  return [...new Set([...step.dependsOn, ...named])];
+}
+
 /** Returns a workflow document as a person reads it. */
 export function describeWorkflow(document: Record_): WorkflowView {
   const steps = list(document.steps).map((step) => record(step) ?? {});
@@ -155,24 +206,19 @@ export function describeWorkflow(document: Record_): WorkflowView {
     return known === null ? "an unknown step" : (titles.get(known) ?? known);
   };
 
-  const sourceOf = (value: unknown): string => {
-    const source = record(value) ?? {};
-
-    if (text(source.event_type) !== null) {
-      const field = text(source.field_name) ?? "input";
-
-      return field === "input" ? "the workflow's input" : `the workflow's ${field}`;
+  const describeSource = (source: SourceView): string => {
+    switch (source.kind) {
+      case "input":
+        return source.field === "input" ? "the workflow's input" : `the workflow's ${source.field}`;
+      case "step":
+        return `${titleOf(source.step)}: ${source.name ?? "its output"}`;
+      case "constant":
+        return `the constant ${source.value}`;
+      case "context":
+        return `the context's ${source.name}`;
+      case "unknown":
+        return "an unknown source";
     }
-    if ("producer_step_id" in source) {
-      return `${titleOf(source.producer_step_id)}: ${text(source.name) ?? "its output"}`;
-    }
-    if ("value" in source) {
-      return `the constant ${preview(source.value)}`;
-    }
-    if (text(source.name) !== null) {
-      return `the context's ${text(source.name) ?? ""}`;
-    }
-    return "an unknown source";
   };
 
   return {
@@ -183,6 +229,13 @@ export function describeWorkflow(document: Record_): WorkflowView {
         text(record(specification.template)?.text) ?? text(record(specification.prompt)?.text);
       const kind = requirement !== null ? "tool" : prompt !== null ? "prompt" : "unknown";
       const failure = text(step.failure_policy);
+      const when = list(step.conditions).map((condition): ConditionView => {
+        const fields = record(condition) ?? {};
+        const operator = text(fields.operator) ?? "matches";
+        const test = OPERATORS[operator] ?? operator.replaceAll("_", " ");
+
+        return { source: sourceOf(fields.source), test: `${test} ${preview(fields.expected)}` };
+      });
 
       return {
         id: text(step.id) ?? "",
@@ -202,18 +255,17 @@ export function describeWorkflow(document: Record_): WorkflowView {
         after: list(step.depends_on).map(titleOf),
         inputs: list(step.inputs).map((input) => {
           const fields = record(input) ?? {};
+          const source = sourceOf(fields.source);
 
-          return { name: text(fields.name) ?? "unnamed", from: sourceOf(fields.source) };
+          return { name: text(fields.name) ?? "unnamed", from: describeSource(source), source };
         }),
         outputs: list(step.outputs)
           .map((output) => text(record(output)?.name))
           .filter((name): name is string => name !== null),
-        conditions: list(step.conditions).map((condition) => {
-          const fields = record(condition) ?? {};
-          const operator = text(fields.operator) ?? "matches";
-
-          return `${sourceOf(fields.source)} ${OPERATORS[operator] ?? operator.replaceAll("_", " ")} ${preview(fields.expected)}`;
-        }),
+        conditions: when.map(
+          (condition) => `${describeSource(condition.source)} ${condition.test}`,
+        ),
+        when,
         attempts: wholeNumber(record(step.retry_policy)?.max_attempts),
         onFailure:
           failure === null
@@ -229,11 +281,11 @@ export function describeWorkflow(document: Record_): WorkflowView {
 
 /**
  * Returns a workflow's steps in layers: each step one layer after the
- * deepest step it depends on, so a layer's steps can run at once, each layer
+ * deepest of its precursors, so a layer's steps can run at once, each layer
  * in the document's order.
  *
  * Returns `null` when the steps cannot be layered: a step without an id, two
- * with the same id, a dependency on a step that is not there, or a cycle.
+ * with the same id, a precursor that is not there, or a cycle.
  */
 export function layers(view: WorkflowView): StepView[][] | null {
   const byId = new Map<string, StepView>();
@@ -261,7 +313,7 @@ export function layers(view: WorkflowView): StepView[][] | null {
 
     let depth = 0;
 
-    for (const id of step.dependsOn) {
+    for (const id of precursorsOf(step)) {
       const dependency = byId.get(id);
       const below = dependency === undefined ? null : depthOf(dependency);
 

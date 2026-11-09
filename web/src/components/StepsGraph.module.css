@@ -1,0 +1,609 @@
+.figure {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+}
+
+.canvas {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(
+      120% 90% at 0% 0%,
+      color-mix(in srgb, var(--tide) 6%, transparent),
+      transparent 60%
+    ),
+    var(--surface);
+}
+
+.markers {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* React Flow's own parts, in the editor's colours. */
+
+.canvas .flow {
+  --xy-background-color: transparent;
+  --xy-edge-label-background-color: var(--raised);
+
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--sans);
+}
+
+.canvas :global(.react-flow__background-pattern.dots) {
+  fill: color-mix(in srgb, var(--faint) 45%, transparent);
+}
+
+.canvas :global(.react-flow__controls) {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--ink) 10%, transparent);
+}
+
+.canvas :global(.react-flow__controls-button) {
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--raised);
+  color: var(--muted);
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.canvas :global(.react-flow__controls-button:last-child) {
+  border-bottom: 0;
+}
+
+.canvas :global(.react-flow__controls-button:hover) {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.canvas :global(.react-flow__controls-button svg) {
+  max-width: 0.75rem;
+  max-height: 0.75rem;
+  fill: currentColor;
+}
+
+.canvas :global(.react-flow__minimap) {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--raised);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--ink) 10%, transparent);
+}
+
+.canvas :global(.react-flow__minimap-mask) {
+  fill: color-mix(in srgb, var(--paper) 72%, transparent);
+  stroke: color-mix(in srgb, var(--tide) 55%, transparent);
+  stroke-width: 2;
+}
+
+.canvas .miniStep {
+  fill: color-mix(in srgb, var(--orbit) 55%, var(--raised));
+}
+
+.canvas .miniEnd {
+  fill: var(--tide);
+}
+
+.canvas :global(.react-flow__attribution) {
+  background: transparent;
+  font-size: 0.625rem;
+}
+
+.canvas :global(.react-flow__attribution a) {
+  color: var(--faint);
+}
+
+.canvas :global(.react-flow__node:focus-visible) {
+  outline: none;
+}
+
+.canvas :global(.react-flow__edge:focus-visible) {
+  outline: none;
+}
+
+/* Steps. */
+
+.step {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 0.2rem;
+  width: 100%;
+  height: 100%;
+  padding: 0.6rem 0.8rem 0.65rem 0.95rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--raised);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--ink) 8%, transparent),
+    0 6px 18px -6px color-mix(in srgb, var(--ink) 16%, transparent);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms var(--ease-out);
+}
+
+.step::before {
+  content: "";
+  position: absolute;
+  top: 0.55rem;
+  bottom: 0.55rem;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--tide);
+}
+
+.step[data-kind="tool"]::before {
+  background: var(--orbit);
+}
+
+.step[data-kind="unknown"]::before {
+  background: var(--faint);
+}
+
+.step:hover {
+  border-color: color-mix(in srgb, var(--tide) 40%, var(--line));
+  transform: translateY(-1px);
+}
+
+.step[data-selected="true"],
+:global(.react-flow__node:focus-visible) > .step {
+  border-color: var(--tide);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--tide) 22%, transparent),
+    0 8px 22px -8px color-mix(in srgb, var(--ink) 22%, transparent);
+}
+
+.stepTop {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  color: var(--faint);
+}
+
+.kindIcon {
+  flex: none;
+  width: 0.8rem;
+  height: 0.8rem;
+  color: var(--tide);
+}
+
+.step[data-kind="tool"] .kindIcon {
+  color: var(--orbit);
+}
+
+.kind {
+  overflow: hidden;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.branch {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-left: auto;
+  border-radius: 999px;
+  background: var(--amber-wash);
+  color: var(--amber);
+}
+
+.branch svg {
+  width: 0.7rem;
+  height: 0.7rem;
+}
+
+.stepTitle {
+  overflow: hidden;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tags {
+  display: flex;
+  align-items: end;
+  gap: 0.25rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+}
+
+.tag,
+.more {
+  flex: none;
+  max-width: 7.5rem;
+  padding: 0.05rem 0.4rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag[data-kind="output"] {
+  border-color: color-mix(in srgb, var(--tide) 30%, var(--line));
+  background: var(--tide-wash);
+  color: var(--tide-strong);
+}
+
+.tag[data-kind="result"] {
+  border-color: var(--tide);
+  background: var(--tide);
+  color: var(--on-tide);
+}
+
+.tag[data-kind="constant"] {
+  border-color: color-mix(in srgb, var(--amber) 35%, var(--line));
+  background: var(--amber-wash);
+  color: var(--amber);
+}
+
+.more {
+  color: var(--faint);
+  font-family: var(--sans);
+}
+
+/* What a step shows as the canvas zooms out: its name alone, then its shape. */
+
+.step[data-detail="name"] .stepTop,
+.step[data-detail="name"] .tags,
+.step[data-detail="shape"] > :not(.handle),
+.fold[data-detail="name"] .stepTop,
+.fold[data-detail="name"] .foldNames,
+.fold[data-detail="shape"] > :not(.handle) {
+  display: none;
+}
+
+.step[data-detail="name"],
+.fold[data-detail="name"] {
+  align-content: center;
+}
+
+.step[data-detail="name"] .stepTitle,
+.fold[data-detail="name"] .stepTitle {
+  display: -webkit-box;
+  font-size: 1.6rem;
+  line-height: 1.15;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.step[data-detail="shape"] {
+  background: color-mix(in srgb, var(--tide) 22%, var(--raised));
+}
+
+.step[data-detail="shape"][data-kind="tool"] {
+  background: color-mix(in srgb, var(--orbit) 22%, var(--raised));
+}
+
+/* A folded layer: a stack of cards. */
+
+.fold {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 0.2rem;
+  width: 100%;
+  height: 100%;
+  padding: 0.6rem 0.8rem 0.65rem 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--orbit) 35%, var(--line));
+  border-radius: 12px;
+  background: var(--raised);
+  box-shadow:
+    5px 5px 0 -1px var(--raised),
+    5px 5px 0 0 color-mix(in srgb, var(--orbit) 25%, var(--line)),
+    10px 10px 0 -1px var(--raised),
+    10px 10px 0 0 color-mix(in srgb, var(--orbit) 18%, var(--line)),
+    0 14px 26px -10px color-mix(in srgb, var(--ink) 25%, transparent);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    transform 160ms var(--ease-out);
+}
+
+.fold:hover,
+:global(.react-flow__node:focus-visible) > .fold {
+  border-color: var(--tide);
+  transform: translateY(-1px);
+}
+
+.fold .kindIcon {
+  color: var(--orbit);
+}
+
+.foldNames {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folds {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: calc(100% - 8rem);
+  padding: 0.35rem 0.4rem 0.35rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--raised) 88%, transparent);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--ink) 10%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.foldsTitle {
+  color: var(--faint);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.foldButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--raised);
+  color: var(--ink);
+  font-size: 0.8125rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.foldButton:hover {
+  border-color: color-mix(in srgb, var(--tide) 45%, var(--line));
+}
+
+.foldButton[aria-pressed="true"] {
+  border-color: var(--orbit);
+  background: var(--orbit);
+  color: var(--paper);
+}
+
+.foldButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.foldCount {
+  color: var(--faint);
+  font-size: 0.75rem;
+  font-weight: 450;
+}
+
+.foldButton[aria-pressed="true"] .foldCount {
+  color: inherit;
+  opacity: 0.75;
+}
+
+/* The input and the result. */
+
+.end {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  height: 100%;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  background: var(--orbit);
+  color: var(--paper);
+  box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--ink) 35%, transparent);
+  cursor: pointer;
+}
+
+.end[data-end="result"] {
+  background: var(--tide);
+  color: var(--on-tide);
+}
+
+.end[data-selected="true"],
+:global(.react-flow__node:focus-visible) > .end {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--tide) 30%, transparent),
+    0 6px 18px -6px color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+.endName {
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.endValue {
+  overflow: hidden;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+.handle {
+  width: 7px;
+  height: 7px;
+  min-width: 0;
+  min-height: 0;
+  border: 1.5px solid var(--raised);
+  background: color-mix(in srgb, var(--faint) 80%, var(--raised));
+}
+
+.handle:global(.react-flow__handle-left) {
+  opacity: 0;
+}
+
+/* Edges. */
+
+.edge {
+  fill: none;
+  stroke: color-mix(in srgb, var(--tide) 70%, var(--line));
+  stroke-width: 1.6;
+  transition:
+    stroke 160ms ease,
+    stroke-width 160ms ease;
+}
+
+.edge[data-kind="condition"] {
+  stroke: color-mix(in srgb, var(--amber) 80%, var(--line));
+  stroke-dasharray: 6 4;
+}
+
+.edge[data-kind="order"] {
+  stroke: var(--faint);
+  stroke-dasharray: 1.5 4.5;
+  stroke-linecap: round;
+  stroke-width: 1.4;
+}
+
+.edge[data-active="true"] {
+  stroke: var(--tide-strong);
+  stroke-width: 2.4;
+}
+
+.edge[data-kind="condition"][data-active="true"] {
+  stroke: var(--amber);
+}
+
+.edgeTarget {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16;
+  pointer-events: stroke;
+}
+
+.arrow {
+  fill: color-mix(in srgb, var(--tide) 70%, var(--line));
+}
+
+.arrow[data-kind="condition"] {
+  fill: color-mix(in srgb, var(--amber) 80%, var(--line));
+}
+
+.arrow[data-kind="order"] {
+  fill: var(--faint);
+}
+
+.edgeLabel {
+  position: absolute;
+  z-index: 1;
+  max-width: 9.5rem;
+  padding: 0.1rem 0.5rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--tide) 35%, var(--line));
+  border-radius: 999px;
+  background: var(--raised);
+  color: var(--tide-strong);
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--ink) 18%, transparent);
+  pointer-events: none;
+}
+
+.edgeLabel[data-dimmed="true"] {
+  opacity: 0.25;
+}
+
+.edgeLabel[data-kind="condition"] {
+  border-color: color-mix(in srgb, var(--amber) 40%, var(--line));
+  background: color-mix(in srgb, var(--amber) 9%, var(--raised));
+  color: var(--amber);
+}
+
+/* Choosing a step. */
+
+.dimmed {
+  opacity: 0.25;
+  transition: opacity 200ms ease;
+}
+
+.beside {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 6;
+  display: grid;
+  width: min(20rem, calc(100% - 1.5rem));
+}
+
+.beside > * {
+  max-height: 100%;
+}
+
+/* The legend. */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 1.1rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.legendLine {
+  width: 1.75rem;
+  height: 0.5rem;
+  overflow: visible;
+}
+
+.hint {
+  margin-left: auto;
+  color: var(--faint);
+}
+
+@media (max-width: 48rem) {
+  .hint {
+    margin-left: 0;
+  }
+}
