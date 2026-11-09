@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { describeWorkflow } from "./documents";
 import {
   canvasHeight,
+  detailAt,
   edgePath,
   END_SIZE,
   flowEdges,
@@ -16,6 +17,7 @@ import {
 import {
   buildGraph,
   COLUMN_GAP,
+  foldNode,
   INPUT_NODE,
   RESULT_NODE,
   ROW_GAP,
@@ -24,8 +26,11 @@ import {
 } from "./graph";
 import { LAYERED_DOCUMENT, TRIAGE_DOCUMENT } from "./test/documents";
 
-function graphOf(document: Record<string, unknown>): WorkflowGraph {
-  const graph = buildGraph(describeWorkflow(document));
+function graphOf(
+  document: Record<string, unknown>,
+  folded: ReadonlySet<number> = new Set(),
+): WorkflowGraph {
+  const graph = buildGraph(describeWorkflow(document), { folded });
 
   if (graph === null) {
     throw new Error("The workflow has no graph.");
@@ -210,5 +215,47 @@ describe("viewportOn", () => {
 
   it("centres it beside the details covering the canvas's right edge", () => {
     expect(viewportOn({ x: 0, y: 0 }, { width: 1000, height: 400 }, 300).x).toBe(350);
+  });
+});
+
+describe("a folded layer", () => {
+  const document = {
+    steps: [
+      { id: "a" },
+      ...Array.from({ length: 6 }, (_, index) => ({
+        id: `b${String(index)}`,
+        specification: { metadata: { name: `Branch ${String(index)}` } },
+        depends_on: ["a"],
+      })),
+    ],
+  };
+  const graph = graphOf(document, new Set([1]));
+
+  it("draws as one node the size of a step, naming the steps it stands for", () => {
+    const fold = flowNodes(graph).find((node) => node.id === foldNode(1));
+
+    expect(fold?.type).toBe("fold");
+    expect(fold?.data).toEqual({
+      layer: 2,
+      titles: Array.from({ length: 6 }, (_, index) => `Branch ${String(index)}`),
+    });
+    expect([fold?.width, fold?.height]).toEqual([STEP_SIZE.width, STEP_SIZE.height]);
+    expect(fold?.ariaLabel).toBe("Layer 2: 6 steps, folded");
+  });
+
+  it("names its edges for a screen reader by the layer", () => {
+    expect(flowEdges(graph).map((edge) => edge.ariaLabel)).toContain(
+      "the 6 steps of layer 2 runs after Unnamed step",
+    );
+  });
+});
+
+describe("detailAt", () => {
+  it("shows everything close up, the name further out, and the shape furthest", () => {
+    expect(detailAt(1)).toBe("full");
+    expect(detailAt(0.6)).toBe("full");
+    expect(detailAt(0.59)).toBe("name");
+    expect(detailAt(0.3)).toBe("name");
+    expect(detailAt(0.29)).toBe("shape");
   });
 });

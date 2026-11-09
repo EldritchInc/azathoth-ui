@@ -5,18 +5,22 @@ import {
   buildGraph,
   COLUMN_GAP,
   crossings,
+  FOLD_AT,
+  foldNode,
   INPUT_NODE,
+  layerOfFold,
   RESULT_NODE,
   LANE_GAP,
   ROW_GAP,
   stepNode,
+  wideLayers,
   type WorkflowGraph,
 } from "./graph";
 import { LAYERED_DOCUMENT, REVIEW_DOCUMENT, TRIAGE_DOCUMENT } from "./test/documents";
 
 function graphOf(
   document: Record<string, unknown>,
-  options?: { readonly arrange?: boolean },
+  options?: { readonly arrange?: boolean; readonly folded?: ReadonlySet<number> },
 ): WorkflowGraph {
   const graph = buildGraph(describeWorkflow(document), options);
 
@@ -321,6 +325,7 @@ describe("crossings", () => {
     x,
     y,
     alsoProducedBy: [],
+    members: [],
   });
   const edge = (source: string, target: string) => ({
     id: `${source}->${target}`,
@@ -371,5 +376,116 @@ describe("crossings", () => {
         edges: [{ ...edge("a", "b"), points: [{ x: 1, y: 2 }] }, edge("c", "d")],
       }),
     ).toBe(0);
+  });
+});
+
+/** A workflow of layers of steps, each step after two of the layer before it. */
+function grid(widths: readonly number[]): Record<string, unknown> {
+  const id = (layer: number, index: number) =>
+    `s${String(layer)}-${String(index % (widths[layer] ?? 1))}`;
+
+  return {
+    steps: widths.flatMap((width, layer) =>
+      Array.from({ length: width }, (_, index) => ({
+        id: id(layer, index),
+        depends_on: layer === 0 ? [] : [id(layer - 1, index * 3), id(layer - 1, index * 7 + 1)],
+        outputs: [{ name: `out-${String(layer)}` }],
+      })),
+    ),
+    result: { name: `out-${String(widths.length - 1)}` },
+  };
+}
+
+describe("sharing lanes", () => {
+  it("passes the edges from one node through one lane in each column they cross", () => {
+    const triage = graphOf(TRIAGE_DOCUMENT);
+    const fromInput = triage.edges.filter(
+      (edge) => edge.source === INPUT_NODE && edge.points.length > 0,
+    );
+
+    expect(fromInput.map((edge) => short(edge.target))).toEqual([
+      "draft-bug",
+      "draft-feature",
+      "draft-question",
+    ]);
+    expect(new Set(fromInput.map((edge) => JSON.stringify(edge.points))).size).toBe(1);
+  });
+});
+
+describe("folding", () => {
+  const document = grid([2, 8, 3]);
+
+  it("offers to fold only layers of at least six steps", () => {
+    expect(FOLD_AT).toBe(6);
+    expect(wideLayers(describeWorkflow(document))).toEqual([1]);
+    expect(wideLayers(describeWorkflow(grid([6, 5, 7])))).toEqual([0, 2]);
+    expect(wideLayers(describeWorkflow(REVIEW_DOCUMENT))).toEqual([]);
+  });
+
+  it("names a fold's node by its layer, and knows no other node as a fold", () => {
+    expect(foldNode(3)).toBe("fold:3");
+    expect(layerOfFold(foldNode(3))).toBe(3);
+    expect(layerOfFold(stepNode("fold:3"))).toBeNull();
+    expect(layerOfFold("fold:x")).toBeNull();
+    expect(layerOfFold("fold:-1")).toBeNull();
+  });
+
+  it("stands one node for a folded layer's steps", () => {
+    const graph = graphOf(document, { folded: new Set([1]) });
+    const fold = graph.nodes.find((node) => node.id === foldNode(1));
+
+    expect(graph.nodes.filter((node) => node.column === 2)).toHaveLength(1);
+    expect(fold?.kind).toBe("fold");
+    expect(fold?.label).toBe("8 steps");
+    expect(fold?.step).toBeNull();
+    expect(fold?.members.map((step) => step.id)).toEqual(
+      Array.from({ length: 8 }, (_, index) => `s1-${String(index)}`),
+    );
+    expect(graph.nodes.find((node) => node.id === stepNode("s0-0"))?.members).toEqual([]);
+  });
+
+  it("joins every edge to or from a folded step to the fold, once", () => {
+    const graph = graphOf(document, { folded: new Set([1]) });
+
+    expect(edgesOf(graph).sort()).toEqual(
+      [
+        `${INPUT_NODE} > s0-0 order: `,
+        `${INPUT_NODE} > s0-1 order: `,
+        `s0-0 > ${foldNode(1)} order: `,
+        `s0-1 > ${foldNode(1)} order: `,
+        `${foldNode(1)} > s2-0 order: `,
+        `${foldNode(1)} > s2-1 order: `,
+        `${foldNode(1)} > s2-2 order: `,
+        `s2-0 > ${RESULT_NODE} data: out-2`,
+        `s2-1 > ${RESULT_NODE} data: out-2`,
+        `s2-2 > ${RESULT_NODE} data: out-2`,
+      ].sort(),
+    );
+  });
+
+  it("starts a folded layer of steps that wait for nothing from the input", () => {
+    const graph = graphOf(grid([7]), { folded: new Set([0]) });
+
+    expect(edgesOf(graph)).toEqual([
+      `${INPUT_NODE} > ${foldNode(0)} order: `,
+      `${foldNode(0)} > ${RESULT_NODE} data: out-0`,
+    ]);
+  });
+
+  it("folds nothing it is not asked to", () => {
+    expect(graphOf(document).nodes.some((node) => node.kind === "fold")).toBe(false);
+  });
+});
+
+describe("a graph at scale", () => {
+  it("lays out fifty layers of twenty steps in good time, without losing a node", () => {
+    const document = grid(Array.from({ length: 50 }, () => 20));
+    const started = performance.now();
+    const graph = graphOf(document);
+    const took = performance.now() - started;
+
+    expect(graph.nodes).toHaveLength(1002);
+    expect(graph.columns).toBe(52);
+    expect(took).toBeLessThan(5000);
   });
 });

@@ -67,3 +67,8 @@
   between steps, Enter chooses the step in focus and Escape lets it go. The
   chosen step is named in the address as `?step=`, so a link opens the graph
   on it, and the outline marks it.
+- Wide graphs stay readable: as the canvas zooms out a step shows its name
+  alone, then its shape; a layer of six or more steps can be folded into one
+  node that names a few of them, and unfolded again; edges from one node
+  share their lanes until they part; and a graph of more than 150 nodes
+  draws only what is in view. ADR 0004 records how the graph is drawn.

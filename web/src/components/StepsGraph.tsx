@@ -7,16 +7,19 @@ import {
   EdgeLabelRenderer,
   Handle,
   MiniMap,
+  Panel,
   Position,
   ReactFlow,
   useEdgesState,
   useNodesState,
   useReactFlow,
+  useStore,
   type EdgeProps,
   type EdgeTypes,
   type Node,
   type NodeProps,
   type NodeTypes,
+  type ReactFlowState,
 } from "@xyflow/react";
 import {
   createContext,
@@ -31,19 +34,22 @@ import {
   type ReactNode,
 } from "react";
 
-import type { StepView } from "../documents";
+import { layers, type StepView, type WorkflowView } from "../documents";
 import {
   canvasHeight,
+  detailAt,
   edgePath,
   flowEdges,
   flowNodes,
   openingNodes,
   viewportOn,
+  type Detail,
   type EndFlowNode,
   type FlowEdge,
+  type FoldFlowNode,
   type StepFlowNode,
 } from "../flow";
-import type { EdgeKind, WorkflowGraph } from "../graph";
+import { buildGraph, layerOfFold, wideLayers, type EdgeKind, type WorkflowGraph } from "../graph";
 import { highlight, neighbour, nodeOfStep, stepOfNode, type Direction } from "../paths";
 import { StepInspector } from "./StepInspector";
 import styles from "./StepsGraph.module.css";
@@ -51,6 +57,18 @@ import styles from "./StepsGraph.module.css";
 const EDGE_KINDS: readonly EdgeKind[] = ["data", "condition", "order"];
 
 const MAXIMUM_TAGS = 3;
+
+/** How many names of a folded layer's steps its node lists. */
+const FOLD_TITLES = 3;
+
+/** The most nodes a graph has before the canvas draws only those in view. */
+const VISIBLE_ONLY_AFTER = 150;
+
+const NO_GRAPH: WorkflowGraph = { nodes: [], edges: [], columns: 0 };
+
+function detailOf(state: ReactFlowState): Detail {
+  return detailAt(state.transform[2]);
+}
 
 const ICONS: Record<StepView["kind"], ReactNode> = {
   prompt: <path d="M4 5.5h16v10H9l-5 4v-14Z" />,
@@ -99,6 +117,7 @@ function kindLine(step: StepView): string {
 
 function StepNode({ data, selected }: NodeProps<StepFlowNode>) {
   const { step, constants, result } = data;
+  const detail = useStore(detailOf);
   const tags = [
     ...constants.map((constant) => ({
       key: `constant-${constant.name}`,
@@ -118,6 +137,7 @@ function StepNode({ data, selected }: NodeProps<StepFlowNode>) {
     <div
       className={styles.step}
       data-kind={step.kind}
+      data-detail={detail}
       data-selected={selected ? "true" : undefined}
     >
       <Handle
@@ -188,8 +208,43 @@ function EndNode({ data, type, selected }: NodeProps<EndFlowNode>) {
   );
 }
 
+function FoldNode({ data }: NodeProps<FoldFlowNode>) {
+  const detail = useStore(detailOf);
+  const shown = data.titles.slice(0, FOLD_TITLES);
+  const hidden = data.titles.length - shown.length;
+
+  return (
+    <div className={styles.fold} data-detail={detail}>
+      <Handle
+        className={styles.handle}
+        type="target"
+        position={Position.Left}
+        isConnectable={false}
+      />
+      <div className={styles.stepTop}>
+        <Icon className={styles.kindIcon}>
+          <path d="M4 8h16M4 12h16M4 16h16" />
+        </Icon>
+        <span className={styles.kind}>Layer {data.layer} · folded</span>
+      </div>
+      <p className={styles.stepTitle}>{data.titles.length} steps at once</p>
+      <p className={styles.foldNames}>
+        {shown.join(", ")}
+        {hidden > 0 && `, +${String(hidden)}`}
+      </p>
+      <Handle
+        className={styles.handle}
+        type="source"
+        position={Position.Right}
+        isConnectable={false}
+      />
+    </div>
+  );
+}
+
 function WorkflowEdge({ data, selected, sourceX, sourceY, targetX, targetY }: EdgeProps<FlowEdge>) {
   const markers = use(Markers);
+  const detail = useStore(detailOf);
   const [hovered, setHovered] = useState(false);
   const { path, label: at } = useMemo(
     () => edgePath({ x: sourceX, y: sourceY }, data?.points ?? [], { x: targetX, y: targetY }),
@@ -218,7 +273,7 @@ function WorkflowEdge({ data, selected, sourceX, sourceY, targetX, targetY }: Ed
           setHovered(false);
         }}
       />
-      {label !== "" && (kind === "condition" || active) && (
+      {label !== "" && detail === "full" && (kind === "condition" || active) && (
         <EdgeLabelRenderer>
           <div
             className={styles.edgeLabel}
@@ -236,12 +291,17 @@ function WorkflowEdge({ data, selected, sourceX, sourceY, targetX, targetY }: Ed
   );
 }
 
-const NODE_TYPES = { step: StepNode, start: EndNode, result: EndNode } satisfies NodeTypes;
+const NODE_TYPES = {
+  step: StepNode,
+  fold: FoldNode,
+  start: EndNode,
+  result: EndNode,
+} satisfies NodeTypes;
 
 const EDGE_TYPES = { workflow: WorkflowEdge } satisfies EdgeTypes;
 
 function minimapClass(node: Node): string {
-  return (node.type === "step" ? styles.miniStep : styles.miniEnd) ?? "";
+  return (node.type === "step" || node.type === "fold" ? styles.miniStep : styles.miniEnd) ?? "";
 }
 
 function Arrowheads({ prefix }: { readonly prefix: string }) {
@@ -327,14 +387,26 @@ function nodeElement(canvas: HTMLElement | null, id: string): HTMLElement | null
  * between steps, Enter chooses the step in focus, and Escape lets it go.
  */
 export function StepsGraph({
-  graph,
+  view,
   selected = null,
   onSelect,
 }: {
-  readonly graph: WorkflowGraph;
+  readonly view: WorkflowView;
   readonly selected?: string | null;
   readonly onSelect?: (step: string | null) => void;
 }) {
+  const layered = useMemo(() => layers(view), [view]);
+  const wide = useMemo(() => wideLayers(view), [view]);
+  const [folded, setFolded] = useState<ReadonlySet<number>>(() => new Set());
+  const chosenLayer =
+    layered?.findIndex((layer) => layer.some((step) => step.id === selected)) ?? -1;
+  const graph = useMemo(
+    () =>
+      buildGraph(view, {
+        folded: new Set([...folded].filter((layer) => layer !== chosenLayer)),
+      }) ?? NO_GRAPH,
+    [view, folded, chosenLayer],
+  );
   const prefix = `azathoth-arrow-${useId().replace(/[^\w-]/g, "")}`;
   const drawnNodes = useMemo(() => flowNodes(graph), [graph]);
   const drawnEdges = useMemo(() => flowEdges(graph), [graph]);
@@ -392,7 +464,25 @@ export function StepsGraph({
     setEdges(drawnEdges);
   }, [drawnNodes, drawnEdges, setNodes, setEdges]);
 
+  const fold = (layer: number): void => {
+    setFolded((last) => {
+      const next = new Set(last);
+
+      if (!next.delete(layer)) {
+        next.add(layer);
+      }
+      return next;
+    });
+  };
+
   const choose = (id: string | null, follow: boolean): void => {
+    const foldedLayer = id === null ? null : layerOfFold(id);
+
+    if (foldedLayer !== null) {
+      fold(foldedLayer);
+      return;
+    }
+
     const step = id === null ? null : stepOfNode(id);
 
     if (id !== null && step === null) {
@@ -421,7 +511,7 @@ export function StepsGraph({
       return;
     }
     if (event.key === "Enter" || event.key === " ") {
-      if (focused !== null && stepOfNode(focused) !== null) {
+      if (focused !== null && (stepOfNode(focused) !== null || layerOfFold(focused) !== null)) {
         event.preventDefault();
         choose(focused, false);
       }
@@ -429,7 +519,7 @@ export function StepsGraph({
     }
 
     const direction = ARROWS[event.key];
-    const from = chosen ?? focused;
+    const from = focused ?? chosen;
 
     if (direction === undefined) {
       return;
@@ -440,7 +530,10 @@ export function StepsGraph({
         ? (graph.nodes.find((node) => node.step !== null)?.id ?? null)
         : neighbour(graph, from, direction);
 
-    if (to !== null && stepOfNode(to) !== null) {
+    if (to !== null && layerOfFold(to) !== null) {
+      event.preventDefault();
+      nodeElement(canvas.current, to)?.focus({ preventScroll: true });
+    } else if (to !== null && stepOfNode(to) !== null) {
       event.preventDefault();
       choose(to, true);
       nodeElement(canvas.current, to)?.focus({ preventScroll: true });
@@ -495,6 +588,7 @@ export function StepsGraph({
               preventScrolling={false}
               minZoom={0.2}
               maxZoom={1.75}
+              onlyRenderVisibleElements={graph.nodes.length > VISIBLE_ONLY_AFTER}
               fitView={openedAt === undefined}
               fitViewOptions={{ padding: 0.1, maxZoom: 1, nodes: opening }}
               defaultViewport={openedAt}
@@ -502,6 +596,34 @@ export function StepsGraph({
             >
               <Background variant={BackgroundVariant.Dots} gap={22} size={1.3} />
               <Controls showInteractive={false} position="bottom-left" />
+              {wide.length > 0 && (
+                <Panel position="top-left" className={styles.folds}>
+                  <span className={styles.foldsTitle}>Wide layers</span>
+                  {wide.map((layer) => {
+                    const isFolded = folded.has(layer) && layer !== chosenLayer;
+
+                    return (
+                      <button
+                        key={layer}
+                        type="button"
+                        className={styles.foldButton}
+                        aria-pressed={isFolded}
+                        disabled={layer === chosenLayer}
+                        title={layer === chosenLayer ? "It holds the chosen step." : undefined}
+                        aria-label={`${isFolded ? "Unfold" : "Fold"} layer ${String(layer + 1)}`}
+                        onClick={() => {
+                          fold(layer);
+                        }}
+                      >
+                        Layer {layer + 1}
+                        <span className={styles.foldCount}>
+                          {layered?.[layer]?.length ?? 0} steps
+                        </span>
+                      </button>
+                    );
+                  })}
+                </Panel>
+              )}
               {!(beside && chosen !== null) && (
                 <MiniMap
                   position="bottom-right"

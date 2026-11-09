@@ -265,7 +265,7 @@ export function WorkflowSteps({
       {count === 0 ? (
         <p className={styles.summary}>This workflow has no steps the editor can read.</p>
       ) : shown === "graph" && graph !== null ? (
-        <StepsGraph graph={graph} selected={selected} onSelect={select} />
+        <StepsGraph view={view} selected={selected} onSelect={select} />
       ) : grouped !== null ? (
         <ol className={styles.layers}>
           {grouped.map((layer, index) => (

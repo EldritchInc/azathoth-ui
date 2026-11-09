@@ -11,6 +11,7 @@ import {
   COLUMN_GAP,
   type EdgeKind,
   type GraphEdge,
+  type GraphNode,
   type GraphPoint,
   type NodeKind,
   type WorkflowGraph,
@@ -33,14 +34,23 @@ export type EndNodeData = Readonly<{
   label: string;
 }>;
 
+/** A folded layer's node: which layer, and the names of the steps it stands for. */
+export type FoldNodeData = Readonly<{
+  layer: number;
+  titles: readonly string[];
+}>;
+
 /** The node of one step. */
 export type StepFlowNode = Node<StepNodeData, "step">;
+
+/** The node a folded layer becomes. */
+export type FoldFlowNode = Node<FoldNodeData, "fold">;
 
 /** The node of the workflow's input (its start) or its result. */
 export type EndFlowNode = Node<EndNodeData, "start" | "result">;
 
 /** Any node of a workflow's graph. */
-export type FlowNode = StepFlowNode | EndFlowNode;
+export type FlowNode = StepFlowNode | FoldFlowNode | EndFlowNode;
 
 /** An edge: what it is, and what it carries. */
 export type FlowEdgeData = Readonly<{
@@ -65,7 +75,30 @@ const END_NAMES: Readonly<Record<NodeKind, string>> = {
   input: "the workflow's input",
   result: "the result",
   step: "a step",
+  fold: "a folded layer",
 };
+
+/** How much a step's node shows at a zoom: everything, its name alone, or its shape. */
+export type Detail = "full" | "name" | "shape";
+
+/** The smallest zoom at which a step's node shows everything. */
+export const FULL_ZOOM = 0.6;
+
+/** The smallest zoom at which a step's node shows its name. */
+export const NAME_ZOOM = 0.3;
+
+/** Returns how much a step's node shows at a zoom. */
+export function detailAt(zoom: number): Detail {
+  return zoom >= FULL_ZOOM ? "full" : zoom >= NAME_ZOOM ? "name" : "shape";
+}
+
+function nameOfNode(node: GraphNode): string {
+  return node.kind === "fold"
+    ? `the ${node.label} of layer ${String(node.column)}`
+    : node.step === null
+      ? END_NAMES[node.kind]
+      : node.label;
+}
 
 const MINIMUM_HEIGHT = 320;
 const MAXIMUM_HEIGHT = 560;
@@ -93,6 +126,19 @@ export function flowNodes(graph: WorkflowGraph): FlowNode[] {
   const result = graph.nodes.find((node) => node.kind === "result")?.label ?? null;
 
   return graph.nodes.map((node): FlowNode => {
+    if (node.kind === "fold") {
+      return {
+        id: node.id,
+        type: "fold",
+        position: { x: node.x - STEP_SIZE.width / 2, y: node.y - STEP_SIZE.height / 2 },
+        data: { layer: node.column, titles: node.members.map((step) => step.title) },
+        width: STEP_SIZE.width,
+        height: STEP_SIZE.height,
+        ariaLabel: `Layer ${String(node.column)}: ${node.label}, folded`,
+        draggable: false,
+        connectable: false,
+      };
+    }
     if (node.step === null) {
       const label = node.kind === "result" ? `Result: ${node.label}` : "The workflow's input";
 
@@ -129,9 +175,7 @@ export function flowNodes(graph: WorkflowGraph): FlowNode[] {
 
 /** Returns the edges React Flow draws for a workflow's graph, each named for a screen reader. */
 export function flowEdges(graph: WorkflowGraph): FlowEdge[] {
-  const names = new Map(
-    graph.nodes.map((node) => [node.id, node.step === null ? END_NAMES[node.kind] : node.label]),
-  );
+  const names = new Map(graph.nodes.map((node) => [node.id, nameOfNode(node)]));
 
   return graph.edges.map((edge) => ({
     id: edge.id,

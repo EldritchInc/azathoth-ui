@@ -17,15 +17,20 @@
  *
  * Each pair of nodes has one edge at most, which carries every value and
  * condition between them. An edge that spans columns passes each column it
- * crosses through a lane of its own, between that column's nodes, so it never
- * runs behind a step. Within each column the nodes and lanes are ordered so
- * edges cross as little as a few barycentre sweeps can make them.
+ * crosses through a lane between that column's nodes, so it never runs
+ * behind a step; edges from one node share its lane in each column, so they
+ * travel together until they part. Within each column the nodes and lanes
+ * are ordered so edges cross as little as a few barycentre sweeps can make
+ * them.
+ *
+ * A wide layer can be folded into one node that stands for all its steps;
+ * every edge to or from one of them then goes to or from the fold.
  */
 
 import { layers, type SourceView, type StepView, type WorkflowView } from "./documents";
 
-/** What a node shows: the workflow's input, a step, or the workflow's result. */
-export type NodeKind = "input" | "step" | "result";
+/** What a node shows: the workflow's input, a step, a folded layer, or the workflow's result. */
+export type NodeKind = "input" | "step" | "fold" | "result";
 
 /** The producers of a name a step reads that run alongside it or after it. */
 export interface AlsoProduced {
@@ -44,6 +49,7 @@ export interface GraphNode {
   readonly x: number;
   readonly y: number;
   readonly alsoProducedBy: readonly AlsoProduced[];
+  readonly members: readonly StepView[];
 }
 
 /**
@@ -96,6 +102,28 @@ export const ROW_GAP = 120;
 export const LANE_GAP = 40;
 
 const SWEEPS = 8;
+
+/** The fewest steps a layer has before the editor offers to fold it. */
+export const FOLD_AT = 6;
+
+const FOLD_PREFIX = "fold:";
+
+/** Returns the id of the node a folded layer becomes, counting layers from 0. */
+export function foldNode(layer: number): string {
+  return `${FOLD_PREFIX}${String(layer)}`;
+}
+
+/** Returns the layer a fold's node stands for, or `null` for any other node. */
+export function layerOfFold(id: string): number | null {
+  const layer = id.startsWith(FOLD_PREFIX) ? Number(id.slice(FOLD_PREFIX.length)) : Number.NaN;
+
+  return Number.isInteger(layer) && layer >= 0 ? layer : null;
+}
+
+/** Returns the layers wide enough to fold, counting from 0, or none when there are no layers. */
+export function wideLayers(view: WorkflowView): number[] {
+  return (layers(view) ?? []).flatMap((layer, index) => (layer.length >= FOLD_AT ? [index] : []));
+}
 
 /** Returns the id of a step's node. */
 export function stepNode(id: string): string {
@@ -150,15 +178,6 @@ function countCrossings(lines: readonly (readonly [Point, Point])[]): number {
   return count;
 }
 
-function linesOf(at: ReadonlyMap<string, Point>, segments: readonly Segment[]): [Point, Point][] {
-  return segments.flatMap(([source, target]): [Point, Point][] => {
-    const from = at.get(source);
-    const to = at.get(target);
-
-    return from === undefined || to === undefined ? [] : [[from, to]];
-  });
-}
-
 /**
  * Returns how many pairs of a graph's edges cross, each drawn straight from
  * its source's centre through its lanes to its target's centre.
@@ -204,19 +223,53 @@ function arrange(
   columns: readonly (readonly string[])[],
   segments: readonly Segment[],
 ): string[][] {
+  const previous = new Map<string, string[]>();
+  const next = new Map<string, string[]>();
+
+  for (const [source, target] of segments) {
+    previous.set(target, [...(previous.get(target) ?? []), source]);
+    next.set(source, [...(next.get(source) ?? []), target]);
+  }
+
+  const crossingsOf = (order: readonly (readonly string[])[]): number => {
+    const at = pointsOf(order);
+    const gaps = new Map<number, [number, number][]>();
+
+    for (const [source, target] of segments) {
+      const from = at.get(source);
+      const to = at.get(target);
+
+      if (from !== undefined && to !== undefined) {
+        gaps.set(from[0], [...(gaps.get(from[0]) ?? []), [from[1], to[1]]]);
+      }
+    }
+
+    let count = 0;
+
+    for (const lines of gaps.values()) {
+      lines.forEach(([a, b], index) => {
+        for (const [c, d] of lines.slice(index + 1)) {
+          if ((a - c) * (b - d) < 0) {
+            count += 1;
+          }
+        }
+      });
+    }
+    return count;
+  };
+
   let current = columns.map((ids) => [...ids]);
   let best = current;
-  let fewest = countCrossings(linesOf(pointsOf(current), segments));
+  let fewest = crossingsOf(current);
 
   const reorder = (column: number, before: boolean): void => {
     const at = pointsOf(current);
     const ids = current[column] ?? [];
     const neighbours = (id: string): number[] =>
-      segments.flatMap(([source, target]) => {
-        const [self, other] = before ? [target, source] : [source, target];
+      ((before ? previous : next).get(id) ?? []).flatMap((other) => {
         const point = at.get(other);
 
-        return self === id && point !== undefined ? [point[1]] : [];
+        return point === undefined ? [] : [point[1]];
       });
     const weighed = ids.map((id, index) => {
       const ys = neighbours(id);
@@ -241,7 +294,7 @@ function arrange(
       reorder(column, false);
     }
 
-    const count = countCrossings(linesOf(pointsOf(current), segments));
+    const count = crossingsOf(current);
 
     if (count < fewest) {
       fewest = count;
@@ -280,7 +333,10 @@ function place(
  */
 export function buildGraph(
   view: WorkflowView,
-  { arrange: arranged = true }: { readonly arrange?: boolean } = {},
+  {
+    arrange: arranged = true,
+    folded = new Set(),
+  }: { readonly arrange?: boolean; readonly folded?: ReadonlySet<number> } = {},
 ): WorkflowGraph | null {
   const grouped = layers(view);
 
@@ -300,8 +356,19 @@ export function buildGraph(
     }
   }
 
+  const shown = new Map(
+    grouped.flatMap((layer, depth) =>
+      layer.map((step) => [
+        stepNode(step.id),
+        folded.has(depth) ? foldNode(depth) : stepNode(step.id),
+      ]),
+    ),
+  );
+  const nodeOf = (id: string): string => shown.get(id) ?? id;
   const links = new Map<string, Link>();
-  const link = (source: string, target: string): Link => {
+  const link = (from: string, to: string): Link => {
+    const source = nodeOf(from);
+    const target = nodeOf(to);
     const id = `${source}->${target}`;
     const known = links.get(id) ?? { source, target, names: [], conditions: [] };
 
@@ -358,7 +425,7 @@ export function buildGraph(
   const reached = new Set([...links.values()].map(({ target }) => target));
 
   for (const step of view.steps) {
-    if (!reached.has(stepNode(step.id))) {
+    if (!reached.has(nodeOf(stepNode(step.id)))) {
       link(INPUT_NODE, stepNode(step.id));
     }
   }
@@ -375,7 +442,9 @@ export function buildGraph(
 
   const columns: string[][] = [
     [INPUT_NODE],
-    ...grouped.map((layer) => layer.map((step) => stepNode(step.id))),
+    ...grouped.map((layer, depth) =>
+      folded.has(depth) ? [foldNode(depth)] : layer.map((step) => stepNode(step.id)),
+    ),
     ...(result === null ? [] : [[RESULT_NODE]]),
   ];
   const columnOf = new Map(columns.flatMap((ids, column) => ids.map((id) => [id, column])));
@@ -383,25 +452,42 @@ export function buildGraph(
   const routes = new Map<string, string[]>();
   const segments: Segment[] = [];
 
+  const joined = new Set<string>();
+
   for (const [id, { source, target }] of links) {
     const from = columnOf.get(source) ?? 0;
     const to = columnOf.get(target) ?? from;
     const route = Array.from({ length: Math.max(0, to - from - 1) }, (_, index) => {
-      const lane = `${id}@${String(from + index + 1)}`;
+      const lane = `${source}@${String(from + index + 1)}`;
 
-      lanes.add(lane);
-      columns[from + index + 1]?.push(lane);
+      if (!lanes.has(lane)) {
+        lanes.add(lane);
+        columns[from + index + 1]?.push(lane);
+      }
       return lane;
     });
     const path = [source, ...route, target];
 
     routes.set(id, route);
-    segments.push(...path.slice(1).map((point, index): Segment => [path[index] ?? point, point]));
+    for (const [index, point] of path.slice(1).entries()) {
+      const before = path[index] ?? point;
+      const key = `${before}->${point}`;
+
+      if (!joined.has(key)) {
+        joined.add(key);
+        segments.push([before, point]);
+      }
+    }
   }
 
   const ordered = arranged ? arrange(columns, segments) : columns;
   const at = place(ordered, lanes);
   const steps = new Map(view.steps.map((step) => [stepNode(step.id), step]));
+  const members = (id: string): StepView[] => {
+    const layer = layerOfFold(id);
+
+    return layer === null ? [] : [...(grouped[layer] ?? [])];
+  };
   const pointOf = (id: string): Point => at.get(id) ?? [0, 0];
 
   const nodes = ordered.flatMap((ids, column) =>
@@ -409,18 +495,32 @@ export function buildGraph(
       .filter((id) => !lanes.has(id))
       .map((id, row): GraphNode => {
         const step = steps.get(id) ?? null;
+        const stood = members(id);
         const [x, y] = pointOf(id);
+        const kind: NodeKind =
+          step !== null
+            ? "step"
+            : stood.length > 0
+              ? "fold"
+              : id === INPUT_NODE
+                ? "input"
+                : "result";
+        const label =
+          kind === "fold"
+            ? `${String(stood.length)} steps`
+            : (step?.title ?? (id === INPUT_NODE ? "Input" : (result ?? "")));
 
         return {
           id,
-          kind: step !== null ? "step" : id === INPUT_NODE ? "input" : "result",
-          label: step?.title ?? (id === INPUT_NODE ? "Input" : (result ?? "")),
+          kind,
+          label,
           step,
           column,
           row,
           x,
           y,
           alsoProducedBy: step === null ? [] : (also.get(step.id) ?? []),
+          members: stood,
         };
       }),
   );

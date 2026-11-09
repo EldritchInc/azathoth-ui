@@ -10,3 +10,4 @@ the editor follows them, and the one it rests on is
 | [0001](0001-local-server-security.md) | Local Server Security | Accepted |
 | [0002](0002-web-app.md) | Web App | Accepted |
 | [0003](0003-editor-http-api.md) | Editor HTTP API | Accepted |
+| [0004](0004-workflow-graph.md) | Workflow Graph | Accepted |
