@@ -1,0 +1,22 @@
+.page {
+  display: grid;
+  gap: 1rem;
+  max-width: 40rem;
+}
+
+.title {
+  font-size: clamp(2.2rem, 4.5vw, 3.25rem);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.lead {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.link {
+  color: var(--tide-strong);
+  text-underline-offset: 0.2em;
+}

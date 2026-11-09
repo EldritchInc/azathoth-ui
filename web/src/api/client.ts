@@ -7,7 +7,23 @@
  * it is, so a caller that gave up can tell.
  */
 
-import { isErrorBody, isInstanceDescription, type InstanceDescription } from "./types";
+import {
+  isBenchmarkSummary,
+  isComponentDetail,
+  isEditorDescription,
+  isErrorBody,
+  isInstanceDescription,
+  isSummary,
+  isToolSummary,
+  itemsOf,
+  type BenchmarkSummary,
+  type ComponentDetail,
+  type EditorDescription,
+  type InstanceDescription,
+  type Summary,
+  type ToolSummary,
+  type WorkflowSummary,
+} from "./types";
 
 export const UNREACHABLE_MESSAGE = "The editor's server isn't answering.";
 
@@ -36,15 +52,24 @@ function browserFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Res
   return fetch(input, init);
 }
 
-/** Returns the JSON one API path answers with, or throws an `ApiFailure`. */
-export async function getJson(path: string, options: RequestOptions = {}): Promise<unknown> {
+/** Returns the JSON one request to the API answers with, or throws an `ApiFailure`. */
+async function requestJson(
+  path: string,
+  init: { readonly method: "GET" | "POST"; readonly body?: string },
+  options: RequestOptions,
+): Promise<unknown> {
   const { fetcher = browserFetch, signal } = options;
   let response: Response;
 
   try {
     response = await fetcher(path, {
+      method: init.method,
       credentials: "same-origin",
-      headers: { accept: "application/json" },
+      headers:
+        init.body === undefined
+          ? { accept: "application/json" }
+          : { accept: "application/json", "content-type": "application/json" },
+      body: init.body ?? null,
       signal: signal ?? null,
     });
   } catch (error) {
@@ -72,12 +97,101 @@ export async function getJson(path: string, options: RequestOptions = {}): Promi
   return body;
 }
 
+/** Returns the JSON one API path answers a `GET` with, or throws an `ApiFailure`. */
+export function getJson(path: string, options: RequestOptions = {}): Promise<unknown> {
+  return requestJson(path, { method: "GET" }, options);
+}
+
 /** Returns the instance the editor serves: `GET /api/instance`. */
 export async function fetchInstance(options: RequestOptions = {}): Promise<InstanceDescription> {
   const body = await getJson("/api/instance", options);
 
   if (!isInstanceDescription(body)) {
     throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/** Returns the editor and how its commands name its database: `GET /api/editor`. */
+export async function fetchEditor(options: RequestOptions = {}): Promise<EditorDescription> {
+  const body = await getJson("/api/editor", options);
+
+  if (!isEditorDescription(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+async function fetchItems<T>(
+  path: string,
+  guard: (item: unknown) => item is T,
+  options: RequestOptions,
+): Promise<T[]> {
+  const items = itemsOf(await getJson(path, options), guard);
+
+  if (items === null) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return items;
+}
+
+/** Returns every workflow in the editor's instance, at its latest revision. */
+export function fetchWorkflows(options: RequestOptions = {}): Promise<WorkflowSummary[]> {
+  return fetchItems("/api/workflows", isSummary, options);
+}
+
+/** Returns every tool version in the editor's instance, at its latest revision. */
+export function fetchTools(options: RequestOptions = {}): Promise<ToolSummary[]> {
+  return fetchItems("/api/tools", isToolSummary, options);
+}
+
+/** Returns every benchmark in the editor's instance, at its latest revision. */
+export function fetchBenchmarks(options: RequestOptions = {}): Promise<BenchmarkSummary[]> {
+  return fetchItems("/api/benchmarks", isBenchmarkSummary, options);
+}
+
+/** Returns one revision of a component with its document, from its path in the API. */
+export async function fetchDetail(
+  path: string,
+  options: RequestOptions = {},
+): Promise<ComponentDetail> {
+  const body = await getJson(path, options);
+
+  if (!isComponentDetail(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/** Returns a component's revisions, newest first, from its history's path in the API. */
+export function fetchHistory(path: string, options: RequestOptions = {}): Promise<Summary[]> {
+  return fetchItems(path, isSummary, options);
+}
+
+/** The largest document the server imports, as it says in ADR 0003. */
+export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Imports one document into the local instance as its component's next
+ * revision: `POST /api/{kind}/import`. Returns the revision it made.
+ */
+export async function importDocument(
+  kind: "workflows" | "tools" | "benchmarks",
+  document: string,
+  options: RequestOptions = {},
+): Promise<ComponentDetail> {
+  const body = await requestJson(
+    `/api/${kind}/import`,
+    { method: "POST", body: document },
+    options,
+  );
+
+  if (!isComponentDetail(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 201);
   }
 
   return body;

@@ -1,0 +1,148 @@
+.section {
+  display: grid;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.title {
+  font-size: 1.4rem;
+  font-weight: 450;
+}
+
+.quiet {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.strong {
+  font-weight: 600;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th {
+  padding: 0 1rem 0.5rem 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: left;
+}
+
+.table td {
+  padding: 0.7rem 1rem 0.7rem 0;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.table td > span {
+  display: block;
+  margin-top: 0.15rem;
+}
+
+.table code {
+  overflow-wrap: anywhere;
+}
+
+.required {
+  margin-left: 0.5rem;
+  color: var(--tide-strong);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.table td > .required {
+  display: inline;
+}
+
+.type {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
+.value {
+  display: block;
+  max-width: 32rem;
+  color: var(--ink);
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+}
+
+.comparison {
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  font-size: 0.8125rem;
+}
+
+.item {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--raised);
+}
+
+.itemTitle {
+  font-size: 0.9rem;
+}
+
+.source summary {
+  width: fit-content;
+  color: var(--tide-strong);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.source pre {
+  max-height: 26rem;
+  margin: 0.6rem 0 0;
+  padding: 0.85rem 1rem;
+  overflow: auto;
+  border-radius: var(--radius-small);
+  background: color-mix(in srgb, var(--ink) 4%, var(--paper));
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 48rem) {
+  .table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .table,
+  .table tbody,
+  .table tr,
+  .table td {
+    display: block;
+  }
+
+  .table tr {
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .table td {
+    padding: 0.15rem 0;
+    border: 0;
+  }
+}

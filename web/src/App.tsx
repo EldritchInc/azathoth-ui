@@ -1,14 +1,16 @@
 import { useCallback, useLayoutEffect, useState } from "react";
+import { Route, Routes } from "react-router";
 
 import styles from "./App.module.css";
-import { Mark } from "./components/Mark";
+import { ComponentList } from "./components/ComponentList";
+import { BenchmarkPage, ToolPage, WorkflowPage } from "./components/ComponentPages";
+import { NotFound } from "./components/NotFound";
 import { Overview } from "./components/Overview";
-import { ConnectionStatus } from "./components/ConnectionStatus";
-import { ThemeSwitch } from "./components/ThemeSwitch";
+import { Rail } from "./components/Rail";
 import { applyTheme, browserStorage, readTheme, saveTheme, type ThemeChoice } from "./theme";
 import { useInstance } from "./useInstance";
 
-/** The editor: its rail, and the page the rail has open. */
+/** The editor: its rail, and the page the address names. */
 export function App() {
   const connection = useInstance();
   const [theme, setTheme] = useState<ThemeChoice>(() => readTheme(browserStorage()));
@@ -24,23 +26,18 @@ export function App() {
 
   return (
     <div className={styles.shell}>
-      <header className={styles.rail}>
-        <a className={styles.brand} href="/">
-          <Mark className={styles.mark} />
-          <span>Azathoth</span>
-        </a>
-        <nav className={styles.nav} aria-label="Editor">
-          <a className={styles.navItem} href="/" aria-current="page">
-            Overview
-          </a>
-        </nav>
-        <div className={styles.footer}>
-          <ConnectionStatus connection={connection} />
-          <ThemeSwitch choice={theme} onChoose={choose} />
-        </div>
-      </header>
+      <Rail connection={connection} theme={theme} onChooseTheme={choose} />
       <main className={styles.main}>
-        <Overview connection={connection} />
+        <Routes>
+          <Route path="/" element={<Overview connection={connection} />} />
+          <Route path="/workflows" element={<ComponentList kind="workflows" />} />
+          <Route path="/workflows/:id" element={<WorkflowPage />} />
+          <Route path="/tools" element={<ComponentList kind="tools" />} />
+          <Route path="/tools/:id/versions/:version" element={<ToolPage />} />
+          <Route path="/benchmarks" element={<ComponentList kind="benchmarks" />} />
+          <Route path="/benchmarks/:id" element={<BenchmarkPage />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </main>
     </div>
   );

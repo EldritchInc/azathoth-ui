@@ -5,85 +5,6 @@
   min-height: 100dvh;
 }
 
-.rail {
-  position: sticky;
-  top: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  height: 100vh;
-  height: 100dvh;
-  padding: 1.5rem 1rem 1.25rem;
-  background: var(--surface);
-  border-right: 1px solid var(--line);
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0 0.5rem;
-  color: var(--ink);
-  font-family: var(--display);
-  font-size: 1.3rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  text-decoration: none;
-}
-
-.mark {
-  width: 1.9rem;
-  height: 1.9rem;
-  flex: none;
-}
-
-.nav {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.navItem {
-  position: relative;
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--radius-small);
-  color: var(--muted);
-  font-weight: 500;
-  text-decoration: none;
-  transition:
-    background-color 150ms ease,
-    color 150ms ease;
-}
-
-.navItem:hover {
-  background: color-mix(in srgb, var(--ink) 5%, transparent);
-  color: var(--ink);
-}
-
-.navItem[aria-current="page"] {
-  background: var(--tide-wash);
-  color: var(--ink);
-}
-
-.navItem[aria-current="page"]::before {
-  content: "";
-  position: absolute;
-  top: 0.55rem;
-  bottom: 0.55rem;
-  left: 0;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--tide);
-}
-
-.footer {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-  margin-top: auto;
-  padding: 0 0.5rem;
-}
-
 .main {
   min-width: 0;
   padding: clamp(2rem, 6vw, 5rem) clamp(1.25rem, 6vw, 5rem) 4rem;
@@ -92,39 +13,6 @@
 @media (max-width: 48rem) {
   .shell {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .rail {
-    position: static;
-    flex-direction: row;
-    align-items: center;
-    gap: 1rem;
-    height: auto;
-    padding: 0.75rem 1rem;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .brand {
-    padding: 0;
-    font-size: 1.15rem;
-  }
-
-  .mark {
-    width: 1.6rem;
-    height: 1.6rem;
-  }
-
-  .nav {
-    display: none;
-  }
-
-  .footer {
-    flex-direction: row;
-    align-items: center;
-    gap: 0.75rem;
-    margin: 0 0 0 auto;
-    padding: 0;
   }
 
   .main {
