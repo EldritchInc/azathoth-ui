@@ -149,9 +149,13 @@ def not_built(
 def built_file(
     path: str,
 ) -> bool:
-    """Return whether one path, relative to the build, names a file the build would make."""
+    """Return whether one path, relative to the build, names a file the build would make.
 
-    parts = PurePosixPath(path).parts
+    Starlette hands `StaticFiles` the path in the platform's own form, with
+    backslashes on Windows, so either separator splits it.
+    """
+
+    parts = PurePosixPath(path.replace("\\", "/")).parts
 
     return parts[:1] == ("assets",) or (len(parts) == 1 and "." in parts[0])
 

@@ -8,7 +8,7 @@ from azathoth import api
 from starlette.testclient import TestClient
 
 from azathoth_ui import __version__
-from azathoth_ui.app import ASSETS_DIRECTORY, build_app, error_status
+from azathoth_ui.app import ASSETS_DIRECTORY, build_app, built_file, error_status
 from azathoth_ui.commands import command_prefix, local_shell
 
 PORT = 8124
@@ -176,6 +176,25 @@ def test_the_web_apps_own_addresses_open_the_web_app(
     assert client.get("/favicon.ico").status_code == 404
     assert client.get("/assets/missing.js").status_code == 404
     assert client.get("/assets/fonts/missing").status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("path", "file"),
+    [
+        ("assets/index-abc.js", True),
+        ("assets\\index-abc.js", True),
+        ("assets/fonts/missing", True),
+        ("icon.svg", True),
+        ("workflows", False),
+        ("tools/x/versions/1.0.0", False),
+        ("tools\\x\\versions\\1.0.0", False),
+    ],
+)
+def test_a_built_file_is_told_from_a_page_whichever_separator_the_platform_uses(
+    path: str,
+    file: bool,
+) -> None:
+    assert built_file(path) is file
 
 
 def test_without_a_web_build_any_page_says_how_to_build_one(
