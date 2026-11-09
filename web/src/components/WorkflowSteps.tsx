@@ -1,4 +1,5 @@
 import { useId, useMemo, useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router";
 
 import { describeWorkflow, layers, type StepView } from "../documents";
 import { buildGraph } from "../graph";
@@ -26,13 +27,19 @@ function Step({
   step,
   result,
   card = false,
+  current = false,
 }: {
   readonly step: StepView;
   readonly result: string | null;
   readonly card?: boolean;
+  readonly current?: boolean;
 }) {
   return (
-    <li className={card ? styles.card : styles.step} data-kind={step.kind}>
+    <li
+      className={card ? styles.card : styles.step}
+      data-kind={step.kind}
+      aria-current={current ? "step" : undefined}
+    >
       <span className={styles.marker} aria-hidden="true" />
       <div className={styles.heading}>
         <h3 className={styles.title}>{step.title}</h3>
@@ -195,6 +202,9 @@ function ViewSwitch({
  * A workflow's steps, each with what it takes, gives and needs: as a graph
  * of columns and arrows, or as an outline of layers, as the person chooses.
  * Steps that cannot be layered are listed in the document's order.
+ *
+ * The step chosen on the graph is named in the address as `?step=`, so a
+ * link opens on it; the outline marks it.
  */
 export function WorkflowSteps({
   document,
@@ -204,6 +214,8 @@ export function WorkflowSteps({
   const view = useMemo(() => describeWorkflow(document), [document]);
   const grouped = useMemo(() => layers(view), [view]);
   const graph = useMemo(() => buildGraph(view), [view]);
+  const [search, setSearch] = useSearchParams();
+  const selected = search.get("step");
   const [chosen, setChosen] = useState<StepsView>(() =>
     readStepsView(browserStorage(), isNarrow(window)),
   );
@@ -213,6 +225,22 @@ export function WorkflowSteps({
   const choose = (next: StepsView): void => {
     setChosen(next);
     saveStepsView(browserStorage(), next);
+  };
+
+  const select = (step: string | null): void => {
+    setSearch(
+      (current) => {
+        const next = new URLSearchParams(current);
+
+        if (step === null) {
+          next.delete("step");
+        } else {
+          next.set("step", step);
+        }
+        return next;
+      },
+      { replace: true },
+    );
   };
 
   return (
@@ -237,7 +265,7 @@ export function WorkflowSteps({
       {count === 0 ? (
         <p className={styles.summary}>This workflow has no steps the editor can read.</p>
       ) : shown === "graph" && graph !== null ? (
-        <StepsGraph graph={graph} />
+        <StepsGraph graph={graph} selected={selected} onSelect={select} />
       ) : grouped !== null ? (
         <ol className={styles.layers}>
           {grouped.map((layer, index) => (
@@ -252,7 +280,13 @@ export function WorkflowSteps({
             >
               <ol className={styles.row}>
                 {layer.map((step) => (
-                  <Step key={step.id} step={step} result={view.result} card />
+                  <Step
+                    key={step.id}
+                    step={step}
+                    result={view.result}
+                    card
+                    current={step.id === selected}
+                  />
                 ))}
               </ol>
             </li>
@@ -266,7 +300,12 @@ export function WorkflowSteps({
           </p>
           <ol className={styles.steps}>
             {view.steps.map((step, index) => (
-              <Step key={step.id === "" ? index : step.id} step={step} result={view.result} />
+              <Step
+                key={step.id === "" ? index : step.id}
+                step={step}
+                result={view.result}
+                current={step.id !== "" && step.id === selected}
+              />
             ))}
           </ol>
         </>

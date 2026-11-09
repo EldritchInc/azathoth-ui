@@ -338,6 +338,15 @@
   background: var(--raised);
 }
 
+.step[aria-current="step"] .title {
+  color: var(--tide-strong);
+}
+
+.card[aria-current="step"] {
+  border-color: var(--tide);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tide) 18%, transparent);
+}
+
 .card .marker {
   top: 1.3rem;
   left: 1rem;

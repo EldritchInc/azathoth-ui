@@ -59,3 +59,11 @@
   zooms and has a map of the whole; a wide graph opens at its start. The
   graph and the layered outline are a click apart: the graph is the default,
   the outline on a phone-narrow window, and the choice is remembered.
+- Choosing a step on the graph lights every path that leads to it and from
+  it, dims the rest, and opens its details beside the graph (below it on a
+  narrow canvas): what it comes from and leads to, each a link to that step,
+  the constants it reads, the writers of a name it reads that it does not
+  wait for, its model's needs, retries and prompt. The arrow keys move
+  between steps, Enter chooses the step in focus and Escape lets it go. The
+  chosen step is named in the address as `?step=`, so a link opens the graph
+  on it, and the outline marks it.

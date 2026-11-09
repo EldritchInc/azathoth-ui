@@ -49,6 +49,7 @@ export type FlowEdgeData = Readonly<{
   names: readonly string[];
   conditions: readonly string[];
   points: readonly GraphPoint[];
+  dimmed?: boolean;
 }>;
 
 /** An edge of a workflow's graph. */
@@ -219,4 +220,24 @@ export function canvasHeight(graph: WorkflowGraph): number {
   const span = ys.length === 0 ? 0 : Math.max(...ys) - Math.min(...ys);
 
   return Math.min(MAXIMUM_HEIGHT, Math.max(MINIMUM_HEIGHT, span + STEP_SIZE.height + MARGIN));
+}
+
+/** The zoom a graph opens at when it opens on one step. */
+export const STEP_ZOOM = 0.9;
+
+/**
+ * Returns the viewport that opens a canvas on one point: at a readable
+ * zoom, centred in what the canvas shows beside any details covering its
+ * right edge.
+ */
+export function viewportOn(
+  point: GraphPoint,
+  canvas: { readonly width: number; readonly height: number },
+  covered: number,
+): { readonly x: number; readonly y: number; readonly zoom: number } {
+  return {
+    x: rounded((canvas.width - covered) / 2 - point.x * STEP_ZOOM),
+    y: rounded(canvas.height / 2 - point.y * STEP_ZOOM),
+    zoom: STEP_ZOOM,
+  };
 }

@@ -401,10 +401,35 @@
   pointer-events: none;
 }
 
+.edgeLabel[data-dimmed="true"] {
+  opacity: 0.25;
+}
+
 .edgeLabel[data-kind="condition"] {
   border-color: color-mix(in srgb, var(--amber) 40%, var(--line));
   background: color-mix(in srgb, var(--amber) 9%, var(--raised));
   color: var(--amber);
+}
+
+/* Choosing a step. */
+
+.dimmed {
+  opacity: 0.25;
+  transition: opacity 200ms ease;
+}
+
+.beside {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 6;
+  display: grid;
+  width: min(20rem, calc(100% - 1.5rem));
+}
+
+.beside > * {
+  max-height: 100%;
 }
 
 /* The legend. */

@@ -10,6 +10,8 @@ import {
   openingNodes,
   READABLE_ZOOM,
   STEP_SIZE,
+  STEP_ZOOM,
+  viewportOn,
 } from "./flow";
 import {
   buildGraph,
@@ -194,5 +196,19 @@ describe("edgePath", () => {
     expect(edgePath({ x: 0.123, y: 0 }, [], { x: 1, y: 0 }).path).toBe(
       "M0.12,0 C0.56,0 0.56,0 1,0",
     );
+  });
+});
+
+describe("viewportOn", () => {
+  it("centres a point in what the canvas shows, at a readable zoom", () => {
+    expect(viewportOn({ x: 100, y: -40 }, { width: 800, height: 500 }, 0)).toEqual({
+      x: 400 - 100 * STEP_ZOOM,
+      y: 250 + 40 * STEP_ZOOM,
+      zoom: STEP_ZOOM,
+    });
+  });
+
+  it("centres it beside the details covering the canvas's right edge", () => {
+    expect(viewportOn({ x: 0, y: 0 }, { width: 1000, height: 400 }, 300).x).toBe(350);
   });
 });

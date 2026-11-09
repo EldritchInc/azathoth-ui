@@ -1,0 +1,233 @@
+.inspector {
+  display: grid;
+  align-content: start;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem 1.2rem;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--raised);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--ink) 8%, transparent),
+    0 18px 40px -18px color-mix(in srgb, var(--ink) 35%, transparent);
+  font-size: 0.875rem;
+  overscroll-behavior: contain;
+  animation: arrive 220ms var(--ease-out);
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}
+
+.header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.titles {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.kind {
+  color: var(--tide-strong);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.kind[data-kind="tool"] {
+  color: var(--orbit);
+}
+
+.kind[data-kind="unknown"] {
+  color: var(--faint);
+}
+
+.title {
+  font-family: var(--sans);
+  font-size: 1.15rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.close:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.close svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.description {
+  color: var(--muted);
+}
+
+.message {
+  color: var(--faint);
+  font-size: 0.8125rem;
+}
+
+.section {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.sectionTitle {
+  color: var(--faint);
+  font-family: var(--sans);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.joined,
+.later,
+.chips {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.joined li {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+}
+
+.jump {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-weight: 600;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--tide) 45%, transparent);
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.jump:hover {
+  color: var(--tide-strong);
+  text-decoration-color: var(--tide);
+}
+
+.end {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.passes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.value {
+  padding: 0.02rem 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--tide) 30%, var(--line));
+  border-radius: 999px;
+  background: var(--tide-wash);
+  color: var(--tide-strong);
+  font-size: 0.75rem;
+}
+
+.condition {
+  color: var(--amber);
+  font-size: 0.8125rem;
+}
+
+.order {
+  color: var(--faint);
+  font-size: 0.8125rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.constant,
+.need {
+  padding: 0.05rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--amber) 35%, var(--line));
+  border-radius: 999px;
+  background: var(--amber-wash);
+  font-size: 0.8125rem;
+}
+
+.constant {
+  color: var(--amber);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+}
+
+.later li {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.prompt summary {
+  width: fit-content;
+  color: var(--tide-strong);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.prompt pre {
+  max-height: 16rem;
+  margin: 0.5rem 0 0;
+  padding: 0.7rem 0.85rem;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inspector {
+    animation: none;
+  }
+}
