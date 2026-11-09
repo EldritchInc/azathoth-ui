@@ -52,15 +52,24 @@ function browserFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Res
   return fetch(input, init);
 }
 
-/** Returns the JSON one API path answers with, or throws an `ApiFailure`. */
-export async function getJson(path: string, options: RequestOptions = {}): Promise<unknown> {
+/** Returns the JSON one request to the API answers with, or throws an `ApiFailure`. */
+async function requestJson(
+  path: string,
+  init: { readonly method: "GET" | "POST"; readonly body?: string },
+  options: RequestOptions,
+): Promise<unknown> {
   const { fetcher = browserFetch, signal } = options;
   let response: Response;
 
   try {
     response = await fetcher(path, {
+      method: init.method,
       credentials: "same-origin",
-      headers: { accept: "application/json" },
+      headers:
+        init.body === undefined
+          ? { accept: "application/json" }
+          : { accept: "application/json", "content-type": "application/json" },
+      body: init.body ?? null,
       signal: signal ?? null,
     });
   } catch (error) {
@@ -86,6 +95,11 @@ export async function getJson(path: string, options: RequestOptions = {}): Promi
   }
 
   return body;
+}
+
+/** Returns the JSON one API path answers a `GET` with, or throws an `ApiFailure`. */
+export function getJson(path: string, options: RequestOptions = {}): Promise<unknown> {
+  return requestJson(path, { method: "GET" }, options);
 }
 
 /** Returns the instance the editor serves: `GET /api/instance`. */
@@ -156,4 +170,29 @@ export async function fetchDetail(
 /** Returns a component's revisions, newest first, from its history's path in the API. */
 export function fetchHistory(path: string, options: RequestOptions = {}): Promise<Summary[]> {
   return fetchItems(path, isSummary, options);
+}
+
+/** The largest document the server imports, as it says in ADR 0003. */
+export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Imports one document into the local instance as its component's next
+ * revision: `POST /api/{kind}/import`. Returns the revision it made.
+ */
+export async function importDocument(
+  kind: "workflows" | "tools" | "benchmarks",
+  document: string,
+  options: RequestOptions = {},
+): Promise<ComponentDetail> {
+  const body = await requestJson(
+    `/api/${kind}/import`,
+    { method: "POST", body: document },
+    options,
+  );
+
+  if (!isComponentDetail(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 201);
+  }
+
+  return body;
 }

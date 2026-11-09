@@ -35,3 +35,7 @@
   conditions and model needs; a tool's fields, implementations and tests; a
   benchmark's cases), the document itself to copy or download, and every
   revision to move between.
+- Import workflow, tool and benchmark documents from the editor: choose files,
+  or drop them anywhere on a list. Each becomes its component's next revision,
+  and the editor says which revision it made, whether it was identical to one
+  already there, or why Azathoth refused it.

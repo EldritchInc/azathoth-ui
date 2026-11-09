@@ -3,9 +3,11 @@ import { Link } from "react-router";
 
 import { isBenchmarkSummary, isToolSummary, type Revision, type Summary } from "../api/types";
 import { DESCRIPTIONS, detailPath, matches, type Kind } from "../kinds";
+import { useImporter } from "../importing";
 import { useList } from "../queries";
 import { Command } from "./Command";
 import styles from "./ComponentList.module.css";
+import { DropZone, ImportButton, ImportOutcomes } from "./Importing";
 import { Notice } from "./Notice";
 import { RelativeTime } from "./RelativeTime";
 
@@ -63,6 +65,10 @@ export function ComponentList({ kind }: { readonly kind: Kind }) {
   const filterId = useId();
   const plural = description.title.toLowerCase();
   const columns = COUNT_COLUMNS[kind];
+  const importer = useImporter(kind);
+  const importFiles = (files: File[]) => {
+    void importer.importFiles(files);
+  };
 
   let body: ReactNode;
 
@@ -72,13 +78,16 @@ export function ComponentList({ kind }: { readonly kind: Kind }) {
     body = <Notice title={`Couldn't load ${plural}`}>{list.error.message}</Notice>;
   } else if (list.data.length === 0) {
     body = (
-      <Notice title={`No ${plural} yet`} tone="note">
-        <p>
-          Your local instance has no {plural}. Import a {description.singular} document from your
-          terminal:
+      <div className={styles.empty}>
+        <p className={styles.emptyTitle}>No {plural} yet</p>
+        <p className={styles.emptyText}>
+          Your local instance has no {plural}. Drop a {description.singular} document anywhere on
+          this page, or choose one.
         </p>
+        <ImportButton kind={kind} busy={importer.busy} onFiles={importFiles} quiet />
+        <p className={styles.emptyText}>Or import one from your terminal:</p>
         <Command command={description.importCommand} />
-      </Notice>
+      </div>
     );
   } else {
     const shown = list.data.filter((summary) => matches(summary, filter));
@@ -153,36 +162,42 @@ export function ComponentList({ kind }: { readonly kind: Kind }) {
   const shownCount = list.data?.filter((summary) => matches(summary, filter)).length ?? 0;
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>{description.title}</h1>
-        <p className={styles.lead}>{description.lead}</p>
-      </header>
-      {total > 0 && (
-        <div className={styles.toolbar}>
-          <label className="visually-hidden" htmlFor={filterId}>
-            Filter {plural}
-          </label>
-          <input
-            id={filterId}
-            className={styles.filter}
-            type="search"
-            value={filter}
-            placeholder="Filter by name, description, version or id"
-            autoComplete="off"
-            spellCheck={false}
-            onChange={(event) => {
-              setFilter(event.target.value);
-            }}
-          />
-          <p className={styles.count} aria-live="polite">
-            {filter.trim() === ""
-              ? `${String(total)} ${total === 1 ? description.singular : plural}`
-              : `${String(shownCount)} of ${String(total)}`}
-          </p>
-        </div>
-      )}
-      {body}
-    </div>
+    <DropZone kind={kind} onFiles={importFiles}>
+      <div className={styles.page}>
+        <header className={styles.header}>
+          <div className={styles.titles}>
+            <h1 className={styles.title}>{description.title}</h1>
+            <p className={styles.lead}>{description.lead}</p>
+          </div>
+          {total > 0 && <ImportButton kind={kind} busy={importer.busy} onFiles={importFiles} />}
+        </header>
+        <ImportOutcomes kind={kind} outcomes={importer.outcomes} onDismiss={importer.dismiss} />
+        {total > 0 && (
+          <div className={styles.toolbar}>
+            <label className="visually-hidden" htmlFor={filterId}>
+              Filter {plural}
+            </label>
+            <input
+              id={filterId}
+              className={styles.filter}
+              type="search"
+              value={filter}
+              placeholder="Filter by name, description, version or id"
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(event) => {
+                setFilter(event.target.value);
+              }}
+            />
+            <p className={styles.count} aria-live="polite">
+              {filter.trim() === ""
+                ? `${String(total)} ${total === 1 ? description.singular : plural}`
+                : `${String(shownCount)} of ${String(total)}`}
+            </p>
+          </div>
+        )}
+        {body}
+      </div>
+    </DropZone>
   );
 }

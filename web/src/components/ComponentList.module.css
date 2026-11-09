@@ -6,8 +6,40 @@
 }
 
 .header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+}
+
+.titles {
   display: grid;
   gap: 0.6rem;
+}
+
+.empty {
+  display: grid;
+  justify-items: start;
+  gap: 0.9rem;
+  padding: 2rem;
+  border: 1.5px dashed color-mix(in srgb, var(--ink) 18%, var(--line));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--raised) 60%, transparent);
+}
+
+.empty > div {
+  justify-self: stretch;
+}
+
+.emptyTitle {
+  font-family: var(--display);
+  font-size: 1.5rem;
+}
+
+.emptyText {
+  max-width: 60ch;
+  color: var(--muted);
 }
 
 .title {

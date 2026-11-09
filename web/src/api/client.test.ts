@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { WORKFLOW_DETAIL } from "../test/documents";
 import { BENCHMARK, EDITOR, SQLITE_INSTANCE, TOOL, WORKFLOW, answering } from "../test/instances";
 import {
   ApiFailure,
@@ -11,6 +12,7 @@ import {
   fetchTools,
   fetchWorkflows,
   getJson,
+  importDocument,
 } from "./client";
 
 async function failure(promise: Promise<unknown>): Promise<ApiFailure> {
@@ -38,6 +40,8 @@ describe("getJson", () => {
     expect(seen[0]?.[0]).toBe("/api/thing");
     expect(seen[0]?.[1]?.credentials).toBe("same-origin");
     expect(seen[0]?.[1]?.headers).toEqual({ accept: "application/json" });
+    expect(seen[0]?.[1]?.method).toBe("GET");
+    expect(seen[0]?.[1]?.body).toBeNull();
   });
 
   it("turns an API error into a failure with its code, message and status", async () => {
@@ -168,6 +172,46 @@ describe("the lists", () => {
   it("refuse a revision that is not whole", async () => {
     const broken = { ...WORKFLOW, revision: { ...WORKFLOW.revision, number: 1.5 } };
     const error = await failure(fetchWorkflows({ fetcher: answering(200, { items: [broken] }) }));
+
+    expect(error.code).toBe("invalid_response");
+  });
+});
+
+describe("importDocument", () => {
+  it("posts the document as JSON to its kind's import, and returns the revision made", async () => {
+    const seen: [string, RequestInit | undefined][] = [];
+    const fetcher: typeof fetch = (input, init) => {
+      seen.push([input instanceof Request ? input.url : input.toString(), init]);
+      return answering(201, WORKFLOW_DETAIL)(input, init);
+    };
+
+    expect(await importDocument("workflows", '{"steps": []}', { fetcher })).toEqual(
+      WORKFLOW_DETAIL,
+    );
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.[0]).toBe("/api/workflows/import");
+    expect(seen[0]?.[1]?.method).toBe("POST");
+    expect(seen[0]?.[1]?.body).toBe('{"steps": []}');
+    expect(seen[0]?.[1]?.headers).toEqual({
+      accept: "application/json",
+      "content-type": "application/json",
+    });
+  });
+
+  it("passes on what Azathoth says is wrong with a document", async () => {
+    const fetcher = answering(422, {
+      error: { code: "invalid_document", message: "Workflow document is not valid." },
+    });
+    const error = await failure(importDocument("tools", "{}", { fetcher }));
+
+    expect(error.code).toBe("invalid_document");
+    expect(error.message).toBe("Workflow document is not valid.");
+  });
+
+  it("refuses an answer that is not a revision", async () => {
+    const error = await failure(
+      importDocument("benchmarks", "{}", { fetcher: answering(201, {}) }),
+    );
 
     expect(error.code).toBe("invalid_response");
   });
