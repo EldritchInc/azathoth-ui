@@ -68,6 +68,45 @@ export function detailPath(kind: Kind, summary: { readonly id: string; readonly 
     : `/${kind}/${id}`;
 }
 
+/** Names one component: its id, and for a tool, its version. */
+export interface ComponentRef {
+  readonly id: string;
+  readonly version?: string;
+}
+
+function apiBase(kind: Kind, ref: ComponentRef): string {
+  return `/api/${kind}/${encodeURIComponent(ref.id)}`;
+}
+
+/** Returns where the API serves one revision of a component, the latest when none is named. */
+export function detailApiPath(kind: Kind, ref: ComponentRef, revision: number | null): string {
+  const path =
+    kind === "tools"
+      ? `${apiBase(kind, ref)}/versions/${encodeURIComponent(ref.version ?? "")}`
+      : apiBase(kind, ref);
+
+  return revision === null ? path : `${path}?revision=${String(revision)}`;
+}
+
+/** The most revisions a component's page lists. */
+export const HISTORY_LIMIT = 100;
+
+/** Returns where the API serves a component's history: for a tool, of its one version. */
+export function historyApiPath(kind: Kind, ref: ComponentRef): string {
+  const query = new URLSearchParams({ limit: String(HISTORY_LIMIT) });
+
+  if (kind === "tools") {
+    query.set("version", ref.version ?? "");
+  }
+
+  return `${apiBase(kind, ref)}/history?${query.toString()}`;
+}
+
+/** Returns the revision a page's `?revision=` names, or `null` for the latest or anything else. */
+export function parseRevision(text: string | null): number | null {
+  return text !== null && /^[1-9][0-9]{0,8}$/.test(text) ? Number(text) : null;
+}
+
 /** Returns whether one component matches what the person typed into a list's filter. */
 export function matches(
   summary: {

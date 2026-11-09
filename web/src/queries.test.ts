@@ -27,4 +27,27 @@ describe("queryKeys", () => {
     expect(queryKeys.list("tools")).toEqual(["tools", "list"]);
     expect(queryKeys.editor).toEqual(["editor"]);
   });
+
+  it("keeps each revision and each tool version apart", () => {
+    expect(queryKeys.detail("workflows", { id: "w" }, null)).toEqual([
+      "workflows",
+      "detail",
+      "w",
+      null,
+      null,
+    ]);
+    expect(queryKeys.detail("tools", { id: "t", version: "1.0.0" }, 2)).toEqual([
+      "tools",
+      "detail",
+      "t",
+      "1.0.0",
+      2,
+    ]);
+    expect(queryKeys.history("tools", { id: "t", version: "1.0.0" })).toEqual([
+      "tools",
+      "history",
+      "t",
+      "1.0.0",
+    ]);
+  });
 });

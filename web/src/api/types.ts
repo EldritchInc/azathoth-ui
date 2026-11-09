@@ -59,6 +59,12 @@ export interface BenchmarkSummary extends Summary {
   readonly case_count: number;
 }
 
+/** One revision of a workflow, tool version or benchmark, with its document. */
+export interface ComponentDetail extends Summary {
+  readonly latest_number: number;
+  readonly document: Readonly<Record<string, unknown>>;
+}
+
 /** How the server answers any error under `/api`. */
 export interface ErrorBody {
   readonly error: {
@@ -144,6 +150,16 @@ export function isToolSummary(value: unknown): value is ToolSummary {
 /** Returns whether a value summarizes a benchmark. */
 export function isBenchmarkSummary(value: unknown): value is BenchmarkSummary {
   return isSummary(value) && isRecord(value) && isWholeNumber(value.case_count);
+}
+
+/** Returns whether a value is one revision of a component with its document. */
+export function isComponentDetail(value: unknown): value is ComponentDetail {
+  return (
+    isSummary(value) &&
+    isRecord(value) &&
+    isWholeNumber(value.latest_number) &&
+    isRecord(value.document)
+  );
 }
 
 /** Returns the items of a list the server answered with, when each is what `guard` expects. */

@@ -1,0 +1,142 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 76rem;
+}
+
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  color: var(--faint);
+  font-size: 0.875rem;
+}
+
+.crumbs a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.crumbs a:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.crumbs [aria-current="page"] {
+  color: var(--ink);
+}
+
+.loading {
+  color: var(--muted);
+}
+
+.header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.25rem 2rem;
+}
+
+.titles {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.title {
+  font-size: clamp(2.2rem, 4.5vw, 3.4rem);
+  font-weight: 400;
+  font-variation-settings:
+    "SOFT" 60,
+    "WONK" 1;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.lead {
+  max-width: 64ch;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.remote {
+  min-width: 6rem;
+}
+
+.facts {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2.25rem;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.facts div {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.facts dt {
+  color: var(--faint);
+  font-size: 0.8125rem;
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+.identical {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.back {
+  color: var(--tide-strong);
+  text-underline-offset: 0.2em;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 15rem;
+  gap: 2.5rem;
+  align-items: start;
+  margin-top: 0.5rem;
+}
+
+.main {
+  display: grid;
+  gap: 2.5rem;
+  min-width: 0;
+}
+
+.aside {
+  position: sticky;
+  top: 1.5rem;
+}
+
+@media (max-width: 64rem) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aside {
+    position: static;
+  }
+}
+
+@media (max-width: 48rem) {
+  .header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .remote {
+    display: none;
+  }
+}

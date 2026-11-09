@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router";
 
 import styles from "./App.module.css";
 import { ComponentList } from "./components/ComponentList";
+import { BenchmarkPage, ToolPage, WorkflowPage } from "./components/ComponentPages";
 import { NotFound } from "./components/NotFound";
 import { Overview } from "./components/Overview";
 import { Rail } from "./components/Rail";
@@ -30,8 +31,11 @@ export function App() {
         <Routes>
           <Route path="/" element={<Overview connection={connection} />} />
           <Route path="/workflows" element={<ComponentList kind="workflows" />} />
+          <Route path="/workflows/:id" element={<WorkflowPage />} />
           <Route path="/tools" element={<ComponentList kind="tools" />} />
+          <Route path="/tools/:id/versions/:version" element={<ToolPage />} />
           <Route path="/benchmarks" element={<ComponentList kind="benchmarks" />} />
+          <Route path="/benchmarks/:id" element={<BenchmarkPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

@@ -1,26 +1,34 @@
 import { useId, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 
-import type { Revision } from "../api/types";
-import { DESCRIPTIONS, detailPath, matches, type Kind, type SummaryOf } from "../kinds";
+import { isBenchmarkSummary, isToolSummary, type Revision, type Summary } from "../api/types";
+import { DESCRIPTIONS, detailPath, matches, type Kind } from "../kinds";
 import { useList } from "../queries";
 import { Command } from "./Command";
 import styles from "./ComponentList.module.css";
 import { Notice } from "./Notice";
 import { RelativeTime } from "./RelativeTime";
 
-interface Column<S> {
+interface Column {
   readonly header: string;
-  readonly cell: (summary: S) => ReactNode;
+  readonly cell: (summary: Summary) => ReactNode;
 }
 
-const COUNT_COLUMNS: { readonly [K in Kind]: readonly Column<SummaryOf[K]>[] } = {
+const COUNT_COLUMNS: Readonly<Record<Kind, readonly Column[]>> = {
   workflows: [],
   tools: [
-    { header: "Implementations", cell: (tool) => tool.implementation_count },
-    { header: "Tests", cell: (tool) => tool.test_case_count },
+    {
+      header: "Implementations",
+      cell: (tool) => (isToolSummary(tool) ? tool.implementation_count : null),
+    },
+    { header: "Tests", cell: (tool) => (isToolSummary(tool) ? tool.test_case_count : null) },
   ],
-  benchmarks: [{ header: "Cases", cell: (benchmark) => benchmark.case_count }],
+  benchmarks: [
+    {
+      header: "Cases",
+      cell: (benchmark) => (isBenchmarkSummary(benchmark) ? benchmark.case_count : null),
+    },
+  ],
 };
 
 function RevisionCell({ revision }: { readonly revision: Revision }) {
@@ -48,7 +56,7 @@ function Skeleton({ label }: { readonly label: string }) {
 }
 
 /** One kind's list: every component of the kind in the local instance, filtered as typed. */
-export function ComponentList<K extends Kind>({ kind }: { readonly kind: K }) {
+export function ComponentList({ kind }: { readonly kind: Kind }) {
   const description = DESCRIPTIONS[kind];
   const list = useList(kind);
   const [filter, setFilter] = useState("");

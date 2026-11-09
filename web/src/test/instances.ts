@@ -108,15 +108,23 @@ export const SERVER: Answers = {
   "/api/benchmarks": [200, { items: [BENCHMARK] }],
 };
 
-/** Returns a fetch that answers each path as `answers` says, and 404 for any other. */
+/**
+ * Returns a fetch that answers each path as `answers` says, and 404 for any other.
+ *
+ * A path with its query is looked up first, then the path alone.
+ */
 export function serving(answers: Answers): typeof fetch {
   return (input) => {
-    const url = input instanceof Request ? input.url : input.toString();
-    const path = new URL(url, "http://127.0.0.1").pathname;
-    const [status, body] = answers[path] ?? [
-      404,
-      { error: { code: "not_found", message: `No API endpoint at ${path}.` } },
-    ];
+    const url = new URL(
+      input instanceof Request ? input.url : input.toString(),
+      "http://127.0.0.1",
+    );
+    const path = url.pathname;
+    const [status, body] = answers[`${path}${url.search}`] ??
+      answers[path] ?? [
+        404,
+        { error: { code: "not_found", message: `No API endpoint at ${path}.` } },
+      ];
 
     return answering(status, body)(input);
   };

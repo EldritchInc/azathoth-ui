@@ -9,6 +9,7 @@
 
 import {
   isBenchmarkSummary,
+  isComponentDetail,
   isEditorDescription,
   isErrorBody,
   isInstanceDescription,
@@ -16,8 +17,10 @@ import {
   isToolSummary,
   itemsOf,
   type BenchmarkSummary,
+  type ComponentDetail,
   type EditorDescription,
   type InstanceDescription,
+  type Summary,
   type ToolSummary,
   type WorkflowSummary,
 } from "./types";
@@ -134,4 +137,23 @@ export function fetchTools(options: RequestOptions = {}): Promise<ToolSummary[]>
 /** Returns every benchmark in the editor's instance, at its latest revision. */
 export function fetchBenchmarks(options: RequestOptions = {}): Promise<BenchmarkSummary[]> {
   return fetchItems("/api/benchmarks", isBenchmarkSummary, options);
+}
+
+/** Returns one revision of a component with its document, from its path in the API. */
+export async function fetchDetail(
+  path: string,
+  options: RequestOptions = {},
+): Promise<ComponentDetail> {
+  const body = await getJson(path, options);
+
+  if (!isComponentDetail(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/** Returns a component's revisions, newest first, from its history's path in the API. */
+export function fetchHistory(path: string, options: RequestOptions = {}): Promise<Summary[]> {
+  return fetchItems(path, isSummary, options);
 }

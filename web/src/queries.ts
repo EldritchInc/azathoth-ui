@@ -6,14 +6,25 @@
 
 import { QueryClient, useQuery, type UseQueryResult } from "@tanstack/react-query";
 
-import { ApiFailure, fetchEditor } from "./api/client";
-import type { EditorDescription } from "./api/types";
-import { DESCRIPTIONS, type Kind, type SummaryOf } from "./kinds";
+import { ApiFailure, fetchDetail, fetchEditor, fetchHistory } from "./api/client";
+import type { ComponentDetail, EditorDescription, Summary } from "./api/types";
+import {
+  DESCRIPTIONS,
+  detailApiPath,
+  historyApiPath,
+  type ComponentRef,
+  type Kind,
+  type SummaryOf,
+} from "./kinds";
 
 /** The keys the editor's data is kept under. */
 export const queryKeys = {
   editor: ["editor"] as const,
   list: (kind: Kind) => [kind, "list"] as const,
+  detail: (kind: Kind, ref: ComponentRef, revision: number | null) =>
+    [kind, "detail", ref.id, ref.version ?? null, revision] as const,
+  history: (kind: Kind, ref: ComponentRef) =>
+    [kind, "history", ref.id, ref.version ?? null] as const,
 };
 
 /** Returns whether a failed request is worth trying again: not when the server refused it. */
@@ -46,5 +57,25 @@ export function useList<K extends Kind>(kind: K): UseQueryResult<SummaryOf[K][],
   return useQuery<SummaryOf[K][], ApiFailure>({
     queryKey: queryKeys.list(kind),
     queryFn: ({ signal }) => DESCRIPTIONS[kind].fetch({ signal }),
+  });
+}
+
+/** Returns one revision of a component with its document, the latest when none is named. */
+export function useDetail(
+  kind: Kind,
+  ref: ComponentRef,
+  revision: number | null,
+): UseQueryResult<ComponentDetail, ApiFailure> {
+  return useQuery<ComponentDetail, ApiFailure>({
+    queryKey: queryKeys.detail(kind, ref, revision),
+    queryFn: ({ signal }) => fetchDetail(detailApiPath(kind, ref, revision), { signal }),
+  });
+}
+
+/** Returns a component's revisions, newest first; for a tool, those of its one version. */
+export function useHistory(kind: Kind, ref: ComponentRef): UseQueryResult<Summary[], ApiFailure> {
+  return useQuery<Summary[], ApiFailure>({
+    queryKey: queryKeys.history(kind, ref),
+    queryFn: ({ signal }) => fetchHistory(historyApiPath(kind, ref), { signal }),
   });
 }

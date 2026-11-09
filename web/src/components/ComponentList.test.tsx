@@ -21,7 +21,8 @@ describe("ComponentList", () => {
   it("lists every workflow, each linking to its page", async () => {
     renderAt(<ComponentList kind="workflows" />);
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Workflows" })).toBeVisible();
+    expect(await screen.findByRole("table")).toBeVisible();
+    expect(screen.getByRole("heading", { level: 1, name: "Workflows" })).toBeVisible();
     expect(
       screen.getByText("Workflows in your local instance, each at its latest revision."),
     ).toBeVisible();

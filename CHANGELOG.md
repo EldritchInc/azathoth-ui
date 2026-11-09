@@ -29,3 +29,9 @@
   you type. Every command the editor shows names its own database, ready to
   copy. React Router gives each page its own address, and TanStack Query
   keeps the data.
+- Each workflow, tool version and benchmark has its own page: its version,
+  revision and digest, the command for exactly that revision, a readable
+  view of its document (a workflow's steps with their inputs, outputs,
+  conditions and model needs; a tool's fields, implementations and tests; a
+  benchmark's cases), the document itself to copy or download, and every
+  revision to move between.

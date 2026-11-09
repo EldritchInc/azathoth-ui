@@ -1,0 +1,66 @@
+.section {
+  display: grid;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.title {
+  font-size: 1.4rem;
+  font-weight: 450;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.download {
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--raised);
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.download:hover {
+  border-color: color-mix(in srgb, var(--ink) 25%, var(--line));
+  color: var(--ink);
+}
+
+.code {
+  max-height: 36rem;
+  margin: 0;
+  padding: 1rem 1.15rem;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--ink) 3%, var(--raised));
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+.key {
+  color: var(--ink);
+}
+
+.string {
+  color: var(--tide-strong);
+}
+
+.number,
+.literal {
+  color: var(--amber);
+}
