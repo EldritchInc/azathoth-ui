@@ -359,6 +359,23 @@ describe("StepsGraph composing a workflow", () => {
     expect(onSelect.mock.calls).toEqual([[null], [null]]);
   });
 
+  it("changes the chosen step in its details, where Delete and the arrows edit the text", () => {
+    const wide = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1200);
+    const { applied, onSelect } = compose(SUMMARIZE);
+    const field = screen.getByRole("textbox", { name: "Its name" });
+
+    wide.mockRestore();
+
+    fireEvent.keyDown(field, { key: "Backspace" });
+    fireEvent.keyDown(field, { key: "ArrowLeft" });
+    fireEvent.keyDown(screen.getByRole("button", { name: "+ Input" }), { key: "Delete" });
+    fireEvent.change(field, { target: { value: "Sum" } });
+
+    expect(stepsOf(applied())).toHaveLength(2);
+    expect(stepsOf(applied())[1]).toMatchObject({ specification: { metadata: { name: "Sum" } } });
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
   it("marks a step with what is wrong with it", () => {
     compose(null, new Map([[SUMMARIZE, ["It needs a prompt.", "It needs a description."]]]));
 

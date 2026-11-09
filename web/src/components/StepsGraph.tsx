@@ -372,6 +372,9 @@ const BESIDE_WIDTH = 720;
 /** How much of a canvas the details beside it cover, from its right edge. */
 const BESIDE_COVERS = 344;
 
+/** The least height of a canvas being composed, so a step's form beside it has room. */
+const COMPOSING_HEIGHT = 680;
+
 /** A point the canvas moves to, and how many moves came before, so a second move to it moves. */
 interface Target {
   readonly x: number;
@@ -441,6 +444,7 @@ export function StepsGraph({
   const [nodes, setNodes, onNodesChange] = useNodesState(drawnNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(drawnEdges);
   const canvas = useRef<HTMLDivElement>(null);
+  const height = editing ? Math.max(canvasHeight(graph), COMPOSING_HEIGHT) : canvasHeight(graph);
   const [width, setWidth] = useState<number | null>(null);
   const [target, setTarget] = useState<Target | null>(null);
   const chosen = nodeOfStep(graph, selected);
@@ -453,12 +457,8 @@ export function StepsGraph({
 
     return width === null || node === undefined
       ? undefined
-      : viewportOn(
-          node,
-          { width, height: canvasHeight(graph) },
-          width >= BESIDE_WIDTH ? BESIDE_COVERS : 0,
-        );
-  }, [graph, width, openedOn]);
+      : viewportOn(node, { width, height }, width >= BESIDE_WIDTH ? BESIDE_COVERS : 0);
+  }, [graph, width, height, openedOn]);
   const shownNodes = useMemo(
     () =>
       nodes.map((node) => ({
@@ -607,6 +607,14 @@ export function StepsGraph({
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    const inDetails =
+      event.target instanceof Element &&
+      event.target.closest("aside, input, textarea, select") !== null;
+
+    if (inDetails && event.key !== "Escape") {
+      return;
+    }
+
     const focused =
       event.target instanceof HTMLElement
         ? (event.target.closest<HTMLElement>(".react-flow__node")?.dataset.id ?? null)
@@ -679,12 +687,7 @@ export function StepsGraph({
 
   return (
     <figure className={styles.figure}>
-      <div
-        ref={canvas}
-        className={styles.canvas}
-        style={{ height: canvasHeight(graph) }}
-        onKeyDown={onKeyDown}
-      >
+      <div ref={canvas} className={styles.canvas} style={{ height }} onKeyDown={onKeyDown}>
         <Arrowheads prefix={prefix} />
         <Markers value={prefix}>
           {width !== null && (

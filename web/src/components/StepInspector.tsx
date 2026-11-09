@@ -1,9 +1,11 @@
-import type { ReactNode } from "react";
+import { use, type ReactNode } from "react";
 
 import type { StepView } from "../documents";
 import { stepNode, type GraphNode, type WorkflowGraph } from "../graph";
 import { connections, type Connection } from "../paths";
+import { ComposingContext } from "./composing";
 import styles from "./StepInspector.module.css";
+import { StepForm } from "./StepForm";
 
 const KIND_NAMES: Record<StepView["kind"], string> = {
   prompt: "Prompt",
@@ -108,7 +110,8 @@ function Joined({
 /**
  * The step chosen on a workflow's graph: what it is, what it reads and from
  * where, what it leads to, and how it runs. Each step it names is a button
- * that moves there.
+ * that moves there. While the workflow is composed, its details are a form
+ * that changes it.
  */
 export function StepInspector({
   graph,
@@ -121,6 +124,7 @@ export function StepInspector({
   readonly onSelect: (id: string) => void;
   readonly onClose: () => void;
 }) {
+  const composing = use(ComposingContext);
   const node = graph.nodes.find((each) => each.id === id);
   const step = node?.step ?? null;
 
@@ -140,37 +144,51 @@ export function StepInspector({
     step.onFailure,
   ].filter(Boolean);
 
+  const header = (
+    <header className={styles.header}>
+      <div className={styles.titles}>
+        <span className={styles.kind} data-kind={step.kind}>
+          {KIND_NAMES[step.kind]}
+          {step.tool !== null && ` · ${step.tool}`}
+          {step.runtime !== null && ` · ${step.runtime}`}
+        </span>
+        <h3 className={styles.title}>{step.title}</h3>
+      </div>
+      <button
+        type="button"
+        className={styles.close}
+        aria-label="Close the step"
+        title="Close (Esc)"
+        onClick={onClose}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          focusable="false"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        >
+          <path d="M6 6l12 12M18 6 6 18" />
+        </svg>
+      </button>
+    </header>
+  );
+
+  if (composing !== null) {
+    return (
+      <aside className={styles.inspector} aria-label={`Step: ${step.title}`}>
+        {header}
+        <StepForm composing={composing} id={step.id} />
+        <Joined title="Leads to" joined={to} leading onSelect={onSelect} />
+      </aside>
+    );
+  }
+
   return (
     <aside className={styles.inspector} aria-label={`Step: ${step.title}`}>
-      <header className={styles.header}>
-        <div className={styles.titles}>
-          <span className={styles.kind} data-kind={step.kind}>
-            {KIND_NAMES[step.kind]}
-            {step.tool !== null && ` · ${step.tool}`}
-            {step.runtime !== null && ` · ${step.runtime}`}
-          </span>
-          <h3 className={styles.title}>{step.title}</h3>
-        </div>
-        <button
-          type="button"
-          className={styles.close}
-          aria-label="Close the step"
-          title="Close (Esc)"
-          onClick={onClose}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-            focusable="false"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          >
-            <path d="M6 6l12 12M18 6 6 18" />
-          </svg>
-        </button>
-      </header>
+      {header}
       {step.description !== null && <p className={styles.description}>{step.description}</p>}
       {step.message !== null && <p className={styles.message}>Says “{step.message}” as it runs</p>}
       <Joined title="Comes from" joined={from} leading={false} onSelect={onSelect} />

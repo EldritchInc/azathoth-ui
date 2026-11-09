@@ -21,8 +21,11 @@ import { stepOfNode } from "../paths";
 export interface Composing {
   /** What is wrong with each step, by its id. */
   readonly problems: ReadonlyMap<string, readonly string[]>;
-  /** Makes one edit to the document as it stands. */
-  readonly change: (edit: (document: JsonObject) => JsonObject) => void;
+  /**
+   * Makes one edit to the document as it stands. Edits made under the same
+   * group in a row, such as the letters typed into one field, undo as one.
+   */
+  readonly change: (edit: (document: JsonObject) => JsonObject, group?: string) => void;
   /** Returns a new UUID. */
   readonly newId: () => string;
   /** Returns the document as it stands. */

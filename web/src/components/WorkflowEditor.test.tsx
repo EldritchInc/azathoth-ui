@@ -272,13 +272,39 @@ describe("WorkflowEditor", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "+ Prompt step" }));
 
-    expect(screen.getByRole("heading", { name: "2 things to fix" })).toBeInTheDocument();
-    expect(screen.getByText("It needs a prompt.")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("region", { name: "2 things to fix" })).getByText(
+        "It needs a prompt.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "What to fix" })).toHaveTextContent(
+      "It needs a prompt.",
+    );
     expect(status()).toHaveTextContent("Unsaved changes, kept in this browser");
 
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
 
     expect(screen.getByRole("heading", { name: "Ready to save" })).toBeInTheDocument();
+  });
+
+  it("changes the chosen step in its details, and undoes the typing as one", async () => {
+    open(`/workflows/${ID}/edit?step=${uuid(12)}`);
+    const field = await screen.findByRole("textbox", { name: "Its name" });
+
+    fireEvent.change(field, { target: { value: "Summarize it" } });
+    fireEvent.change(field, { target: { value: "Summarize it all" } });
+
+    expect(
+      screen.getByRole("complementary", { name: "Step: Summarize it all" }),
+    ).toBeInTheDocument();
+    expect(readDraft(window.localStorage, ID)?.document).toMatchObject({
+      steps: [{}, { specification: { metadata: { name: "Summarize it all" } } }],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+
+    expect(screen.getByRole("textbox", { name: "Its name" })).toHaveValue("Summarize");
+    expect(status()).toHaveTextContent("Saved as revision 3");
   });
 
   it("says when there is no workflow to edit", async () => {

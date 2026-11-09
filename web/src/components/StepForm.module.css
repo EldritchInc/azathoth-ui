@@ -1,0 +1,479 @@
+/* A step's details as a form, in the panel beside the graph. */
+
+.form {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.problems {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0.6rem 0.75rem 0.6rem 1.75rem;
+  border: 1px solid color-mix(in srgb, var(--amber) 35%, transparent);
+  border-radius: var(--radius-small);
+  background: var(--amber-wash);
+  color: var(--ink);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.problems li::marker {
+  color: var(--amber);
+}
+
+.section {
+  display: grid;
+  gap: 0.6rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+}
+
+.section:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.field {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.label {
+  color: var(--faint);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.hint,
+.quiet {
+  color: var(--faint);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.quiet {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+/* Controls. */
+
+.input,
+.name,
+.select,
+.textarea,
+.promptText {
+  width: 100%;
+  min-width: 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--raised);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8125rem;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.input:hover,
+.name:hover,
+.select:hover,
+.textarea:hover {
+  border-color: color-mix(in srgb, var(--tide) 40%, var(--line));
+}
+
+.input:focus,
+.name:focus,
+.select:focus,
+.textarea:focus,
+.promptText:focus {
+  border-color: var(--tide);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--tide-wash);
+}
+
+.input::placeholder,
+.name::placeholder,
+.textarea::placeholder {
+  color: var(--faint);
+}
+
+.input[type="number"] {
+  font-variant-numeric: tabular-nums;
+}
+
+.textarea {
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.select {
+  padding-right: 1.6rem;
+  cursor: pointer;
+}
+
+.name {
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.pair,
+.triple {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.triple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* The prompt, its variables lit behind the text. */
+
+.prompt {
+  display: grid;
+}
+
+.backdrop,
+.promptText {
+  grid-area: 1 / 1;
+  min-height: 7.5rem;
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  letter-spacing: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.backdrop {
+  border: 1px solid transparent;
+  color: var(--ink);
+  pointer-events: none;
+}
+
+.promptText {
+  overflow: hidden;
+  resize: none;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--ink);
+}
+
+.promptText::selection {
+  background: color-mix(in srgb, var(--focus) 28%, transparent);
+  color: var(--ink);
+}
+
+.prompt:has(.promptText) {
+  border-radius: var(--radius-small);
+  background: var(--raised);
+}
+
+.variable {
+  border-radius: 4px;
+  background: var(--tide-wash);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tide) 30%, transparent);
+  color: var(--tide-strong);
+}
+
+.variable[data-bound="false"] {
+  background: var(--amber-wash);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--amber) 40%, transparent);
+  color: var(--amber);
+}
+
+.variables {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.variableItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.25rem 0.2rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.75rem;
+}
+
+.variableItem code {
+  color: var(--tide-strong);
+  font-family: var(--mono);
+}
+
+.variableItem[data-bound="false"] code {
+  color: var(--amber);
+}
+
+.variableItem .quiet {
+  padding-right: 0.3rem;
+  font-size: 0.75rem;
+}
+
+.bind {
+  padding: 0.1rem 0.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--amber-wash);
+  color: var(--amber);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bind:hover {
+  background: color-mix(in srgb, var(--amber) 20%, transparent);
+}
+
+/* Choices that look like one control. */
+
+.segments {
+  display: inline-grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  justify-self: start;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.segment {
+  padding: 0.25rem 0.9rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.segment[aria-pressed="true"] {
+  background: var(--raised);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 14%, transparent);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.checks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.75rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--ink);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.check input {
+  width: 0.95rem;
+  height: 0.95rem;
+  margin: 0;
+  accent-color: var(--tide);
+}
+
+/* Rows of inputs, outputs and conditions. */
+
+.rows {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+}
+
+.rowTop {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.rowTop > :first-child {
+  flex: 1;
+}
+
+.tag {
+  flex: none;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: var(--tide-wash);
+  color: var(--tide-strong);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+}
+
+.constant {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.test {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.4rem;
+}
+
+.result {
+  justify-self: start;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--tide-wash);
+  color: var(--tide-strong);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.makeResult {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.makeResult:hover {
+  color: var(--tide-strong);
+}
+
+.remove {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.remove svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.remove:hover {
+  background: var(--rose-wash);
+  color: var(--rose);
+}
+
+.add {
+  justify-self: start;
+  padding: 0.3rem 0.75rem;
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.add:hover:not(:disabled) {
+  border-color: var(--tide);
+  border-style: solid;
+  color: var(--tide-strong);
+}
+
+.add:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* The ids. */
+
+.advanced {
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.8125rem;
+}
+
+.advanced summary {
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.ids {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.3rem 0.75rem;
+  margin: 0.6rem 0 0.5rem;
+}
+
+.ids dt {
+  color: var(--faint);
+}
+
+.ids dd {
+  margin: 0;
+}
+
+.ids code {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}

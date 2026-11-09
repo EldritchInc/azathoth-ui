@@ -97,3 +97,15 @@
   read it, and to the result offers which output it is. Each step shows
   how many things Azathoth would refuse in it, and a workflow without steps
   starts with one.
+- While composing, the chosen step's details are a form: its name, what it
+  does and what it says as it runs; its prompt, each `{variable}` lit
+  green when an input fills it and amber when none does, with a button to
+  add that input; whether it answers in text or JSON and what its model
+  needs; for a tool step, the tool, its version and runtime, suggested from
+  the instance's tools. Every input says where it comes from: the
+  workflow's input, a step's output (reading one runs the step after it),
+  a name from a step it runs after, or a constant typed as text or JSON.
+  Outputs have their paths and can become the result; conditions, tries,
+  waits and what happens once it has failed are there too, and the step's
+  ids under Advanced. Typing in one field undoes as one change, and the
+  canvas grows while composing so the form has room.

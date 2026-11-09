@@ -175,8 +175,8 @@ function Editor({
   const composing = useMemo<Composing>(
     () => ({
       problems: problemsByStep(found),
-      change: (edit) => {
-        setHistory((current) => record(current, edit(current.present)));
+      change: (edit, group) => {
+        setHistory((current) => record(current, edit(current.present), group ?? null));
         setOutcome(null);
       },
       newId: () => crypto.randomUUID(),
