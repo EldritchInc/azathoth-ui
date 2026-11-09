@@ -1,0 +1,26 @@
+.notice {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.notice[data-tone="problem"] {
+  border-color: color-mix(in srgb, var(--rose) 35%, var(--line));
+  border-left: 3px solid var(--rose);
+  background: var(--rose-wash);
+}
+
+.title {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.detail {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 64ch;
+  color: var(--muted);
+}

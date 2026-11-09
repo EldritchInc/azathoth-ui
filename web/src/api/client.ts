@@ -7,7 +7,20 @@
  * it is, so a caller that gave up can tell.
  */
 
-import { isErrorBody, isInstanceDescription, type InstanceDescription } from "./types";
+import {
+  isBenchmarkSummary,
+  isEditorDescription,
+  isErrorBody,
+  isInstanceDescription,
+  isSummary,
+  isToolSummary,
+  itemsOf,
+  type BenchmarkSummary,
+  type EditorDescription,
+  type InstanceDescription,
+  type ToolSummary,
+  type WorkflowSummary,
+} from "./types";
 
 export const UNREACHABLE_MESSAGE = "The editor's server isn't answering.";
 
@@ -81,4 +94,44 @@ export async function fetchInstance(options: RequestOptions = {}): Promise<Insta
   }
 
   return body;
+}
+
+/** Returns the editor and how its commands name its database: `GET /api/editor`. */
+export async function fetchEditor(options: RequestOptions = {}): Promise<EditorDescription> {
+  const body = await getJson("/api/editor", options);
+
+  if (!isEditorDescription(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+async function fetchItems<T>(
+  path: string,
+  guard: (item: unknown) => item is T,
+  options: RequestOptions,
+): Promise<T[]> {
+  const items = itemsOf(await getJson(path, options), guard);
+
+  if (items === null) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return items;
+}
+
+/** Returns every workflow in the editor's instance, at its latest revision. */
+export function fetchWorkflows(options: RequestOptions = {}): Promise<WorkflowSummary[]> {
+  return fetchItems("/api/workflows", isSummary, options);
+}
+
+/** Returns every tool version in the editor's instance, at its latest revision. */
+export function fetchTools(options: RequestOptions = {}): Promise<ToolSummary[]> {
+  return fetchItems("/api/tools", isToolSummary, options);
+}
+
+/** Returns every benchmark in the editor's instance, at its latest revision. */
+export function fetchBenchmarks(options: RequestOptions = {}): Promise<BenchmarkSummary[]> {
+  return fetchItems("/api/benchmarks", isBenchmarkSummary, options);
 }

@@ -24,3 +24,8 @@
   its component's next revision. `GET /api/editor` gives the prefix that
   names the editor's database in the commands it shows. Links into the web
   app's own pages now open the web app (ADR 0003).
+- The web app browses the local instance: the rail opens Workflows, Tools and
+  Benchmarks, each with how many the instance holds, and each list filters as
+  you type. Every command the editor shows names its own database, ready to
+  copy. React Router gives each page its own address, and TanStack Query
+  keeps the data.
