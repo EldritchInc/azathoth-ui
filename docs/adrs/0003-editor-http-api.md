@@ -1,0 +1,82 @@
+# ADR 0003: Editor HTTP API
+
+## Status
+
+Accepted
+
+## Context
+
+The web app reaches Azathoth only through the editor's own server, and the
+server reaches it only through `azathoth.api`
+([ADR 0120](https://github.com/EldritchInc/azathoth/blob/main/docs/adrs/0120-public-service-api.md)).
+The server's HTTP API is therefore a thin, stable translation of that API:
+the web app should learn nothing from it that `azathoth.api` does not say,
+and should never be able to change anything in place.
+
+Most of the work people do in the editor is on its own local instance: they
+create or pull workflows, work on them there, and push a finished one to a
+shared server. Every component the editor shows comes with the `azathoth`
+command that does the same thing, and that command has to work on the
+editor's own database, which the command line takes only from
+`AZATHOTH_DATABASE`.
+
+## Decision
+
+Every endpoint is behind the guard of [ADR 0001](0001-local-server-security.md),
+answers in JSON, and is never cached.
+
+| Endpoint | Answer |
+| --- | --- |
+| `GET /api/instance` | The instance, as `describe()` |
+| `GET /api/editor` | The editor's version, its shell, and the prefix that names its database in a command |
+| `GET /api/workflows` | Every workflow at its latest revision |
+| `GET /api/workflows/{id}?revision=` | One revision with its document, the latest by default |
+| `GET /api/workflows/{id}/history?limit=` | Its revisions, newest first |
+| `POST /api/workflows/import` | Imports a document as its next revision: 201 |
+| `GET /api/tools` | Every tool version at its latest revision |
+| `GET /api/tools/{id}/versions/{version}?revision=` | One revision of one exact version |
+| `GET /api/tools/{id}/history?version=&limit=` | Its revisions, of one version when named |
+| `POST /api/tools/import` | Imports a document as its version's next revision: 201 |
+| `GET /api/benchmarks` | Every benchmark at its latest revision |
+| `GET /api/benchmarks/{id}?revision=` | One revision with its document |
+| `GET /api/benchmarks/{id}/history?limit=` | Its revisions, newest first |
+| `POST /api/benchmarks/import` | Imports a document as its next revision: 201 |
+
+- **Answers are `azathoth.api`'s own models,** dumped as JSON. A list or a
+  history is `{"items": [...]}`, so either can gain fields without breaking
+  the web app.
+- **Errors keep Azathoth's codes.** `{"error": {"code", "message"}}`, with a
+  status for the error's kind (ADR 0001). An id that is not a UUID, or a
+  `revision` or `limit` that is not a whole number, is refused as
+  `invalid_argument` (422) before Azathoth is asked, with a message that
+  names it: `'abc' is not a workflow id.`, `revision must be a whole number,
+  not 'two'.`
+- **Importing never edits in place.** A document is sent as
+  `application/json` (otherwise 415, `unsupported_media_type`), at most 10 MB
+  (otherwise 413, `document_too_large`, checked from its declared length and
+  again as it arrives), in UTF-8 (otherwise `invalid_document`). It becomes
+  its component's next revision, even when identical to the last; the
+  revision says which it is identical to.
+- **Tool versions live under `/versions/`,** so that no version name, such as
+  `history`, can be mistaken for another endpoint.
+- **Commands name the editor's database.** `GET /api/editor` gives the
+  prefix the web app puts before every command it shows, quoted for this
+  computer's shell: `AZATHOTH_DATABASE='/path/ui.db' ` in POSIX shells,
+  `$env:AZATHOTH_DATABASE='C:\path\ui.db'; ` in PowerShell on Windows. The
+  server, which knows the platform and the path, writes it, so the web app
+  never quotes anything itself.
+- **The web app routes its own pages.** Any address outside `/api/` and
+  `/_/` that is not a file the build made (one under `/assets/`, or a file at
+  the top such as `/icon.svg`) gets the web app's page, so links into the
+  editor and reloads work. Without a build, every such address says how to
+  build one.
+
+## Consequences
+
+- The web app's types mirror `azathoth.api`'s models one to one; when core
+  adds a field, the editor shows it by changing the web app alone.
+- Every state-changing endpoint is a `POST` that needs this server's
+  `Origin` and a JSON body, so no form on another site can submit one.
+- A file name at the top of the build must have an extension, and the build
+  must keep its other files under `assets/`, or the web app's routing will
+  answer for them.

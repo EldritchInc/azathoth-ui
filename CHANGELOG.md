@@ -19,3 +19,8 @@
 - The wheel holds the built web app: `make wheel` builds both, and building a
   wheel refuses without it. CI checks the web app, the server and the wheel in
   separate jobs, and starts the editor the wheel installs.
+- The browsing API: workflows, tools and benchmarks in the editor's own
+  instance, any revision of each and its history, and importing a document as
+  its component's next revision. `GET /api/editor` gives the prefix that
+  names the editor's database in the commands it shows. Links into the web
+  app's own pages now open the web app (ADR 0003).

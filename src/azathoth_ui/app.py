@@ -1,13 +1,15 @@
 """The editor's server: its JSON API and the web app, behind the guard of ADR 0001.
 
-The API answers from one open Azathoth instance, through `azathoth.api` only.
-An `ApiError` answers with its stable code and exact message, and a status
-that says which kind of failure it is. Everything under `/` that is not the
-API is the built web app, or, in an installation without one, a page that
-says how to build it.
+The API (ADR 0003) answers from one open Azathoth instance, through
+`azathoth.api` only. An `ApiError` answers with its stable code and exact
+message, and a status that says which kind of failure it is. Everything under
+`/` that is not the API is the built web app: a file it built, or, for any
+other address without a file extension, its page, which routes itself. An
+installation without a web app answers every page with one that says how to
+build it.
 """
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Final
 
 from azathoth import api
@@ -17,7 +19,11 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
 from starlette.routing import BaseRoute, Mount, Route
 from starlette.staticfiles import StaticFiles
+from starlette.types import Scope
 
+from azathoth_ui import __version__
+from azathoth_ui.browsing import browsing_routes
+from azathoth_ui.commands import Shell, command_prefix, local_shell
 from azathoth_ui.pages import ASSETS_PATH, not_built_page
 from azathoth_ui.security import API_PREFIX, LocalOnly
 
@@ -104,6 +110,24 @@ def describe_instance(
     return JSONResponse(instance.describe().model_dump(mode="json"))
 
 
+def describe_editor(
+    request: Request,
+) -> Response:
+    """`GET /api/editor`: the editor's version, and how its commands name its database."""
+
+    instance: api.Azathoth = request.app.state.instance
+    shell: Shell = request.app.state.shell
+    database = instance.describe().database
+
+    return JSONResponse(
+        {
+            "version": __version__,
+            "shell": shell,
+            "command_prefix": command_prefix(database, shell),
+        }
+    )
+
+
 def no_endpoint(
     request: Request,
 ) -> Response:
@@ -115,11 +139,46 @@ def no_endpoint(
 def not_built(
     request: Request,
 ) -> Response:
-    """`GET /` in an installation without a web app: say how to build one."""
+    """Any page in an installation without a web app: say how to build one."""
 
     instance: api.Azathoth = request.app.state.instance
 
     return HTMLResponse(not_built_page(instance.describe()))
+
+
+def built_file(
+    path: str,
+) -> bool:
+    """Return whether one path, relative to the build, names a file the build would make."""
+
+    parts = PurePosixPath(path).parts
+
+    return parts[:1] == ("assets",) or (len(parts) == 1 and "." in parts[0])
+
+
+class WebApp(StaticFiles):
+    """The built web app: its files, and its page for every address it routes itself.
+
+    The build puts its files under `/assets/`, and a few, such as the icon,
+    at the top. Any other address, such as `/workflows/<id>` or
+    `/tools/<id>/versions/1.0.0`, is one of the web app's own pages, so it gets
+    `index.html`. A missing file, such as `/assets/gone.js`, is still 404.
+    """
+
+    async def get_response(
+        self,
+        path: str,
+        scope: Scope,
+    ) -> Response:
+        """Return the file at one path, or the web app's page for an address of its own."""
+
+        try:
+            return await super().get_response(path, scope)
+        except HTTPException as error:
+            if error.status_code != 404 or built_file(path):
+                raise
+
+            return await super().get_response("index.html", scope)
 
 
 def build_app(
@@ -128,30 +187,35 @@ def build_app(
     token: str,
     port: int,
     static_dir: Path | None = None,
+    shell: Shell | None = None,
 ) -> LocalOnly:
     """Return the editor's server for one open instance, one launch key and one port.
 
     `static_dir` is the built web app, the package's own by default. When it
-    holds no `index.html`, `/` says how to build one.
+    holds no `index.html`, every page says how to build one. `shell` is the
+    shell the editor writes commands for, this computer's by default.
     """
 
     web = STATIC_DIRECTORY if static_dir is None else static_dir
     routes: list[BaseRoute] = [
         Route("/api/instance", describe_instance, methods=["GET"]),
+        Route("/api/editor", describe_editor, methods=["GET"]),
+        *browsing_routes(),
         Route("/api/{rest:path}", no_endpoint),
         Mount(ASSETS_PATH.rstrip("/"), StaticFiles(directory=ASSETS_DIRECTORY)),
     ]
 
     if (web / "index.html").is_file():
-        routes.append(Mount("/", StaticFiles(directory=web, html=True)))
+        routes.append(Mount("/", WebApp(directory=web, html=True)))
     else:
-        routes.append(Route("/", not_built, methods=["GET"]))
+        routes.append(Route("/{path:path}", not_built, methods=["GET"]))
 
     app = Starlette(
         routes=routes,
         exception_handlers={api.ApiError: api_error, HTTPException: http_error},
     )
     app.state.instance = instance
+    app.state.shell = local_shell() if shell is None else shell
 
     return LocalOnly(app, token=token, port=port)
 
@@ -161,6 +225,7 @@ __all__ = [
     "ERROR_STATUSES",
     "HTTP_ERROR_CODES",
     "STATIC_DIRECTORY",
+    "WebApp",
     "build_app",
     "error_status",
 ]

@@ -7,13 +7,17 @@ import pytest
 from azathoth import api
 from starlette.testclient import TestClient
 
+from azathoth_ui import __version__
 from azathoth_ui.app import ASSETS_DIRECTORY, build_app, error_status
+from azathoth_ui.commands import command_prefix, local_shell
 
 PORT = 8124
 
 TOKEN = "app-test-key"
 
 ORIGIN = f"http://127.0.0.1:{PORT}"
+
+UUID_TEXT = "a1000000-0000-4000-8000-000000000001"
 
 
 @pytest.fixture
@@ -155,6 +159,65 @@ def test_a_web_build_is_served(
     assert client.get("/").text == "<!doctype html><title>app</title>"
     assert client.get("/assets/app.js").text == "export {};\n"
     assert client.get("/assets/missing.js").status_code == 404
+
+
+def test_the_web_apps_own_addresses_open_the_web_app(
+    instance: api.Azathoth,
+    tmp_path: Path,
+) -> None:
+    client = browser(instance, built(tmp_path / "web"))
+
+    for path in ("/workflows", f"/workflows/{UUID_TEXT}", "/tools/x/versions/1.0.0"):
+        response = client.get(path)
+
+        assert response.status_code == 200, path
+        assert response.text == "<!doctype html><title>app</title>"
+
+    assert client.get("/favicon.ico").status_code == 404
+    assert client.get("/assets/missing.js").status_code == 404
+    assert client.get("/assets/fonts/missing").status_code == 404
+
+
+def test_without_a_web_build_any_page_says_how_to_build_one(
+    instance: api.Azathoth,
+    tmp_path: Path,
+) -> None:
+    response = browser(instance, tmp_path / "missing").get(f"/workflows/{UUID_TEXT}")
+
+    assert response.status_code == 200
+    assert "make build-web" in response.text
+
+
+def test_the_editor_says_how_to_name_its_database_in_a_command(
+    instance: api.Azathoth,
+    tmp_path: Path,
+) -> None:
+    database = str(tmp_path / "ui.db")
+
+    for shell in ("posix", "powershell"):
+        app = build_app(
+            instance, token=TOKEN, port=PORT, static_dir=tmp_path / "missing", shell=shell
+        )
+        client = TestClient(app, base_url=ORIGIN)
+        client.get(f"/?token={TOKEN}")
+        response = client.get("/api/editor")
+
+        assert response.status_code == 200
+        assert response.headers["cache-control"] == "no-store"
+        assert response.json() == {
+            "version": __version__,
+            "shell": shell,
+            "command_prefix": command_prefix(database, shell),
+        }
+
+
+def test_the_editor_uses_this_computers_shell_by_default(
+    instance: api.Azathoth,
+    tmp_path: Path,
+) -> None:
+    response = browser(instance, tmp_path / "missing").get("/api/editor")
+
+    assert response.json()["shell"] == local_shell()
 
 
 def test_the_web_build_is_not_served_without_the_key(
