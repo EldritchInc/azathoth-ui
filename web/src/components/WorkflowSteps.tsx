@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from "react";
 
-import { describeWorkflow, type StepView } from "../documents";
+import { describeWorkflow, layers, type StepView } from "../documents";
 import styles from "./WorkflowSteps.module.css";
 
 const KIND_LABELS: Record<StepView["kind"], string> = {
@@ -18,9 +18,17 @@ function Fact({ term, children }: { readonly term: string; readonly children: Re
   );
 }
 
-function Step({ step, result }: { readonly step: StepView; readonly result: string | null }) {
+function Step({
+  step,
+  result,
+  card = false,
+}: {
+  readonly step: StepView;
+  readonly result: string | null;
+  readonly card?: boolean;
+}) {
   return (
-    <li className={styles.step} data-kind={step.kind}>
+    <li className={card ? styles.card : styles.step} data-kind={step.kind}>
       <span className={styles.marker} aria-hidden="true" />
       <div className={styles.heading}>
         <h3 className={styles.title}>{step.title}</h3>
@@ -126,6 +134,7 @@ export function WorkflowSteps({
   readonly document: Readonly<Record<string, unknown>>;
 }) {
   const view = useMemo(() => describeWorkflow(document), [document]);
+  const grouped = useMemo(() => layers(view), [view]);
   const count = view.steps.length;
 
   return (
@@ -136,6 +145,7 @@ export function WorkflowSteps({
         </h2>
         <p className={styles.summary}>
           {count === 1 ? "1 step" : `${String(count)} steps`}
+          {grouped !== null && grouped.length > 1 && ` in ${String(grouped.length)} layers`}
           {view.result !== null && (
             <>
               , with <code>{view.result}</code> as the result
@@ -145,6 +155,26 @@ export function WorkflowSteps({
       </header>
       {count === 0 ? (
         <p className={styles.summary}>This workflow has no steps the editor can read.</p>
+      ) : grouped !== null ? (
+        <ol className={styles.layers}>
+          {grouped.map((layer, index) => (
+            <li
+              key={layer.map((step) => step.id).join(" ")}
+              className={styles.layer}
+              aria-label={
+                layer.length > 1
+                  ? `Layer ${String(index + 1)}: ${String(layer.length)} steps that can run at once`
+                  : `Layer ${String(index + 1)}`
+              }
+            >
+              <ol className={styles.row}>
+                {layer.map((step) => (
+                  <Step key={step.id} step={step} result={view.result} card />
+                ))}
+              </ol>
+            </li>
+          ))}
+        </ol>
       ) : (
         <ol className={styles.steps}>
           {view.steps.map((step, index) => (

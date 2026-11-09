@@ -5,7 +5,9 @@ built into it. Both are static HTML under the strict policy of ADR 0001: no
 script, no inline style, one stylesheet from the server itself.
 """
 
+import re
 from html import escape
+from pathlib import Path
 from typing import Final
 
 from azathoth import api
@@ -19,16 +21,30 @@ ASSETS_PATH: Final = "/_/"
 BUILD_COMMAND: Final = "make build-web"
 """How a checkout of the editor builds its web app into the package."""
 
-MARK: Final = """\
-<svg viewBox="-50 -50 100 100" aria-hidden="true" focusable="false">
-<g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round">
-<ellipse rx="44" ry="17" transform="rotate(-28)"/>
-<ellipse rx="44" ry="17" transform="rotate(32)"/>
-</g>
-<circle r="10" class="nucleus"/>
-<circle cx="38" cy="-9" r="6" class="piper" transform="rotate(-28)"/>
-</svg>"""
-"""The editor's mark: a still centre with its pipers circling it."""
+LOGO_FILE: Final = Path(__file__).parent / "assets" / "logo.svg"
+"""The Eldritch, Inc. logo, in the text's colour."""
+
+LOGO_VIEW_BOX: Final = "0 0 407.758 407.678"
+
+LOGO_TRANSFORM: Final = "translate(-114.737 -108.016)"
+
+
+def logo_path() -> str:
+    """Return the outline the Eldritch, Inc. logo is drawn with."""
+
+    matched = re.search(r'\sd="([^"]+)"', LOGO_FILE.read_text(encoding="utf-8"))
+
+    if matched is None:
+        raise RuntimeError(f"{LOGO_FILE} draws no outline.")
+
+    return matched.group(1)
+
+
+MARK: Final = (
+    f'<svg viewBox="{LOGO_VIEW_BOX}" aria-hidden="true" focusable="false">'
+    f'<path transform="{LOGO_TRANSFORM}" fill="currentColor" d="{logo_path()}"/></svg>'
+)
+"""The Eldritch, Inc. logo, inline, so that it takes the page's colours."""
 
 ORBITS: Final = """\
 <svg class="orbits" viewBox="-100 -100 200 200" aria-hidden="true" focusable="false">
@@ -111,9 +127,13 @@ def not_built_page(
 __all__ = [
     "ASSETS_PATH",
     "BUILD_COMMAND",
+    "LOGO_FILE",
+    "LOGO_TRANSFORM",
+    "LOGO_VIEW_BOX",
     "MARK",
     "ORBITS",
     "TITLE",
+    "logo_path",
     "not_built_page",
     "page",
     "sign_in_page",

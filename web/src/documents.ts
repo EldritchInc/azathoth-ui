@@ -60,6 +60,7 @@ export interface StepView {
   readonly prompt: string | null;
   readonly answers: string | null;
   readonly needs: readonly string[];
+  readonly dependsOn: readonly string[];
   readonly after: readonly string[];
   readonly inputs: readonly InputView[];
   readonly outputs: readonly string[];
@@ -197,6 +198,7 @@ export function describeWorkflow(document: Record_): WorkflowView {
         prompt,
         answers: kind === "prompt" && specification.output_format === "json" ? "JSON" : null,
         needs: kind === "prompt" ? modelNeeds(specification) : [],
+        dependsOn: texts(step.depends_on),
         after: list(step.depends_on).map(titleOf),
         inputs: list(step.inputs).map((input) => {
           const fields = record(input) ?? {};
@@ -223,6 +225,73 @@ export function describeWorkflow(document: Record_): WorkflowView {
     }),
     result: text(record(document.result)?.name),
   };
+}
+
+/**
+ * Returns a workflow's steps in layers: each step one layer after the
+ * deepest step it depends on, so a layer's steps can run at once, each layer
+ * in the document's order.
+ *
+ * Returns `null` when the steps cannot be layered: a step without an id, two
+ * with the same id, a dependency on a step that is not there, or a cycle.
+ */
+export function layers(view: WorkflowView): StepView[][] | null {
+  const byId = new Map<string, StepView>();
+
+  for (const step of view.steps) {
+    if (step.id === "" || byId.has(step.id)) {
+      return null;
+    }
+    byId.set(step.id, step);
+  }
+
+  const depths = new Map<string, number>();
+  const visiting = new Set<string>();
+
+  const depthOf = (step: StepView): number | null => {
+    const known = depths.get(step.id);
+
+    if (known !== undefined) {
+      return known;
+    }
+    if (visiting.has(step.id)) {
+      return null;
+    }
+    visiting.add(step.id);
+
+    let depth = 0;
+
+    for (const id of step.dependsOn) {
+      const dependency = byId.get(id);
+      const below = dependency === undefined ? null : depthOf(dependency);
+
+      if (below === null) {
+        return null;
+      }
+      depth = Math.max(depth, below + 1);
+    }
+
+    visiting.delete(step.id);
+    depths.set(step.id, depth);
+
+    return depth;
+  };
+
+  const grouped: StepView[][] = [];
+
+  for (const step of view.steps) {
+    const depth = depthOf(step);
+
+    if (depth === null) {
+      return null;
+    }
+    while (grouped.length <= depth) {
+      grouped.push([]);
+    }
+    grouped[depth]?.push(step);
+  }
+
+  return grouped;
 }
 
 /** One field of a tool's input or output. */

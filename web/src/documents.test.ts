@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { describeBenchmark, describeTool, describeWorkflow, preview } from "./documents";
-import { BENCHMARK_DOCUMENT, REVIEW_DOCUMENT, TOOL_DOCUMENT } from "./test/documents";
+import { describeBenchmark, describeTool, describeWorkflow, layers, preview } from "./documents";
+import {
+  BENCHMARK_DOCUMENT,
+  LAYERED_DOCUMENT,
+  REVIEW_DOCUMENT,
+  TOOL_DOCUMENT,
+} from "./test/documents";
 
 describe("describeWorkflow", () => {
   const view = describeWorkflow(REVIEW_DOCUMENT);
@@ -57,6 +62,7 @@ describe("describeWorkflow", () => {
   });
 
   it("names the steps a step runs after, and keeps an unknown one by its id", () => {
+    expect(view.steps[2]?.dependsOn).toEqual(["step-merge", "step-gone"]);
     expect(view.steps[0]?.after).toEqual([]);
     expect(view.steps[2]?.after).toEqual(["merge_reviews", "step-gone"]);
   });
@@ -82,6 +88,54 @@ describe("describeWorkflow", () => {
       ["Unnamed step", "unknown"],
       ["Unnamed step", "unknown"],
     ]);
+  });
+});
+
+describe("layers", () => {
+  function ids(document: Record<string, unknown>): string[][] | null {
+    return layers(describeWorkflow(document))?.map((layer) => layer.map((step) => step.id)) ?? null;
+  }
+
+  it("puts the steps that can run at once side by side, in the document's order", () => {
+    expect(ids(LAYERED_DOCUMENT)).toEqual([
+      ["security", "correctness", "readability"],
+      ["merge"],
+      ["summary"],
+    ]);
+  });
+
+  it("puts a step one layer after the deepest step it depends on", () => {
+    const steps = [
+      { id: "a", depends_on: [] },
+      { id: "b", depends_on: ["a"] },
+      { id: "c", depends_on: ["a", "b"] },
+      { id: "d", depends_on: ["a"] },
+    ];
+
+    expect(ids({ steps })).toEqual([["a"], ["b", "d"], ["c"]]);
+  });
+
+  it("has no layers for a workflow with no steps", () => {
+    expect(ids({ steps: [] })).toEqual([]);
+  });
+
+  it("gives up on a step that depends on one that is not there", () => {
+    expect(ids(REVIEW_DOCUMENT)).toBeNull();
+  });
+
+  it("gives up on steps that depend on each other", () => {
+    const steps = [
+      { id: "a", depends_on: ["b"] },
+      { id: "b", depends_on: ["a"] },
+    ];
+
+    expect(ids({ steps })).toBeNull();
+    expect(ids({ steps: [{ id: "a", depends_on: ["a"] }] })).toBeNull();
+  });
+
+  it("gives up on steps it cannot tell apart", () => {
+    expect(ids({ steps: [{ id: "a" }, { id: "a" }] })).toBeNull();
+    expect(ids({ steps: [{ depends_on: [] }] })).toBeNull();
   });
 });
 

@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { REVIEW_DOCUMENT } from "../test/documents";
+import { LAYERED_DOCUMENT, REVIEW_DOCUMENT } from "../test/documents";
 import { WorkflowSteps } from "./WorkflowSteps";
 
 function step(name: string): HTMLElement {
@@ -56,5 +56,50 @@ describe("WorkflowSteps", () => {
     render(<WorkflowSteps document={{}} />);
 
     expect(screen.getByText("This workflow has no steps the editor can read.")).toBeVisible();
+  });
+});
+
+describe("WorkflowSteps in layers", () => {
+  function layer(name: string): HTMLElement {
+    return screen.getByRole("listitem", { name });
+  }
+
+  function titles(element: HTMLElement): string[] {
+    return within(element)
+      .getAllByRole("heading", { level: 3 })
+      .map((heading) => heading.textContent);
+  }
+
+  it("sets the steps that can run at once side by side, layer after layer", () => {
+    render(<WorkflowSteps document={LAYERED_DOCUMENT} />);
+
+    expect(titles(layer("Layer 1: 3 steps that can run at once"))).toEqual([
+      "Security",
+      "Correctness",
+      "Readability",
+    ]);
+    expect(titles(layer("Layer 2"))).toEqual(["merge_reviews"]);
+    expect(titles(layer("Layer 3"))).toEqual(["Summary"]);
+  });
+
+  it("says how many layers there are", () => {
+    render(<WorkflowSteps document={LAYERED_DOCUMENT} />);
+
+    expect(screen.getByText(/^5 steps in 3 layers/)).toHaveTextContent(
+      "5 steps in 3 layers, with summary as the result",
+    );
+  });
+
+  it("still names what each step runs after", () => {
+    render(<WorkflowSteps document={LAYERED_DOCUMENT} />);
+
+    expect(step("merge_reviews")).toHaveTextContent("Runs afterSecurityCorrectnessReadability");
+  });
+
+  it("lists the steps in order when they cannot be layered", () => {
+    render(<WorkflowSteps document={REVIEW_DOCUMENT} />);
+
+    expect(screen.queryByRole("listitem", { name: /^Layer/ })).toBeNull();
+    expect(screen.getByText(/^3 steps, with/)).toBeVisible();
   });
 });

@@ -110,6 +110,53 @@ export const REVIEW_DOCUMENT = {
   result: { name: "summary" },
 };
 
+function reviewer(id: string, name: string) {
+  return {
+    id,
+    specification: {
+      metadata: { id: `spec-${id}`, name, version: "1.0.0" },
+      template: { text: `Review the change for ${name}.`, bindings: [] },
+      model_selection: { requirements: NO_REQUIREMENTS },
+    },
+    depends_on: [],
+    inputs: [],
+    outputs: [{ name: id, path: [] }],
+  };
+}
+
+/**
+ * A workflow whose three reviews can run at once, then a merge after all
+ * three, then a summary after the merge.
+ */
+export const LAYERED_DOCUMENT = {
+  metadata: { id: "layered", name: "layered review", version: "1.0.0" },
+  steps: [
+    reviewer("security", "Security"),
+    reviewer("correctness", "Correctness"),
+    {
+      id: "merge",
+      specification: {
+        requirement: { name: "merge_reviews", version: "1.0.0", runtime: "python" },
+      },
+      depends_on: ["security", "correctness", "readability"],
+      inputs: [],
+      outputs: [{ name: "review", path: [] }],
+    },
+    reviewer("readability", "Readability"),
+    {
+      id: "summary",
+      specification: {
+        metadata: { id: "spec-summary", name: "Summary", version: "1.0.0" },
+        prompt: { text: "Summarize." },
+      },
+      depends_on: ["merge"],
+      inputs: [],
+      outputs: [{ name: "summary", path: [] }],
+    },
+  ],
+  result: { name: "summary" },
+};
+
 /** The workflow's latest revision, as the API answers it. */
 export const WORKFLOW_DETAIL: ComponentDetail = {
   ...WORKFLOW,

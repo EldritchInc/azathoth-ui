@@ -39,3 +39,8 @@
   or drop them anywhere on a list. Each becomes its component's next revision,
   and the editor says which revision it made, whether it was identical to one
   already there, or why Azathoth refused it.
+- The Eldritch, Inc. logo replaces the orbit mark in the rail, the browser
+  tab and the server's own pages, in the theme's own colours.
+- A workflow's steps are laid out in layers: the steps that can run at once
+  side by side, and each layer after the deepest step its steps depend on. A
+  workflow that cannot be layered is listed in its document's order.
