@@ -53,11 +53,49 @@ describe("describeWorkflow", () => {
   });
 
   it("says where each input comes from", () => {
-    expect(view.steps[0]?.inputs).toEqual([{ name: "change", from: "the workflow's input" }]);
+    expect(view.steps[0]?.inputs).toEqual([
+      {
+        name: "change",
+        from: "the workflow's input",
+        source: { kind: "input", field: "input" },
+      },
+    ]);
     expect(view.steps[1]?.inputs).toEqual([
-      { name: "security", from: "Review security: security" },
-      { name: "limit", from: "the constant 10" },
-      { name: "notes", from: "the context's notes" },
+      {
+        name: "security",
+        from: "Review security: security",
+        source: { kind: "step", step: "step-review", name: "security" },
+      },
+      { name: "limit", from: "the constant 10", source: { kind: "constant", value: "10" } },
+      { name: "notes", from: "the context's notes", source: { kind: "context", name: "notes" } },
+    ]);
+  });
+
+  it("tells the sources it cannot follow from those it can", () => {
+    const inputs = describeWorkflow({
+      steps: [
+        {
+          inputs: [
+            { name: "a", source: { event_type: "workflow.input.received", field_name: "topic" } },
+            { name: "b", source: { producer_step_id: 7, name: "x" } },
+            { name: "c", source: { producer_step_id: "gone" } },
+            { name: "d", source: {} },
+            { name: "e" },
+          ],
+        },
+      ],
+    }).steps[0]?.inputs;
+
+    expect(inputs).toEqual([
+      { name: "a", from: "the workflow's topic", source: { kind: "input", field: "topic" } },
+      { name: "b", from: "an unknown source", source: { kind: "unknown" } },
+      {
+        name: "c",
+        from: "gone: its output",
+        source: { kind: "step", step: "gone", name: null },
+      },
+      { name: "d", from: "an unknown source", source: { kind: "unknown" } },
+      { name: "e", from: "an unknown source", source: { kind: "unknown" } },
     ]);
   });
 
@@ -69,7 +107,36 @@ describe("describeWorkflow", () => {
 
   it("says when a step runs only on a condition", () => {
     expect(view.steps[2]?.conditions).toEqual(["merge_reviews: has_findings is true"]);
+    expect(view.steps[2]?.when).toEqual([
+      { source: { kind: "step", step: "step-merge", name: "has_findings" }, test: "is true" },
+    ]);
     expect(view.steps[0]?.conditions).toEqual([]);
+    expect(view.steps[0]?.when).toEqual([]);
+  });
+
+  it("names an operator it does not know in words", () => {
+    const step = describeWorkflow({
+      steps: [
+        {
+          conditions: [
+            { source: { name: "score" }, operator: "greater_than", expected: 3 },
+            { source: { name: "flag" }, operator: "not_equal", expected: "no" },
+            { source: { name: "any" }, expected: [1] },
+          ],
+        },
+      ],
+    }).steps[0];
+
+    expect(step?.conditions).toEqual([
+      "the context's score greater than 3",
+      "the context's flag is not no",
+      "the context's any matches [1]",
+    ]);
+    expect(step?.when.map((condition) => condition.test)).toEqual([
+      "greater than 3",
+      "is not no",
+      "matches [1]",
+    ]);
   });
 
   it("names outputs, and how a step retries and fails", () => {
@@ -113,6 +180,29 @@ describe("layers", () => {
     ];
 
     expect(ids({ steps })).toEqual([["a"], ["b", "d"], ["c"]]);
+  });
+
+  it("puts a step after every step it reads from, named as a dependency or not", () => {
+    const steps = [
+      { id: "a", outputs: [{ name: "x" }] },
+      { id: "b", inputs: [{ name: "x", source: { producer_step_id: "a", name: "x" } }] },
+      {
+        id: "c",
+        conditions: [{ source: { producer_step_id: "b", name: "y" }, expected: true }],
+      },
+      { id: "d", inputs: [{ name: "x", source: { name: "x" } }] },
+    ];
+
+    expect(ids({ steps })).toEqual([["a", "d"], ["b"], ["c"]]);
+  });
+
+  it("gives up on a step that reads from a step that is not there", () => {
+    const steps = [{ id: "a", inputs: [{ name: "x", source: { producer_step_id: "gone" } }] }];
+
+    expect(ids({ steps })).toBeNull();
+    expect(
+      ids({ steps: [{ id: "a", conditions: [{ source: { producer_step_id: "a" } }] }] }),
+    ).toBeNull();
   });
 
   it("has no layers for a workflow with no steps", () => {

@@ -157,6 +157,89 @@ export const LAYERED_DOCUMENT = {
   result: { name: "summary" },
 };
 
+function triageStep(id: string, name: string, fields: Record<string, unknown>) {
+  return {
+    id,
+    specification: {
+      metadata: { id: `spec-${id}`, name, version: "1.0.0" },
+      prompt: { text: name },
+    },
+    depends_on: [],
+    inputs: [],
+    outputs: [],
+    conditions: [],
+    ...fields,
+  };
+}
+
+const TICKET = {
+  name: "ticket",
+  source: { event_type: "workflow.input.received", field_name: "input" },
+};
+
+function draft(kind: string, outputs: readonly string[]) {
+  return triageStep(`draft-${kind}`, `Draft ${kind} reply`, {
+    depends_on: ["classify"],
+    inputs: [TICKET, { name: "notes", source: { name: "notes" } }],
+    outputs: outputs.map((name) => ({ name, path: [] })),
+    conditions: [
+      {
+        source: { producer_step_id: "classify", name: "category" },
+        operator: "equal",
+        expected: kind,
+      },
+    ],
+  });
+}
+
+/**
+ * A workflow that classifies a ticket, drafts a reply on one of three
+ * branches beside a step that only records the triage, merges the drafts it
+ * finds in the context, and polishes the answer, which the polish writes
+ * again under the same name.
+ *
+ * The question branch also adds to the context's notes, which its sibling
+ * branches read alongside it, so they read the classifier's notes only.
+ */
+export const TRIAGE_DOCUMENT = {
+  metadata: { id: "triage", name: "triage ticket", version: "1.0.0" },
+  steps: [
+    triageStep("classify", "Classify ticket", {
+      inputs: [TICKET],
+      outputs: [
+        { name: "category", path: ["category"] },
+        { name: "notes", path: ["notes"] },
+      ],
+    }),
+    triageStep("log", "Record triage", { depends_on: ["classify"] }),
+    draft("bug", ["reply"]),
+    draft("feature", ["reply"]),
+    draft("question", ["reply", "notes"]),
+    {
+      id: "merge",
+      specification: {
+        requirement: { name: "merge_replies", version: "1.0.0", runtime: "python" },
+      },
+      depends_on: ["draft-bug", "draft-feature", "draft-question", "log"],
+      inputs: [
+        { name: "reply", source: { name: "reply" } },
+        { name: "limit", source: { value: 3 } },
+      ],
+      outputs: [{ name: "answer", path: [] }],
+      conditions: [],
+    },
+    triageStep("polish", "Polish answer", {
+      depends_on: ["merge"],
+      inputs: [
+        { name: "answer", source: { producer_step_id: "merge", name: "answer" } },
+        { name: "notes", source: { name: "notes" } },
+      ],
+      outputs: [{ name: "answer", path: [] }],
+    }),
+  ],
+  result: { name: "answer" },
+};
+
 /** The workflow's latest revision, as the API answers it. */
 export const WORKFLOW_DETAIL: ComponentDetail = {
   ...WORKFLOW,

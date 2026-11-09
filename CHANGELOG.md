@@ -42,5 +42,12 @@
 - The Eldritch, Inc. logo replaces the orbit mark in the rail, the browser
   tab and the server's own pages, in the theme's own colours.
 - A workflow's steps are laid out in layers: the steps that can run at once
-  side by side, and each layer after the deepest step its steps depend on. A
-  workflow that cannot be layered is listed in its document's order.
+  side by side, and each layer after the deepest step its steps depend on or
+  read a named step's output from. A workflow that cannot be layered is listed
+  in its document's order.
+- The web app models a workflow as a graph: its input, its steps in a column
+  per layer, and its result, with an edge for each value, condition or
+  dependency between them. A value read from the context by name comes from
+  every step in an earlier layer that produces it, or else from the
+  workflow's input; each column's rows are ordered so edges cross as little
+  as they can.
