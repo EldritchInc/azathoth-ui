@@ -110,13 +110,12 @@ describe("StepsGraph with a chosen step", () => {
     expect(within(details).getByRole("button", { name: "merge_replies" })).toBeInTheDocument();
   });
 
-  it("says which writers of a name it reads it does not wait for", () => {
+  it("says which writers of a name it reads it never reads from", () => {
     render(<StepsGraph view={triage()} selected="draft-bug" />);
 
-    expect(
-      within(inspector()).getByText(/is also written alongside it or later/),
-    ).toHaveTextContent(
-      "notes is also written alongside it or later by Draft question reply, which it does not wait for.",
+    expect(within(inspector()).getByText(/is also written by/)).toHaveTextContent(
+      "notes is also written by Draft question reply, which it does not depend on, " +
+        "so it never reads it from there.",
     );
   });
 

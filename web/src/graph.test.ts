@@ -125,7 +125,7 @@ describe("buildGraph", () => {
     expect(also.classify).toEqual([]);
   });
 
-  it("takes a name no earlier step produces from the input", () => {
+  it("draws no edge for a name no dependency declares, and notes the steps that do", () => {
     const graph = graphOf({
       steps: [
         {
@@ -145,14 +145,37 @@ describe("buildGraph", () => {
     });
 
     expect(edgesOf(graph)).toEqual([
-      `${INPUT_NODE} > a data: topic`,
-      `${INPUT_NODE} > b data: topic`,
+      `${INPUT_NODE} > a order: `,
+      `${INPUT_NODE} > b order: `,
       `${INPUT_NODE} > ${RESULT_NODE} data: nothing`,
     ]);
     expect(graph.nodes.find((node) => node.id === stepNode("a"))?.alsoProducedBy).toEqual([
       { name: "topic", steps: ["b"] },
     ]);
     expect(graph.nodes.find((node) => node.id === stepNode("b"))?.alsoProducedBy).toEqual([]);
+  });
+
+  it("reads a name only from the dependencies that declare it, however early others run", () => {
+    const graph = graphOf({
+      steps: [
+        { id: "early", outputs: [{ name: "notes" }] },
+        { id: "near", outputs: [{ name: "notes" }] },
+        { id: "late", outputs: [{ name: "notes" }], depends_on: ["near"] },
+        {
+          id: "reader",
+          depends_on: ["near", "late"],
+          inputs: [{ name: "notes", source: { name: "notes" } }],
+        },
+      ],
+    });
+
+    expect(edgesOf(graph).filter((edge) => edge.includes("> reader"))).toEqual([
+      "near > reader data: notes",
+      "late > reader data: notes",
+    ]);
+    expect(graph.nodes.find((node) => node.id === stepNode("reader"))?.alsoProducedBy).toEqual([
+      { name: "notes", steps: ["early"] },
+    ]);
   });
 
   it("draws no edge for a constant or a source it cannot follow", () => {

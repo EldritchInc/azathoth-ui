@@ -190,8 +190,7 @@ export function StepInspector({
           <ul className={styles.later}>
             {node.alsoProducedBy.map(({ name, steps }) => (
               <li key={name}>
-                <code className={styles.value}>{name}</code> is also written alongside it or later
-                by{" "}
+                <code className={styles.value}>{name}</code> is also written by{" "}
                 {steps.map((stepId, index) => {
                   const producer = titles.get(stepNode(stepId));
 
@@ -206,7 +205,7 @@ export function StepInspector({
                     </span>
                   );
                 })}
-                , which it does not wait for.
+                , which it does not depend on, so it never reads it from there.
               </li>
             ))}
           </ul>

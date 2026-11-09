@@ -48,8 +48,8 @@
 - The web app models a workflow as a graph: its input, its steps in a column
   per layer, and its result, with an edge for each value, condition or
   dependency between them. A value read from the context by name comes from
-  every step in an earlier layer that produces it, or else from the
-  workflow's input; an edge that spans columns passes each through a lane of
+  every step the reader depends on that declares it, as Azathoth resolves
+  it; an edge that spans columns passes each through a lane of
   its own, clear of the steps, and each column's rows and lanes are ordered so
   edges cross as little as they can.
 - A workflow's page draws its steps as that graph, with React Flow: the input,
@@ -63,7 +63,7 @@
   it, dims the rest, and opens its details beside the graph (below it on a
   narrow canvas): what it comes from and leads to, each a link to that step,
   the constants it reads, the writers of a name it reads that it does not
-  wait for, its model's needs, retries and prompt. The arrow keys move
+  depend on and so never reads from, its model's needs, retries and prompt. The arrow keys move
   between steps, Enter chooses the step in focus and Escape lets it go. The
   chosen step is named in the address as `?step=`, so a link opens the graph
   on it, and the outline marks it.
@@ -72,3 +72,11 @@
   node that names a few of them, and unfolded again; edges from one node
   share their lanes until they part; and a graph of more than 150 nodes
   draws only what is in view. ADR 0004 records how the graph is drawn.
+- The web app can edit a workflow document: each edit, from its name and
+  result to a step's prompt, inputs, outputs, conditions, dependencies,
+  retries and failure, returns a new document and leaves every field it does
+  not know alone. A prompt's `{variables}` bind to the inputs of their names
+  as the prompt or its inputs change; removing a step keeps what read from
+  it as near to working as it can. Edits can be undone and redone, typing in
+  one field undoing as one change, and `problems` says, step by step, what
+  Azathoth would refuse.

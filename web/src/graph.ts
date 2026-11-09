@@ -7,10 +7,12 @@
  *
  * - The workflow's input comes from the input node.
  * - An output of a named step comes from that step.
- * - A name read from the context comes from every step in an earlier layer
- *   that produces it, or from the input node when none does. Steps that
- *   produce it alongside the reader or after it are not its precursors; the
- *   reader's node keeps them, so the editor can say so.
+ * - A name read from the context comes from every step the reader depends
+ *   on that declares it, as Azathoth resolves it: the first of them, in step
+ *   order, that produced it supplies it. Steps that declare it but are not
+ *   among the reader's dependencies are never read from; the reader's node
+ *   keeps them, so the editor can say so. A name no dependency declares
+ *   draws no edge, and Azathoth refuses the workflow.
  * - A constant comes from nowhere: the step shows it.
  * - A dependency that passes no value is an order edge, and a step that waits
  *   for nothing starts from the input node.
@@ -32,7 +34,7 @@ import { layers, type SourceView, type StepView, type WorkflowView } from "./doc
 /** What a node shows: the workflow's input, a step, a folded layer, or the workflow's result. */
 export type NodeKind = "input" | "step" | "fold" | "result";
 
-/** The producers of a name a step reads that run alongside it or after it. */
+/** The steps that declare a name a step reads but are not among its dependencies. */
 export interface AlsoProduced {
   readonly name: string;
   readonly steps: readonly string[];
@@ -344,7 +346,6 @@ export function buildGraph(
     return null;
   }
 
-  const depths = new Map(grouped.flatMap((layer, depth) => layer.map((step) => [step.id, depth])));
   const producers = new Map<string, string[]>();
 
   for (const step of view.steps) {
@@ -378,7 +379,6 @@ export function buildGraph(
   const also = new Map<string, AlsoProduced[]>();
 
   for (const step of view.steps) {
-    const depth = depths.get(step.id) ?? 0;
     const later: AlsoProduced[] = [];
     const origins = (source: SourceView): string[] => {
       switch (source.kind) {
@@ -388,13 +388,13 @@ export function buildGraph(
           return [stepNode(source.step)];
         case "context": {
           const others = (producers.get(source.name) ?? []).filter((id) => id !== step.id);
-          const earlier = others.filter((id) => (depths.get(id) ?? 0) < depth);
-          const rest = others.filter((id) => !earlier.includes(id));
+          const read = others.filter((id) => step.dependsOn.includes(id));
+          const rest = others.filter((id) => !read.includes(id));
 
           if (rest.length > 0 && !later.some((each) => each.name === source.name)) {
             later.push({ name: source.name, steps: rest });
           }
-          return earlier.length > 0 ? earlier.map(stepNode) : [INPUT_NODE];
+          return read.map(stepNode);
         }
         case "constant":
         case "unknown":
