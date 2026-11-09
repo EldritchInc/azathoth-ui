@@ -1,0 +1,360 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 76rem;
+}
+
+.loading {
+  color: var(--muted);
+}
+
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  color: var(--faint);
+  font-size: 0.875rem;
+}
+
+.crumbs a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.crumbs a:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.crumbs [aria-current="page"] {
+  color: var(--ink);
+}
+
+.link {
+  color: var(--tide-strong);
+  font-weight: 600;
+}
+
+/* The toolbar stays in reach as the page scrolls. */
+
+.toolbar {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  padding: 0.55rem 0.6rem 0.55rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--raised) 90%, transparent);
+  box-shadow: 0 10px 30px -18px color-mix(in srgb, var(--ink) 45%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--tide);
+  box-shadow: 0 0 0 3px var(--tide-wash);
+}
+
+.status[data-dirty="true"] {
+  color: var(--ink);
+}
+
+.status[data-dirty="true"] .dot {
+  background: var(--amber);
+  box-shadow: 0 0 0 3px var(--amber-wash);
+  animation: breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  50% {
+    box-shadow: 0 0 0 6px var(--amber-wash);
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.actions > button {
+  border-radius: 999px;
+}
+
+.confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding-left: 0.4rem;
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.confirm button {
+  border-radius: 999px;
+}
+
+/* The workflow's name, description and version. */
+
+.identity {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.name {
+  width: 100%;
+  margin: 0 0 0.35rem -0.4rem;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: clamp(2.2rem, 4.5vw, 3.4rem);
+  font-weight: 400;
+  font-variation-settings:
+    "SOFT" 60,
+    "WONK" 1;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease;
+}
+
+.name:hover {
+  border-color: var(--line);
+}
+
+.name:focus {
+  border-color: var(--tide);
+  background: var(--raised);
+  outline: none;
+}
+
+.name::placeholder {
+  color: var(--faint);
+}
+
+.label {
+  color: var(--faint);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.description,
+.versionInput {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--raised);
+  color: var(--ink);
+  font: inherit;
+  transition: border-color 150ms ease;
+}
+
+.description {
+  max-width: 64ch;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.description:focus,
+.versionInput:focus {
+  border-color: var(--tide);
+  outline: 2px solid var(--tide-wash);
+}
+
+.version {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.versionInput {
+  width: 8rem;
+  font-family: var(--mono);
+  font-size: 0.875rem;
+}
+
+.bump {
+  padding: 0.25rem 0.6rem;
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.bump:hover {
+  border-color: var(--tide);
+  border-style: solid;
+  color: var(--tide-strong);
+}
+
+/* The steps, and what to fix beside them. */
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 17rem;
+  align-items: start;
+  gap: 2rem;
+}
+
+.main {
+  min-width: 0;
+}
+
+.aside {
+  position: sticky;
+  top: 5rem;
+}
+
+@media (max-width: 70rem) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aside {
+    position: static;
+    order: -1;
+  }
+}
+
+.problems,
+.drafts {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--amber) 35%, var(--line));
+  border-left: 3px solid var(--amber);
+  border-radius: var(--radius);
+  background: var(--amber-wash);
+}
+
+.problems[data-clear="true"] {
+  border-color: color-mix(in srgb, var(--tide) 35%, var(--line));
+  border-left-color: var(--tide);
+  background: var(--tide-wash);
+}
+
+.panelTitle {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.panelText {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.problemList {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.problemList li {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.problemStep {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 650;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--amber) 50%, transparent);
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.drafts {
+  border-color: color-mix(in srgb, var(--orbit) 25%, var(--line));
+  border-left-color: var(--orbit);
+  background: color-mix(in srgb, var(--orbit) 6%, transparent);
+}
+
+.draftList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.draftList li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.4rem 0.3rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--raised);
+}
+
+.draftLink {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.draftLink:hover {
+  color: var(--tide-strong);
+  text-decoration: underline;
+}
+
+.draftTag {
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status[data-dirty="true"] .dot {
+    animation: none;
+  }
+}

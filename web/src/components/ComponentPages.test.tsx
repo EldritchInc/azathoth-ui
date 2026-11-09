@@ -2,6 +2,7 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { App } from "../App";
+import { saveDraft } from "../drafts";
 import {
   BENCHMARK_DETAIL,
   TOOL_DETAIL,
@@ -38,6 +39,27 @@ function workflowPage(search = ""): void {
 }
 
 describe("a workflow's page", () => {
+  it("offers to edit it", async () => {
+    workflowPage();
+
+    expect(await screen.findByRole("link", { name: "Edit" })).toHaveAttribute(
+      "href",
+      `/workflows/${WORKFLOW_DETAIL.id}/edit`,
+    );
+    expect(screen.queryByText("Your unsaved edits are kept.")).toBeNull();
+  });
+
+  it("offers to go on editing it when its edits are kept", async () => {
+    saveDraft(window.localStorage, WORKFLOW_DETAIL.id, { document: {}, base: 3 });
+    workflowPage();
+
+    expect(await screen.findByRole("link", { name: "Continue editing" })).toHaveAttribute(
+      "href",
+      `/workflows/${WORKFLOW_DETAIL.id}/edit`,
+    );
+    expect(screen.getByText("Your unsaved edits are kept.")).toBeVisible();
+  });
+
   it("shows its name, description, version, revision and digest", async () => {
     workflowPage();
 

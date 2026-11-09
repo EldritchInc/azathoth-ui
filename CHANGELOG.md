@@ -80,3 +80,12 @@
   it as near to working as it can. Edits can be undone and redone, typing in
   one field undoing as one change, and `problems` says, step by step, what
   Azathoth would refuse.
+- Workflows can be edited in the web app: **Edit** on a workflow's page,
+  or **New workflow** on the list, opens `/workflows/:id/edit`, with the
+  workflow's name, description and version, its steps, and what Azathoth
+  would refuse. Edits are kept in this browser until they are saved or
+  discarded, so leaving or reloading loses nothing, and the list shows every
+  draft kept. **Save** (⌘S) imports the document into the local instance as
+  the workflow's next revision, or shows Azathoth's refusal and keeps the
+  edits; undo (⌘Z) and redo (⇧⌘Z) reach back 200 changes, and a draft
+  started from an older revision says so.

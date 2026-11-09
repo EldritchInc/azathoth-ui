@@ -1,6 +1,7 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
+import { saveDraft } from "../drafts";
 import { BENCHMARK, REVIEW_WORKFLOW, SERVER, TOOL, WORKFLOW } from "../test/instances";
 import { renderAt } from "../test/render";
 import { ComponentList } from "./ComponentList";
@@ -119,5 +120,49 @@ describe("ComponentList", () => {
 
     expect(alert).toHaveTextContent("Couldn't load tools");
     expect(alert).toHaveTextContent("It is closed.");
+  });
+});
+
+describe("ComponentList of workflows", () => {
+  it("offers a new workflow, and nothing new of other kinds", async () => {
+    renderAt(<ComponentList kind="workflows" />);
+
+    expect(await screen.findByRole("link", { name: "New workflow" })).toHaveAttribute(
+      "href",
+      "/workflows/new",
+    );
+
+    renderAt(<ComponentList kind="tools" />);
+
+    expect(await screen.findAllByRole("link", { name: "New workflow" })).toHaveLength(1);
+  });
+
+  it("lists the drafts kept in this browser, new or editing a workflow", async () => {
+    saveDraft(window.localStorage, WORKFLOW.id, {
+      document: { metadata: { name: "summarize, edited" } },
+      base: 2,
+    });
+    saveDraft(window.localStorage, "fresh", { document: { metadata: { name: "" } }, base: null });
+    renderAt(<ComponentList kind="workflows" />);
+
+    const drafts = await screen.findByRole("region", { name: "Unsaved drafts" });
+
+    expect(within(drafts).getByRole("link", { name: "summarize, edited" })).toHaveAttribute(
+      "href",
+      `/workflows/${WORKFLOW.id}/edit`,
+    );
+    expect(await within(drafts).findByText("edits to revision 2")).toBeVisible();
+    expect(within(drafts).getByRole("link", { name: "Untitled workflow" })).toHaveAttribute(
+      "href",
+      "/workflows/fresh/edit",
+    );
+    expect(within(drafts).getByText("new")).toBeVisible();
+  });
+
+  it("lists no drafts when none are kept", async () => {
+    renderAt(<ComponentList kind="workflows" />);
+
+    expect(await screen.findByRole("table")).toBeVisible();
+    expect(screen.queryByRole("region", { name: "Unsaved drafts" })).toBeNull();
   });
 });

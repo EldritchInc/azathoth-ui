@@ -1,0 +1,93 @@
+.primary,
+.quiet,
+.danger,
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  flex: none;
+  padding: 0.5rem 0.95rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-small);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    transform 80ms ease;
+}
+
+.primary {
+  background: var(--tide);
+  color: var(--on-tide);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--tide-strong);
+}
+
+.quiet {
+  border-color: var(--line);
+  background: var(--raised);
+  color: var(--ink);
+}
+
+.quiet:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ink) 25%, var(--line));
+}
+
+.danger {
+  border-color: color-mix(in srgb, var(--rose) 45%, var(--line));
+  background: var(--raised);
+  color: var(--rose);
+}
+
+.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--rose) 8%, var(--raised));
+}
+
+.icon {
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  border-color: var(--line);
+  background: var(--raised);
+  color: var(--muted);
+}
+
+.icon:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.icon svg,
+.primary svg,
+.quiet svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.primary:active:not(:disabled),
+.quiet:active:not(:disabled),
+.danger:active:not(:disabled),
+.icon:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.primary:disabled,
+.quiet:disabled,
+.danger:disabled,
+.icon:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.note {
+  color: var(--amber);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
