@@ -3,6 +3,7 @@
  */
 
 import type { ComponentDetail, Summary } from "../api/types";
+import type { JsonObject } from "../editing";
 import { BENCHMARK, TOOL, WORKFLOW } from "./instances";
 
 const NO_REQUIREMENTS = {
@@ -198,8 +199,9 @@ function draft(kind: string, outputs: readonly string[]) {
  * finds in the context, and polishes the answer, which the polish writes
  * again under the same name.
  *
- * The question branch also adds to the context's notes, which its sibling
- * branches read alongside it, so they read the classifier's notes only.
+ * The question branch also adds to the context's notes, but its sibling
+ * branches depend only on the classifier, so they read the classifier's
+ * notes alone; the polish depends on both, so it reads either.
  */
 export const TRIAGE_DOCUMENT = {
   metadata: { id: "triage", name: "triage ticket", version: "1.0.0" },
@@ -229,7 +231,7 @@ export const TRIAGE_DOCUMENT = {
       conditions: [],
     },
     triageStep("polish", "Polish answer", {
-      depends_on: ["merge"],
+      depends_on: ["merge", "classify", "draft-question"],
       inputs: [
         { name: "answer", source: { producer_step_id: "merge", name: "answer" } },
         { name: "notes", source: { name: "notes" } },
@@ -341,4 +343,81 @@ export const BENCHMARK_DETAIL: ComponentDetail = {
   command: `azathoth benchmark show ${BENCHMARK.id} --revision 1`,
   latest_number: 1,
   document: BENCHMARK_DOCUMENT,
+};
+
+/** Returns a UUID that reads as its number, for documents Azathoth would accept. */
+export function uuid(number: number): string {
+  return `00000000-0000-4000-8000-${String(number).padStart(12, "0")}`;
+}
+
+/**
+ * A workflow Azathoth accepts: a tool step that picks a ticket's text out
+ * of the workflow's input, and a prompt step that summarizes it when there
+ * is any, whose summary is the result.
+ */
+export const VALID_DOCUMENT: JsonObject = {
+  metadata: {
+    id: uuid(1),
+    name: "summarize ticket",
+    description: "Summarize a ticket's text.",
+    version: "1.0.0",
+  },
+  steps: [
+    {
+      id: uuid(11),
+      specification: { requirement: { name: "json_select", version: "1.0.0", runtime: "process" } },
+      depends_on: [],
+      inputs: [
+        { name: "value", source: { event_type: "workflow.input.received", field_name: "input" } },
+        { name: "path", source: { value: ["text"] } },
+      ],
+      outputs: [
+        { name: "text", path: ["value"] },
+        { name: "length", path: ["length"] },
+      ],
+      conditions: [],
+      retry_policy: {
+        max_attempts: 1,
+        initial_delay_seconds: 0,
+        backoff_multiplier: 1,
+        maximum_delay_seconds: null,
+      },
+      failure_policy: "fail_workflow",
+    },
+    {
+      id: uuid(12),
+      specification: {
+        metadata: {
+          id: uuid(22),
+          name: "Summarize",
+          description: "Summarize the ticket in one sentence.",
+          version: "1.0.0",
+        },
+        template: {
+          text: "Summarize this ticket in one sentence:\n\n{ticket}",
+          bindings: [{ variable_name: "ticket", input_name: "ticket" }],
+        },
+        model_selection: { requirements: { required_capabilities: [] } },
+      },
+      depends_on: [uuid(11)],
+      inputs: [{ name: "ticket", source: { producer_step_id: uuid(11), name: "text" } }],
+      outputs: [{ name: "summary", path: [] }],
+      conditions: [
+        {
+          source: { producer_step_id: uuid(11), name: "length" },
+          operator: "greater_than",
+          expected: 0,
+        },
+      ],
+      retry_policy: {
+        max_attempts: 2,
+        initial_delay_seconds: 1,
+        backoff_multiplier: 2,
+        maximum_delay_seconds: 10,
+      },
+      failure_policy: "fail_workflow",
+      message: "Summarizing",
+    },
+  ],
+  result: { producer_step_id: uuid(12), name: "summary" },
 };

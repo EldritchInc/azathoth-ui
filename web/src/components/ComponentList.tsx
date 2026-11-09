@@ -5,11 +5,13 @@ import { isBenchmarkSummary, isToolSummary, type Revision, type Summary } from "
 import { DESCRIPTIONS, detailPath, matches, type Kind } from "../kinds";
 import { useImporter } from "../importing";
 import { useList } from "../queries";
+import buttons from "./Buttons.module.css";
 import { Command } from "./Command";
 import styles from "./ComponentList.module.css";
 import { DropZone, ImportButton, ImportOutcomes } from "./Importing";
 import { Notice } from "./Notice";
 import { RelativeTime } from "./RelativeTime";
+import { DraftList } from "./WorkflowEditor";
 
 interface Column {
   readonly header: string;
@@ -169,8 +171,36 @@ export function ComponentList({ kind }: { readonly kind: Kind }) {
             <h1 className={styles.title}>{description.title}</h1>
             <p className={styles.lead}>{description.lead}</p>
           </div>
-          {total > 0 && <ImportButton kind={kind} busy={importer.busy} onFiles={importFiles} />}
+          <div className={styles.actions}>
+            {total > 0 && (
+              <ImportButton
+                kind={kind}
+                busy={importer.busy}
+                onFiles={importFiles}
+                quiet={kind === "workflows"}
+              />
+            )}
+            {kind === "workflows" && (
+              <Link className={buttons.primary} to="/workflows/new">
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  focusable="false"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                New workflow
+              </Link>
+            )}
+          </div>
         </header>
+        {kind === "workflows" && (
+          <DraftList known={new Set(list.data?.map((summary) => summary.id) ?? [])} />
+        )}
         <ImportOutcomes kind={kind} outcomes={importer.outcomes} onDismiss={importer.dismiss} />
         {total > 0 && (
           <div className={styles.toolbar}>

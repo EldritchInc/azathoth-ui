@@ -2,9 +2,11 @@ import { useId, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 
 import { describeWorkflow, layers, type StepView } from "../documents";
+import { addStep } from "../editing";
 import { buildGraph } from "../graph";
 import { isNarrow, readStepsView, saveStepsView, type StepsView } from "../stepsView";
 import { browserStorage } from "../theme";
+import { ComposingContext, type Composing } from "./composing";
 import { StepsGraph } from "./StepsGraph";
 import styles from "./WorkflowSteps.module.css";
 
@@ -208,8 +210,10 @@ function ViewSwitch({
  */
 export function WorkflowSteps({
   document,
+  composing = null,
 }: {
   readonly document: Readonly<Record<string, unknown>>;
+  readonly composing?: Composing | null;
 }) {
   const view = useMemo(() => describeWorkflow(document), [document]);
   const grouped = useMemo(() => layers(view), [view]);
@@ -262,10 +266,39 @@ export function WorkflowSteps({
         </div>
         {graph !== null && count > 0 && <ViewSwitch view={shown} onChoose={choose} />}
       </header>
+      {composing !== null && shown === "outline" && graph !== null && count > 0 && (
+        <p className={styles.note}>The outline is for reading; switch to the graph to compose.</p>
+      )}
       {count === 0 ? (
-        <p className={styles.summary}>This workflow has no steps the editor can read.</p>
+        composing === null ? (
+          <p className={styles.summary}>This workflow has no steps the editor can read.</p>
+        ) : (
+          <div className={styles.start}>
+            <p className={styles.summary}>It has no steps yet. Start with one:</p>
+            {(["prompt", "tool"] as const).map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                className={styles.startButton}
+                onClick={() => {
+                  const id = composing.newId();
+                  const specification = composing.newId();
+
+                  composing.change((current) =>
+                    addStep(current, kind, { step: id, specification }),
+                  );
+                  select(id);
+                }}
+              >
+                {kind === "prompt" ? "+ Prompt step" : "+ Tool step"}
+              </button>
+            ))}
+          </div>
+        )
       ) : shown === "graph" && graph !== null ? (
-        <StepsGraph view={view} selected={selected} onSelect={select} />
+        <ComposingContext value={composing}>
+          <StepsGraph view={view} selected={selected} onSelect={select} />
+        </ComposingContext>
       ) : grouped !== null ? (
         <ol className={styles.layers}>
           {grouped.map((layer, index) => (

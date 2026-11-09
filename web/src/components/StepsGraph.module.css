@@ -607,3 +607,48 @@
     margin-left: 0;
   }
 }
+
+/* Composing. */
+
+.problems {
+  position: absolute;
+  top: -0.55rem;
+  right: -0.55rem;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 0.3rem;
+  border: 2px solid var(--surface);
+  border-radius: 999px;
+  background: var(--rose);
+  color: var(--raised);
+  font-size: 0.6875rem;
+  font-weight: 750;
+}
+
+.step:has(.problems) {
+  overflow: visible;
+  border-color: color-mix(in srgb, var(--rose) 45%, var(--line));
+}
+
+.handle:global(.connectable) {
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--raised);
+  background: var(--tide);
+  opacity: 1;
+  cursor: crosshair;
+  transition: box-shadow 120ms ease;
+}
+
+.handle:global(.connectable):hover {
+  box-shadow: 0 0 0 4px var(--tide-wash);
+}
+
+.canvas :global(.react-flow__connection-path) {
+  stroke: var(--tide);
+  stroke-dasharray: 5 4;
+  stroke-width: 2;
+}

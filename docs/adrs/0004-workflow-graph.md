@@ -30,10 +30,12 @@ write it, and a later step may write it again.
 - **Edges follow what steps read.**
   - The workflow's input comes from the input node, and a named step's
     output from that step.
-  - A name read from the context comes from every step in an earlier layer
-    that writes it, or from the input node when none does. A step that
-    writes the name alongside the reader or after it is not a source; the
-    step's details name it as a writer it does not wait for.
+  - A name read from the context comes from every step the reader depends
+    on that declares it, as Azathoth resolves it: the first of them, in step
+    order, that produced it supplies it. A step that declares the name but
+    is not among the reader's dependencies is never read from; the step's
+    details name it. A name no dependency declares draws no edge, and
+    Azathoth refuses the workflow.
   - A constant draws no edge: the step shows it.
   - A dependency that passes no value is an order edge, and a step that
     waits for nothing starts from the input node.

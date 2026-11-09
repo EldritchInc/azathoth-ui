@@ -22,10 +22,12 @@ export function DetailPage({
   kind,
   component,
   children,
+  actions,
 }: {
   readonly kind: Kind;
   readonly component: ComponentRef;
   readonly children: (detail: ComponentDetail) => ReactNode;
+  readonly actions?: ReactNode;
 }) {
   const [search] = useSearchParams();
   const asked = parseRevision(search.get("revision"));
@@ -91,6 +93,7 @@ export function DetailPage({
         <div className={styles.titles}>
           <h1 className={styles.title}>{shown.name}</h1>
           {shown.description !== "" && <p className={styles.lead}>{shown.description}</p>}
+          {actions !== undefined && <div className={styles.actions}>{actions}</div>}
         </div>
         <div className={styles.remote} data-slot="remote-status" aria-hidden="true" />
         <dl className={styles.facts}>

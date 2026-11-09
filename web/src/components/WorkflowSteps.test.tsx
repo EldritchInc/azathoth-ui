@@ -2,8 +2,10 @@ import { fireEvent, render, screen, within, type RenderResult } from "@testing-l
 import { MemoryRouter, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { stepsOf, type JsonObject } from "../editing";
 import { NARROW_QUERY, STEPS_VIEW_KEY } from "../stepsView";
-import { LAYERED_DOCUMENT, REVIEW_DOCUMENT, TRIAGE_DOCUMENT } from "../test/documents";
+import { LAYERED_DOCUMENT, REVIEW_DOCUMENT, TRIAGE_DOCUMENT, uuid } from "../test/documents";
+import type { Composing, Edit } from "./composing";
 import { WorkflowSteps } from "./WorkflowSteps";
 
 const GRAPH = "The workflow's steps as a graph";
@@ -212,5 +214,61 @@ describe("WorkflowSteps as a graph or an outline", () => {
     show({});
 
     expect(screen.queryByRole("radiogroup", { name: "Show the steps as" })).toBeNull();
+  });
+});
+
+describe("WorkflowSteps while composing", () => {
+  function composing(document: JsonObject, edits: Edit[]): Composing {
+    let next = 0;
+
+    return {
+      problems: new Map(),
+      change: (edit) => {
+        edits.push(edit);
+      },
+      newId: () => {
+        next += 1;
+        return uuid(next);
+      },
+      document,
+    };
+  }
+
+  it("starts a workflow without steps with one, and chooses it", () => {
+    const edits: Edit[] = [];
+    const empty: JsonObject = { metadata: { name: "empty" }, steps: [] };
+
+    render(
+      <MemoryRouter>
+        <WorkflowSteps document={empty} composing={composing(empty, edits)} />
+        <Address />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "+ Tool step" }));
+
+    expect(
+      stepsOf(edits.reduce<JsonObject>((document, edit) => edit(document), empty)),
+    ).toMatchObject([{ id: uuid(1), specification: { requirement: { name: "" } } }]);
+    expect(screen.getByLabelText("Address")).toHaveTextContent(`?step=${uuid(1)}`);
+  });
+
+  it("says the outline is for reading while composing", () => {
+    window.localStorage.setItem(STEPS_VIEW_KEY, "outline");
+    render(
+      <MemoryRouter>
+        <WorkflowSteps document={TRIAGE_DOCUMENT} composing={composing({}, [])} />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByText("The outline is for reading; switch to the graph to compose."),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing of composing when only showing", () => {
+    window.localStorage.setItem(STEPS_VIEW_KEY, "outline");
+    show(TRIAGE_DOCUMENT);
+
+    expect(screen.queryByText(/switch to the graph to compose/)).toBeNull();
   });
 });

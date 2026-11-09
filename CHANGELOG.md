@@ -48,8 +48,8 @@
 - The web app models a workflow as a graph: its input, its steps in a column
   per layer, and its result, with an edge for each value, condition or
   dependency between them. A value read from the context by name comes from
-  every step in an earlier layer that produces it, or else from the
-  workflow's input; an edge that spans columns passes each through a lane of
+  every step the reader depends on that declares it, as Azathoth resolves
+  it; an edge that spans columns passes each through a lane of
   its own, clear of the steps, and each column's rows and lanes are ordered so
   edges cross as little as they can.
 - A workflow's page draws its steps as that graph, with React Flow: the input,
@@ -63,7 +63,7 @@
   it, dims the rest, and opens its details beside the graph (below it on a
   narrow canvas): what it comes from and leads to, each a link to that step,
   the constants it reads, the writers of a name it reads that it does not
-  wait for, its model's needs, retries and prompt. The arrow keys move
+  depend on and so never reads from, its model's needs, retries and prompt. The arrow keys move
   between steps, Enter chooses the step in focus and Escape lets it go. The
   chosen step is named in the address as `?step=`, so a link opens the graph
   on it, and the outline marks it.
@@ -72,3 +72,45 @@
   node that names a few of them, and unfolded again; edges from one node
   share their lanes until they part; and a graph of more than 150 nodes
   draws only what is in view. ADR 0004 records how the graph is drawn.
+- The web app can edit a workflow document: each edit, from its name and
+  result to a step's prompt, inputs, outputs, conditions, dependencies,
+  retries and failure, returns a new document and leaves every field it does
+  not know alone. A prompt's `{variables}` bind to the inputs of their names
+  as the prompt or its inputs change; removing a step keeps what read from
+  it as near to working as it can. Edits can be undone and redone, typing in
+  one field undoing as one change, and `problems` says, step by step, what
+  Azathoth would refuse.
+- Workflows can be edited in the web app: **Edit** on a workflow's page,
+  or **New workflow** on the list, opens `/workflows/:id/edit`, with the
+  workflow's name, description and version, its steps, and what Azathoth
+  would refuse. Edits are kept in this browser until they are saved or
+  discarded, so leaving or reloading loses nothing, and the list shows every
+  draft kept. **Save** (⌘S) imports the document into the local instance as
+  the workflow's next revision, or shows Azathoth's refusal and keeps the
+  edits; undo (⌘Z) and redo (⇧⌘Z) reach back 200 changes, and a draft
+  started from an older revision says so.
+- A workflow is composed on its graph in the editor: a bar adds a prompt or
+  tool step at the start or after the chosen step, and removes the chosen
+  step or link (Delete does too). Dragging from a step's right edge to
+  another runs the second after the first, refusing a circle, and offers to
+  pass one of the first's outputs; dragging from the input makes a step
+  read it, and to the result offers which output it is. Each step shows
+  how many things Azathoth would refuse in it, and a workflow without steps
+  starts with one.
+- While composing, the chosen step's details are a form: its name, what it
+  does and what it says as it runs; its prompt, each `{variable}` lit
+  green when an input fills it and amber when none does, with a button to
+  add that input; whether it answers in text or JSON and what its model
+  needs; for a tool step, the tool, its version and runtime, suggested from
+  the instance's tools. Every input says where it comes from: the
+  workflow's input, a step's output (reading one runs the step after it),
+  a name from a step it runs after, or a constant typed as text or JSON.
+  Outputs have their paths and can become the result; conditions, tries,
+  waits and what happens once it has failed are there too, and the step's
+  ids under Advanced. Typing in one field undoes as one change, and the
+  canvas grows while composing so the form has room.
+- The whole workflow, and each step under its details' Advanced, can be
+  edited as JSON: what reads as a JSON object changes the workflow as it is
+  typed and undoes as one change, and what does not says on which line and
+  column it stops reading, and why. The editor says when the version is
+  still the saved revision's. ADR 0005 records how workflows are composed.

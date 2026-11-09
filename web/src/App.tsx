@@ -7,6 +7,7 @@ import { BenchmarkPage, ToolPage, WorkflowPage } from "./components/ComponentPag
 import { NotFound } from "./components/NotFound";
 import { Overview } from "./components/Overview";
 import { Rail } from "./components/Rail";
+import { NewWorkflow, WorkflowEditor } from "./components/WorkflowEditor";
 import { applyTheme, browserStorage, readTheme, saveTheme, type ThemeChoice } from "./theme";
 import { useInstance } from "./useInstance";
 
@@ -31,7 +32,9 @@ export function App() {
         <Routes>
           <Route path="/" element={<Overview connection={connection} />} />
           <Route path="/workflows" element={<ComponentList kind="workflows" />} />
+          <Route path="/workflows/new" element={<NewWorkflow />} />
           <Route path="/workflows/:id" element={<WorkflowPage />} />
+          <Route path="/workflows/:id/edit" element={<WorkflowEditor />} />
           <Route path="/tools" element={<ComponentList kind="tools" />} />
           <Route path="/tools/:id/versions/:version" element={<ToolPage />} />
           <Route path="/benchmarks" element={<ComponentList kind="benchmarks" />} />

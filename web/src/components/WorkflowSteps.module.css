@@ -363,3 +363,28 @@
     gap: 0.15rem;
   }
 }
+
+.start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.5rem;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+}
+
+.startButton {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--tide) 40%, var(--line));
+  border-radius: 999px;
+  background: var(--raised);
+  color: var(--tide-strong);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.startButton:hover {
+  border-color: var(--tide);
+}
