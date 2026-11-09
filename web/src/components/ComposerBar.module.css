@@ -1,0 +1,82 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: min(36rem, 100%);
+  padding: 0.35rem 0.4rem 0.35rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--tide) 35%, var(--line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--raised) 92%, transparent);
+  box-shadow: 0 6px 22px -10px color-mix(in srgb, var(--ink) 40%, transparent);
+  backdrop-filter: blur(8px);
+  animation: arrive 200ms var(--ease-out);
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.text {
+  color: var(--ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.quiet {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.action,
+.danger,
+.value {
+  padding: 0.22rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--raised);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.action:hover {
+  border-color: var(--tide);
+  color: var(--tide-strong);
+}
+
+.danger {
+  border-color: color-mix(in srgb, var(--rose) 40%, var(--line));
+  color: var(--rose);
+}
+
+.danger:hover {
+  background: var(--rose-wash);
+}
+
+.value {
+  border-color: color-mix(in srgb, var(--tide) 35%, var(--line));
+  background: var(--tide-wash);
+  color: var(--tide-strong);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+}
+
+.value:hover {
+  border-color: var(--tide);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    animation: none;
+  }
+}

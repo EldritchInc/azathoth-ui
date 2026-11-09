@@ -15,6 +15,7 @@ import {
   useReactFlow,
   useStore,
   type EdgeProps,
+  type Connection,
   type EdgeTypes,
   type Node,
   type NodeProps,
@@ -35,6 +36,7 @@ import {
 } from "react";
 
 import { layers, type StepView, type WorkflowView } from "../documents";
+import { addInput, addStep, removeStep, setResult, type StepKind } from "../editing";
 import {
   canvasHeight,
   detailAt,
@@ -49,8 +51,17 @@ import {
   type FoldFlowNode,
   type StepFlowNode,
 } from "../flow";
-import { buildGraph, layerOfFold, wideLayers, type EdgeKind, type WorkflowGraph } from "../graph";
+import {
+  buildGraph,
+  layerOfFold,
+  stepNode,
+  wideLayers,
+  type EdgeKind,
+  type WorkflowGraph,
+} from "../graph";
 import { highlight, neighbour, nodeOfStep, stepOfNode, type Direction } from "../paths";
+import { ComposerBar } from "./ComposerBar";
+import { ComposingContext, joining, unjoining, type Offer } from "./composing";
 import { StepInspector } from "./StepInspector";
 import styles from "./StepsGraph.module.css";
 
@@ -118,6 +129,9 @@ function kindLine(step: StepView): string {
 function StepNode({ data, selected }: NodeProps<StepFlowNode>) {
   const { step, constants, result } = data;
   const detail = useStore(detailOf);
+  const composing = use(ComposingContext);
+  const editing = composing !== null;
+  const problems = composing?.problems.get(step.id) ?? [];
   const tags = [
     ...constants.map((constant) => ({
       key: `constant-${constant.name}`,
@@ -144,8 +158,16 @@ function StepNode({ data, selected }: NodeProps<StepFlowNode>) {
         className={styles.handle}
         type="target"
         position={Position.Left}
-        isConnectable={false}
+        isConnectable={editing}
       />
+      {problems.length > 0 && (
+        <span className={styles.problems} title={problems.join("\n")}>
+          {problems.length}
+          <span className="visually-hidden">
+            {problems.length === 1 ? " thing to fix" : " things to fix"}
+          </span>
+        </span>
+      )}
       <div className={styles.stepTop}>
         <Icon className={styles.kindIcon}>{ICONS[step.kind]}</Icon>
         <span className={styles.kind}>{kindLine(step)}</span>
@@ -175,7 +197,7 @@ function StepNode({ data, selected }: NodeProps<StepFlowNode>) {
         className={styles.handle}
         type="source"
         position={Position.Right}
-        isConnectable={false}
+        isConnectable={editing}
       />
     </div>
   );
@@ -183,6 +205,7 @@ function StepNode({ data, selected }: NodeProps<StepFlowNode>) {
 
 function EndNode({ data, type, selected }: NodeProps<EndFlowNode>) {
   const start = type === "start";
+  const editing = use(ComposingContext) !== null;
 
   return (
     <div className={styles.end} data-end={type} data-selected={selected ? "true" : undefined}>
@@ -191,7 +214,7 @@ function EndNode({ data, type, selected }: NodeProps<EndFlowNode>) {
           className={styles.handle}
           type="target"
           position={Position.Left}
-          isConnectable={false}
+          isConnectable={editing}
         />
       )}
       <span className={styles.endName}>{start ? "Input" : "Result"}</span>
@@ -201,7 +224,7 @@ function EndNode({ data, type, selected }: NodeProps<EndFlowNode>) {
           className={styles.handle}
           type="source"
           position={Position.Right}
-          isConnectable={false}
+          isConnectable={editing}
         />
       )}
     </div>
@@ -395,8 +418,13 @@ export function StepsGraph({
   readonly selected?: string | null;
   readonly onSelect?: (step: string | null) => void;
 }) {
+  const composing = use(ComposingContext);
+  const editing = composing !== null;
   const layered = useMemo(() => layers(view), [view]);
   const wide = useMemo(() => wideLayers(view), [view]);
+  const [chosenEdge, setChosenEdge] = useState<string | null>(null);
+  const [offer, setOffer] = useState<Offer | null>(null);
+  const [arriving, setArriving] = useState<string | null>(null);
   const [folded, setFolded] = useState<ReadonlySet<number>>(() => new Set());
   const chosenLayer =
     layered?.findIndex((layer) => layer.some((step) => step.id === selected)) ?? -1;
@@ -447,13 +475,14 @@ export function StepsGraph({
 
         return {
           ...edge,
-          selected: lit?.edges.has(edge.id) ?? false,
+          selected: edge.id === chosenEdge || (lit?.edges.has(edge.id) ?? false),
           className: dimmed ? styles.dimmed : undefined,
           data: edge.data === undefined ? undefined : { ...edge.data, dimmed },
         };
       }),
-    [edges, lit],
+    [edges, lit, chosenEdge],
   );
+  const edge = graph.edges.find((each) => each.id === chosenEdge) ?? null;
 
   useLayoutEffect(() => {
     setWidth(canvas.current?.clientWidth ?? 0);
@@ -463,6 +492,15 @@ export function StepsGraph({
     setNodes(drawnNodes);
     setEdges(drawnEdges);
   }, [drawnNodes, drawnEdges, setNodes, setEdges]);
+
+  useEffect(() => {
+    const node = graph.nodes.find((each) => each.id === arriving);
+
+    if (node !== undefined) {
+      setTarget((last) => ({ x: node.x, y: node.y, turn: (last?.turn ?? 0) + 1 }));
+      setArriving(null);
+    }
+  }, [graph, arriving]);
 
   const fold = (layer: number): void => {
     setFolded((last) => {
@@ -488,6 +526,7 @@ export function StepsGraph({
     if (id !== null && step === null) {
       return;
     }
+    setChosenEdge(null);
     onSelect?.(step);
 
     const node = graph.nodes.find((each) => each.id === id);
@@ -497,6 +536,76 @@ export function StepsGraph({
     }
   };
 
+  const chosenStep = chosen === null ? null : stepOfNode(chosen);
+
+  const add = (kind: StepKind): void => {
+    if (composing === null) {
+      return;
+    }
+
+    const id = composing.newId();
+    const specification = composing.newId();
+
+    composing.change((document) =>
+      addStep(document, kind, { step: id, specification }, chosenStep === null ? [] : [chosenStep]),
+    );
+    setArriving(stepNode(id));
+    onSelect?.(id);
+  };
+
+  const removeChosenStep = (): void => {
+    if (composing !== null && chosenStep !== null) {
+      composing.change((document) => removeStep(document, chosenStep));
+      onSelect?.(null);
+    }
+  };
+
+  const removeChosenEdge = (): void => {
+    const edit = edge === null ? null : unjoining(edge);
+
+    if (composing !== null && edit !== null) {
+      composing.change(edit);
+    }
+    setChosenEdge(null);
+  };
+
+  const join = ({ source, target }: Connection): void => {
+    const joined = composing === null ? null : joining(composing.document, source, target);
+
+    if (composing !== null && joined !== null) {
+      if (joined.edit !== null) {
+        composing.change(joined.edit);
+      }
+      setOffer(joined.offer);
+    }
+  };
+
+  const joinable = ({ source, target }: Connection | FlowEdge): boolean =>
+    composing !== null && joining(composing.document, source, target) !== null;
+
+  const pass = (output: string): void => {
+    if (composing !== null && offer?.kind === "pass") {
+      const from = stepOfNode(offer.from);
+      const to = stepOfNode(offer.to);
+
+      if (from !== null && to !== null) {
+        composing.change((document) =>
+          addInput(document, to, output, { kind: "step", step: from, name: output }),
+        );
+      }
+    }
+    setOffer(null);
+  };
+
+  const makeResult = (output: string): void => {
+    const from = offer === null ? null : stepOfNode(offer.from);
+
+    if (composing !== null && from !== null) {
+      composing.change((document) => setResult(document, { step: from, name: output }));
+    }
+    setOffer(null);
+  };
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     const focused =
       event.target instanceof HTMLElement
@@ -504,9 +613,23 @@ export function StepsGraph({
         : null;
 
     if (event.key === "Escape") {
-      if (chosen !== null) {
+      if (offer !== null || chosenEdge !== null) {
+        event.preventDefault();
+        setOffer(null);
+        setChosenEdge(null);
+      } else if (chosen !== null) {
         event.preventDefault();
         choose(null, false);
+      }
+      return;
+    }
+    if (editing && (event.key === "Delete" || event.key === "Backspace")) {
+      if (edge !== null) {
+        event.preventDefault();
+        removeChosenEdge();
+      } else if (chosenStep !== null) {
+        event.preventDefault();
+        removeChosenStep();
       }
       return;
     }
@@ -577,11 +700,20 @@ export function StepsGraph({
               }}
               onPaneClick={() => {
                 choose(null, false);
+                setOffer(null);
               }}
+              onEdgeClick={(_, clicked) => {
+                if (editing) {
+                  setChosenEdge(clicked.id);
+                  setOffer(null);
+                }
+              }}
+              onConnect={join}
+              isValidConnection={joinable}
               nodeTypes={NODE_TYPES}
               edgeTypes={EDGE_TYPES}
               nodesDraggable={false}
-              nodesConnectable={false}
+              nodesConnectable={editing}
               elementsSelectable={false}
               zoomOnScroll={false}
               panOnScroll={false}
@@ -596,8 +728,34 @@ export function StepsGraph({
             >
               <Background variant={BackgroundVariant.Dots} gap={22} size={1.3} />
               <Controls showInteractive={false} position="bottom-left" />
+              {editing && (
+                <Panel
+                  position="top-left"
+                  style={{
+                    maxWidth:
+                      beside && chosen !== null
+                        ? Math.max(0, width - BESIDE_COVERS - 32)
+                        : undefined,
+                  }}
+                >
+                  <ComposerBar
+                    graph={graph}
+                    chosen={chosen}
+                    edge={edge}
+                    offer={offer}
+                    onAdd={add}
+                    onRemoveStep={removeChosenStep}
+                    onRemoveEdge={removeChosenEdge}
+                    onPass={pass}
+                    onResult={makeResult}
+                    onDismiss={() => {
+                      setOffer(null);
+                    }}
+                  />
+                </Panel>
+              )}
               {wide.length > 0 && (
-                <Panel position="top-left" className={styles.folds}>
+                <Panel position={editing ? "bottom-center" : "top-left"} className={styles.folds}>
                   <span className={styles.foldsTitle}>Wide layers</span>
                   {wide.map((layer) => {
                     const isFolded = folded.has(layer) && layer !== chosenLayer;
@@ -656,7 +814,9 @@ export function StepsGraph({
           runs after
         </span>
         <span className={styles.hint}>
-          Choose a step for its details and paths; the arrow keys move between steps.
+          {editing
+            ? "Drag from a step's right edge to another step to run it after; Delete removes what is chosen."
+            : "Choose a step for its details and paths; the arrow keys move between steps."}
         </span>
       </figcaption>
     </figure>

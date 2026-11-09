@@ -267,6 +267,20 @@ describe("WorkflowEditor", () => {
     expect(screen.getByText("The workflow needs a description.")).toBeInTheDocument();
   });
 
+  it("composes the workflow on its graph, and undoes it", async () => {
+    open(`/workflows/${ID}/edit`);
+
+    fireEvent.click(await screen.findByRole("button", { name: "+ Prompt step" }));
+
+    expect(screen.getByRole("heading", { name: "2 things to fix" })).toBeInTheDocument();
+    expect(screen.getByText("It needs a prompt.")).toBeInTheDocument();
+    expect(status()).toHaveTextContent("Unsaved changes, kept in this browser");
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+
+    expect(screen.getByRole("heading", { name: "Ready to save" })).toBeInTheDocument();
+  });
+
   it("says when there is no workflow to edit", async () => {
     open(`/workflows/${uuid(9)}/edit`);
 

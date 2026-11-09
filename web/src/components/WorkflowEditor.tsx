@@ -29,6 +29,7 @@ import { problems, titleOf, type Problem } from "../problems";
 import { useDetail } from "../queries";
 import { browserStorage } from "../theme";
 import buttons from "./Buttons.module.css";
+import { problemsByStep, type Composing } from "./composing";
 import { Notice } from "./Notice";
 import styles from "./WorkflowEditor.module.css";
 import { WorkflowSteps } from "./WorkflowSteps";
@@ -171,6 +172,18 @@ function Editor({
   const present = history.present;
   const dirty = saved.document === null || !same(present, saved.document);
   const found = useMemo(() => problems(present), [present]);
+  const composing = useMemo<Composing>(
+    () => ({
+      problems: problemsByStep(found),
+      change: (edit) => {
+        setHistory((current) => record(current, edit(current.present)));
+        setOutcome(null);
+      },
+      newId: () => crypto.randomUUID(),
+      document: present,
+    }),
+    [found, present],
+  );
   const metadata = asObject(present.metadata);
   const name = asText(metadata.name) ?? "";
   const version = asText(metadata.version) ?? "";
@@ -469,7 +482,7 @@ function Editor({
 
       <div className={styles.body}>
         <div className={styles.main}>
-          <WorkflowSteps document={present} />
+          <WorkflowSteps document={present} composing={composing} />
         </div>
         <aside className={styles.aside}>
           <Problems found={found} document={present} />

@@ -8,9 +8,12 @@ import {
   addOutput,
   addStep,
   bumped,
+  canConnect,
   connect,
   DEFAULT_REQUIREMENTS,
   DEFAULT_RETRY,
+  disconnect,
+  disconnectInput,
   newWorkflow,
   removeCondition,
   removeDependency,
@@ -37,6 +40,7 @@ import {
   sourceOf,
   stepsOf,
   uniqueName,
+  upstreamOf,
   variablesOf,
   WORKFLOW_INPUT,
   type JsonObject,
@@ -582,5 +586,50 @@ describe("connect", () => {
       { name: "summary", source: { producer_step_id: SUMMARIZE, name: "summary" } },
       { name: "summary_2", source: { producer_step_id: PICK, name: "text" } },
     ]);
+  });
+});
+
+describe("connecting and disconnecting", () => {
+  const third = addStep(DOCUMENT, "tool", { step: uuid(13) }, [SUMMARIZE]);
+
+  it("finds every step a step runs after, directly or through others", () => {
+    expect([...upstreamOf(third, uuid(13))].sort()).toEqual([PICK, SUMMARIZE].sort());
+    expect(upstreamOf(third, PICK).size).toBe(0);
+  });
+
+  it("connects two steps only once, never a step to itself, and never in a circle", () => {
+    expect(canConnect(third, PICK, uuid(13))).toBe(true);
+    expect(canConnect(third, SUMMARIZE, uuid(13))).toBe(false);
+    expect(canConnect(third, uuid(13), uuid(13))).toBe(false);
+    expect(canConnect(third, uuid(13), PICK)).toBe(false);
+    expect(canConnect(third, uuid(99), PICK)).toBe(false);
+    expect(canConnect(third, PICK, uuid(99))).toBe(false);
+  });
+
+  it("disconnects a step from one it ran after, and what it read from it by step", () => {
+    const parted = step(disconnect(DOCUMENT, PICK, SUMMARIZE), SUMMARIZE);
+
+    expect(parted.depends_on).toEqual([]);
+    expect(parted.inputs).toEqual([]);
+    expect(parted.conditions).toEqual([]);
+    expect(asObject(parted.specification).template).toEqual({
+      text: "Summarize this ticket in one sentence:\n\n{ticket}",
+      bindings: [],
+    });
+  });
+
+  it("keeps what a disconnected step reads by name", () => {
+    const byName = setInputSource(DOCUMENT, SUMMARIZE, "ticket", { kind: "context", name: "text" });
+
+    expect(step(disconnect(byName, PICK, SUMMARIZE), SUMMARIZE).inputs).toEqual([
+      { name: "ticket", source: { name: "text" } },
+    ]);
+  });
+
+  it("stops a step reading the workflow's input, and nothing else", () => {
+    expect(step(disconnectInput(DOCUMENT, PICK), PICK).inputs).toEqual([
+      { name: "path", source: { value: ["text"] } },
+    ]);
+    expect(disconnectInput(DOCUMENT, SUMMARIZE)).toEqual(DOCUMENT);
   });
 });

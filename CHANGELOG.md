@@ -89,3 +89,11 @@
   the workflow's next revision, or shows Azathoth's refusal and keeps the
   edits; undo (⌘Z) and redo (⇧⌘Z) reach back 200 changes, and a draft
   started from an older revision says so.
+- A workflow is composed on its graph in the editor: a bar adds a prompt or
+  tool step at the start or after the chosen step, and removes the chosen
+  step or link (Delete does too). Dragging from a step's right edge to
+  another runs the second after the first, refusing a circle, and offers to
+  pass one of the first's outputs; dragging from the input makes a step
+  read it, and to the result offers which output it is. Each step shows
+  how many things Azathoth would refuse in it, and a workflow without steps
+  starts with one.

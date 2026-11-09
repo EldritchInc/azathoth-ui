@@ -802,3 +802,73 @@ export function connect(
         name: value.output,
       });
 }
+
+/** Returns the steps a step depends on, directly or through others. */
+export function upstreamOf(document: JsonObject, id: string): Set<string> {
+  const steps = new Map(stepsOf(document).map((step) => [idOf(step), step]));
+  const found = new Set<string>();
+  const waiting = [id];
+
+  for (let next = waiting.pop(); next !== undefined; next = waiting.pop()) {
+    for (const dependency of asList(steps.get(next)?.depends_on)) {
+      const name = asText(dependency);
+
+      if (name !== null && !found.has(name)) {
+        found.add(name);
+        waiting.push(name);
+      }
+    }
+  }
+  return found;
+}
+
+/**
+ * Returns whether one step can run after another: both are steps of the
+ * document, they are not one step, the second does not run after it
+ * already, and the first does not run after the second, which would make a
+ * circle.
+ */
+export function canConnect(document: JsonObject, from: string, to: string): boolean {
+  const ids = stepsOf(document).map(idOf);
+
+  return (
+    from !== to &&
+    ids.includes(from) &&
+    ids.includes(to) &&
+    !asList(stepsOf(document).find((step) => idOf(step) === to)?.depends_on).includes(from) &&
+    !upstreamOf(document, from).has(to)
+  );
+}
+
+/**
+ * Returns the document with one step no longer running after another, and
+ * no longer reading from it by step: those inputs, and the prompt bindings
+ * to them, and those conditions go. What it reads by name stays, for
+ * `problems` to point out.
+ */
+export function disconnect(document: JsonObject, from: string, to: string): JsonObject {
+  const fromIt = (value: JsonValue | undefined): boolean =>
+    asText(asObject(value).producer_step_id) === from;
+
+  return updateStep(removeDependency(document, to, from), to, (step) =>
+    bound({
+      ...step,
+      inputs: asList(step.inputs).filter((input) => !fromIt(asObject(input).source)),
+      conditions: asList(step.conditions).filter(
+        (condition) => !fromIt(asObject(condition).source),
+      ),
+    }),
+  );
+}
+
+/** Returns the document with a step no longer reading the workflow's input. */
+export function disconnectInput(document: JsonObject, id: string): JsonObject {
+  return updateStep(document, id, (step) =>
+    bound({
+      ...step,
+      inputs: asList(step.inputs).filter(
+        (input) => sourceOf(asObject(input).source)?.kind !== "input",
+      ),
+    }),
+  );
+}

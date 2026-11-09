@@ -2,7 +2,9 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { describeWorkflow, type WorkflowView } from "../documents";
-import { TRIAGE_DOCUMENT } from "../test/documents";
+import { stepsOf, type JsonObject } from "../editing";
+import { TRIAGE_DOCUMENT, uuid, VALID_DOCUMENT } from "../test/documents";
+import { ComposingContext, type Composing, type Edit } from "./composing";
 import { StepsGraph } from "./StepsGraph";
 
 function triage(): WorkflowView {
@@ -284,5 +286,98 @@ describe("StepsGraph with a wide layer", () => {
     render(<StepsGraph view={triage()} />);
 
     expect(screen.queryByText("Wide layers")).toBeNull();
+  });
+});
+
+describe("StepsGraph composing a workflow", () => {
+  const SUMMARIZE = uuid(12);
+
+  function compose(selected: string | null = null, problems = new Map<string, string[]>()) {
+    const edits: Edit[] = [];
+    const onSelect = vi.fn();
+    let next = 50;
+    const composing: Composing = {
+      problems,
+      change: (edit) => {
+        edits.push(edit);
+      },
+      newId: () => {
+        next += 1;
+        return uuid(next);
+      },
+      document: VALID_DOCUMENT,
+    };
+
+    render(
+      <ComposingContext value={composing}>
+        <StepsGraph
+          view={describeWorkflow(VALID_DOCUMENT)}
+          selected={selected}
+          onSelect={onSelect}
+        />
+      </ComposingContext>,
+    );
+
+    const applied = (): JsonObject =>
+      edits.reduce<JsonObject>((document, edit) => edit(document), VALID_DOCUMENT);
+
+    return { edits, onSelect, applied };
+  }
+
+  it("adds a step at the start, and chooses it", () => {
+    const { onSelect, applied } = compose();
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Prompt step" }));
+
+    expect(stepsOf(applied()).map((step) => step.id)).toEqual([uuid(11), SUMMARIZE, uuid(51)]);
+    expect(stepsOf(applied())[2]).toMatchObject({
+      depends_on: [],
+      specification: { metadata: { id: uuid(52) } },
+    });
+    expect(onSelect).toHaveBeenCalledWith(uuid(51));
+  });
+
+  it("adds a step after the chosen one", () => {
+    const { applied } = compose(SUMMARIZE);
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Tool step" }));
+
+    expect(stepsOf(applied())[2]).toMatchObject({
+      depends_on: [SUMMARIZE],
+      specification: { requirement: { name: "" } },
+    });
+  });
+
+  it("removes the chosen step from the bar or with Delete, and lets it go", () => {
+    const { onSelect, applied, edits } = compose(SUMMARIZE);
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove step" }));
+    fireEvent.keyDown(screen.getByLabelText("The workflow's steps as a graph"), { key: "Delete" });
+
+    expect(edits).toHaveLength(2);
+    expect(stepsOf(applied()).map((step) => step.id)).toEqual([uuid(11)]);
+    expect(onSelect.mock.calls).toEqual([[null], [null]]);
+  });
+
+  it("marks a step with what is wrong with it", () => {
+    compose(null, new Map([[SUMMARIZE, ["It needs a prompt.", "It needs a description."]]]));
+
+    const badge = within(node("Summarize")).getByText("2", { exact: false });
+
+    expect(badge).toHaveAttribute("title", "It needs a prompt.\nIt needs a description.");
+    expect(badge).toHaveTextContent("2 things to fix");
+  });
+
+  it("lets a step be joined only while composing", () => {
+    compose();
+
+    expect(node("Summarize").querySelector(".connectable")).not.toBeNull();
+  });
+
+  it("neither composes nor joins a graph that is only shown", () => {
+    render(<StepsGraph view={describeWorkflow(VALID_DOCUMENT)} />);
+
+    expect(screen.queryByRole("group", { name: "Compose" })).toBeNull();
+    expect(node("Summarize").querySelector(".connectable")).toBeNull();
   });
 });
