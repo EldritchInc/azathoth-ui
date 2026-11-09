@@ -201,6 +201,12 @@
   font-size: 0.875rem;
 }
 
+.versionHint {
+  margin: 0.1rem 0 0;
+  color: var(--amber);
+  font-size: 0.8125rem;
+}
+
 .bump {
   padding: 0.25rem 0.6rem;
   border: 1px dashed var(--line);
@@ -357,4 +363,30 @@
   .status[data-dirty="true"] .dot {
     animation: none;
   }
+}
+
+/* The document as JSON, under everything else. */
+
+.json {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+  padding: 0.9rem 1.1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--raised);
+}
+
+.json summary {
+  color: var(--ink);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.json[open] summary {
+  margin-bottom: 0.4rem;
+}
+
+.json .panelText {
+  margin: 0 0 0.6rem;
 }

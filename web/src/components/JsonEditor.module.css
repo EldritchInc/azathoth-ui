@@ -1,0 +1,58 @@
+/* A JSON object as text to edit. */
+
+.editor {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.label {
+  color: var(--faint);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.text {
+  width: 100%;
+  min-width: 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  tab-size: 2;
+  resize: vertical;
+  white-space: pre;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.text:focus {
+  border-color: var(--tide);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--tide-wash);
+}
+
+.text[aria-invalid="true"] {
+  border-color: var(--rose);
+}
+
+.text[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px var(--rose-wash);
+}
+
+.state {
+  margin: 0;
+  color: var(--faint);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.state[data-error="true"] {
+  color: var(--rose);
+  font-weight: 600;
+}

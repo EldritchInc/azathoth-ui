@@ -9,6 +9,7 @@ import {
   asObject,
   asText,
   idOf,
+  isObject,
   stepsOf,
   upstreamOf,
   type JsonObject,
@@ -158,4 +159,58 @@ export function highlightParts(prompt: string): Part[] {
   plain += prompt.slice(index);
   flush();
   return parts;
+}
+
+/** JSON as a person typed it: the object it reads as, or what is wrong with it. */
+export type Parsed =
+  | { readonly value: JsonObject; readonly error: null }
+  | { readonly value: null; readonly error: string };
+
+/** Returns the line and column, each from 1, of a place in a text. */
+export function lineAndColumn(
+  text: string,
+  position: number,
+): { readonly line: number; readonly column: number } {
+  const before = text.slice(0, position).split("\n");
+
+  return { line: before.length, column: (before.at(-1) ?? "").length + 1 };
+}
+
+/**
+ * Returns the JSON object a text reads as, or what is wrong with it: where
+ * the browser stopped reading, when it says, and why, or that it is JSON
+ * but not an object.
+ */
+export function parseObject(text: string): Parsed {
+  let value: JsonValue;
+
+  try {
+    value = JSON.parse(text) as JsonValue;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const position = /at position (\d+)/.exec(message);
+    const lineColumn = /at line (\d+) column (\d+)/.exec(message);
+    const reason = message
+      .replace(/^JSON\.parse: /, "")
+      .replace(/,? ".*" is not valid JSON$/s, "")
+      .replace(/ (in JSON )?at (position|line) .*$/s, "")
+      .replace(/ of the JSON data$/, "");
+    const where =
+      position !== null
+        ? lineAndColumn(text, Number(position[1]))
+        : lineColumn !== null
+          ? { line: Number(lineColumn[1]), column: Number(lineColumn[2]) }
+          : null;
+
+    return {
+      value: null,
+      error:
+        where === null
+          ? `${reason}.`
+          : `Line ${String(where.line)}, column ${String(where.column)}: ${reason}.`,
+    };
+  }
+  return isObject(value)
+    ? { value, error: null }
+    : { value: null, error: "It must be a JSON object, in braces." };
 }

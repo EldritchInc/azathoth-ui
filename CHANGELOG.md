@@ -109,3 +109,8 @@
   waits and what happens once it has failed are there too, and the step's
   ids under Advanced. Typing in one field undoes as one change, and the
   canvas grows while composing so the form has room.
+- The whole workflow, and each step under its details' Advanced, can be
+  edited as JSON: what reads as a JSON object changes the workflow as it is
+  typed and undoes as one change, and what does not says on which line and
+  column it stops reading, and why. The editor says when the version is
+  still the saved revision's. ADR 0005 records how workflows are composed.

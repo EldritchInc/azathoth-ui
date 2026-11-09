@@ -413,6 +413,14 @@ export function removeStep(document: JsonObject, id: string): JsonObject {
   return { ...withSteps(document, steps), result };
 }
 
+/**
+ * Returns the document with a step replaced by another as written, keeping
+ * its id and its place: what changes a step's id is the workflow's own JSON.
+ */
+export function replaceStep(document: JsonObject, id: string, step: JsonObject): JsonObject {
+  return updateStep(document, id, () => ({ ...step, id }));
+}
+
 /** Returns the document with a prompt step renamed; a tool step is named by its tool. */
 export function setStepName(document: JsonObject, id: string, name: string): JsonObject {
   return updateSpecification(document, id, (specification) =>

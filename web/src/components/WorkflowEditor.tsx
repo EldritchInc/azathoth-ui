@@ -30,6 +30,7 @@ import { useDetail } from "../queries";
 import { browserStorage } from "../theme";
 import buttons from "./Buttons.module.css";
 import { problemsByStep, type Composing } from "./composing";
+import { JsonEditor } from "./JsonEditor";
 import { Notice } from "./Notice";
 import styles from "./WorkflowEditor.module.css";
 import { WorkflowSteps } from "./WorkflowSteps";
@@ -187,6 +188,8 @@ function Editor({
   const metadata = asObject(present.metadata);
   const name = asText(metadata.name) ?? "";
   const version = asText(metadata.version) ?? "";
+  const savedVersion =
+    saved.document === null ? null : asText(asObject(saved.document.metadata).version);
   const behind =
     start.base !== null &&
     latest !== null &&
@@ -478,6 +481,12 @@ function Editor({
             );
           })}
         </div>
+        {dirty && saved.number !== null && savedVersion !== null && version === savedVersion && (
+          <p className={styles.versionHint}>
+            Still {version}, as revision {saved.number} is. Bump it when what changed matters to
+            whoever runs it.
+          </p>
+        )}
       </section>
 
       <div className={styles.body}>
@@ -488,6 +497,22 @@ function Editor({
           <Problems found={found} document={present} />
         </aside>
       </div>
+
+      <details className={styles.json}>
+        <summary>The workflow as JSON</summary>
+        <p className={styles.panelText}>
+          The document Save imports, as it stands. What reads as JSON changes the workflow as you
+          type, and undo takes it back.
+        </p>
+        <JsonEditor
+          label="The workflow's document"
+          value={present}
+          rows={24}
+          onChange={(value) => {
+            change(value, "json");
+          }}
+        />
+      </details>
     </div>
   );
 }

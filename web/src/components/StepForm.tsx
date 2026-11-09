@@ -16,6 +16,7 @@ import {
   removeOutput,
   renameInput,
   renameOutput,
+  replaceStep,
   setCondition,
   setFailurePolicy,
   setInputSource,
@@ -54,6 +55,7 @@ import { titleOf } from "../problems";
 import { useList } from "../queries";
 import styles from "./StepForm.module.css";
 import type { Composing, Edit } from "./composing";
+import { JsonEditor } from "./JsonEditor";
 
 /** What every part of the form needs: the step, its document, and a way to change it. */
 interface Editing {
@@ -1317,9 +1319,17 @@ export function StepForm({
             </>
           )}
         </dl>
+        <JsonEditor
+          label="This step as JSON"
+          value={step}
+          rows={14}
+          onChange={(value) => {
+            composing.change((current) => replaceStep(current, id, value), `${id}.json`);
+          }}
+        />
         <p className={styles.hint}>
-          Its message&apos;s values, its confidence and what its model reads and writes are in the
-          workflow&apos;s JSON.
+          What the form leaves out is here: its message&apos;s values, its confidence, and what its
+          model reads and writes. Its id stays as it is; the workflow&apos;s JSON changes it.
         </p>
       </details>
     </div>

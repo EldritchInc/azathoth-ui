@@ -204,6 +204,19 @@ describe("StepForm for a prompt step", () => {
     );
   });
 
+  it("edits the step as JSON under Advanced, keeping its id", () => {
+    const { step, groups } = open(SUMMARIZE);
+    const json = screen.getByLabelText<HTMLTextAreaElement>("This step as JSON");
+    const written = JSON.parse(json.value) as JsonObject;
+
+    expect(written).toEqual(step());
+
+    type(json, JSON.stringify({ ...written, id: uuid(98), confidence: "summary" }));
+
+    expect(step()).toMatchObject({ id: SUMMARIZE, confidence: "summary" });
+    expect(groups).toEqual([`${SUMMARIZE}.json`]);
+  });
+
   it("shows its ids under Advanced", () => {
     open(SUMMARIZE);
 

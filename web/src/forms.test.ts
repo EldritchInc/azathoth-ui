@@ -5,7 +5,9 @@ import {
   formatConstant,
   formatPath,
   highlightParts,
+  lineAndColumn,
   namesFromDependencies,
+  parseObject,
   parseConstant,
   parsePath,
   sourceChoices,
@@ -156,5 +158,44 @@ describe("highlightParts", () => {
 
   it("has no parts for no prompt", () => {
     expect(highlightParts("")).toEqual([]);
+  });
+});
+
+describe("lineAndColumn", () => {
+  it("counts lines and columns from 1", () => {
+    expect(lineAndColumn("ab\ncd", 0)).toEqual({ line: 1, column: 1 });
+    expect(lineAndColumn("ab\ncd", 4)).toEqual({ line: 2, column: 2 });
+    expect(lineAndColumn("ab\n", 3)).toEqual({ line: 2, column: 1 });
+  });
+});
+
+describe("parseObject", () => {
+  it("reads a JSON object", () => {
+    expect(parseObject('{ "a": [1, "two"] }')).toEqual({ value: { a: [1, "two"] }, error: null });
+  });
+
+  it("says on which line and column JSON stops reading, and why", () => {
+    const { value, error } = parseObject('{\n  "a": 1,\n}');
+
+    expect(value).toBeNull();
+    expect(error).toMatch(/^Line 3, column 1: \S/);
+    expect(error).not.toMatch(/position|JSON at/);
+    expect(error?.endsWith(".")).toBe(true);
+  });
+
+  it("says why when it cannot say where, without repeating the text", () => {
+    const { error } = parseObject("nonsense here");
+
+    expect(error).not.toBeNull();
+    expect(error).not.toMatch(/nonsense here/);
+  });
+
+  it("refuses JSON that is not an object", () => {
+    for (const text of ["[1]", "3", '"text"', "null"]) {
+      expect(parseObject(text)).toEqual({
+        value: null,
+        error: "It must be a JSON object, in braces.",
+      });
+    }
   });
 });

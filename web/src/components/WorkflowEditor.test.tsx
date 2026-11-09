@@ -256,6 +256,48 @@ describe("WorkflowEditor", () => {
     expect(screen.getByRole("textbox", { name: "Version" })).toHaveValue("1.1.0");
   });
 
+  it("says when the version is still the saved revision's", async () => {
+    open(`/workflows/${ID}/edit`);
+    const hint = "Still 1.0.0, as revision 3 is.";
+
+    expect(await screen.findByDisplayValue("summarize ticket")).toBe(nameField());
+    expect(screen.queryByText(hint, { exact: false })).toBeNull();
+
+    fireEvent.change(nameField(), { target: { value: "x" } });
+
+    expect(screen.getByText(hint, { exact: false })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "+ patch" }));
+
+    expect(screen.queryByText(hint, { exact: false })).toBeNull();
+  });
+
+  it("edits the whole document as JSON, undone as one change", async () => {
+    open(`/workflows/${ID}/edit`);
+    const json = await screen.findByLabelText<HTMLTextAreaElement>("The workflow's document");
+
+    expect(JSON.parse(json.value)).toEqual(VALID_DOCUMENT);
+
+    fireEvent.change(json, {
+      target: { value: JSON.stringify(setMetadata(VALID_DOCUMENT, { name: "from JSON" })) },
+    });
+    fireEvent.change(json, {
+      target: { value: JSON.stringify(setMetadata(VALID_DOCUMENT, { name: "from JSON!" })) },
+    });
+
+    expect(nameField()).toHaveValue("from JSON!");
+
+    fireEvent.change(json, { target: { value: "{" } });
+
+    expect(nameField()).toHaveValue("from JSON!");
+    expect(json).toHaveAttribute("aria-invalid", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+
+    expect(nameField()).toHaveValue("summarize ticket");
+    expect(JSON.parse(json.value)).toEqual(VALID_DOCUMENT);
+  });
+
   it("lists what Azathoth would refuse, and moves to the step it is about", async () => {
     open(`/workflows/${ID}/edit`);
 

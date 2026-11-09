@@ -477,3 +477,8 @@
   font-size: 0.72rem;
   overflow-wrap: anywhere;
 }
+
+.advanced .hint {
+  display: block;
+  margin: 0.45rem 0 0;
+}

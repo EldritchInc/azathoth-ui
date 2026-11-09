@@ -21,6 +21,7 @@ import {
   removeOutput,
   removeStep,
   renameInput,
+  replaceStep,
   renameOutput,
   setCondition,
   setFailurePolicy,
@@ -245,6 +246,14 @@ describe("adding and removing steps", () => {
     expect(summarize.inputs).toEqual([{ name: "ticket", source: { name: "text" } }]);
     expect(summarize.conditions).toEqual([]);
     expect(template(removed, SUMMARIZE)).toEqual(template(DOCUMENT, SUMMARIZE));
+  });
+
+  it("replaces a step as written, keeping its id and its place", () => {
+    const replaced = replaceStep(DOCUMENT, PICK, { id: uuid(99), confidence: "length" });
+
+    expect(stepsOf(replaced).map((each) => each.id)).toEqual([PICK, SUMMARIZE]);
+    expect(step(replaced, PICK)).toEqual({ id: PICK, confidence: "length" });
+    expect(step(replaced, SUMMARIZE)).toBe(step(DOCUMENT, SUMMARIZE));
   });
 
   it("reads the result by name once the step it came from is gone", () => {
