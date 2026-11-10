@@ -6,6 +6,7 @@
 
 import {
   QueryClient,
+  keepPreviousData,
   useMutation,
   useQueries,
   useQuery,
@@ -18,6 +19,7 @@ import {
   ApiFailure,
   addToPortfolio,
   cancelLiveRun,
+  checkWorkflow,
   fetchDetail,
   fetchEditor,
   fetchHistory,
@@ -25,8 +27,10 @@ import {
   fetchLiveRuns,
   fetchModels,
   fetchPortfolio,
+  fetchReadiness,
   fetchRun,
   fetchWorkflowRuns,
+  matchModels,
   removeFromPortfolio,
   startRun,
   type RunGiven,
@@ -36,11 +40,14 @@ import type {
   EditorDescription,
   LiveRun,
   ModelListing,
+  ModelSummary,
   PortfolioEntry,
   PortfolioRemoval,
   RunDetail,
   RunSummary,
   Summary,
+  WorkflowCheck,
+  WorkflowReadiness,
 } from "./api/types";
 import type { JsonObject } from "./editing";
 import type { WorkflowDocument } from "./selection";
@@ -64,6 +71,9 @@ export const queryKeys = {
   models: ["models"] as const,
   modelList: ["models", "list"] as const,
   portfolio: ["models", "portfolio"] as const,
+  matching: (requirements: string) => ["models", "matching", requirements] as const,
+  check: (document: string) => ["check", document] as const,
+  readiness: (document: string) => ["readiness", document] as const,
   live: ["live"] as const,
   liveList: ["live", "list"] as const,
   liveRun: (handle: string) => ["live", "run", handle] as const,
@@ -289,5 +299,56 @@ export function useRun(runId: string): UseQueryResult<RunDetail, ApiFailure> {
     queryKey: queryKeys.run(runId),
     queryFn: ({ signal }) => fetchRun(runId, { signal }),
     staleTime: Infinity,
+  });
+}
+
+/**
+ * Returns the local portfolio's models that meet a step's requirements, in
+ * the order a run tries them, as Azathoth matches them. While new
+ * requirements are asked about, the last answer stands.
+ */
+export function useMatching(
+  requirements: Readonly<Record<string, unknown>>,
+): UseQueryResult<ModelSummary[], ApiFailure> {
+  const key = JSON.stringify(requirements);
+
+  return useQuery<ModelSummary[], ApiFailure>({
+    queryKey: queryKeys.matching(key),
+    queryFn: ({ signal }) => matchModels(requirements, { signal }),
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * Returns what Azathoth makes of a workflow document, as it is written. While
+ * a changed document is asked about, the last answer stands.
+ */
+export function useWorkflowCheck(document: unknown): UseQueryResult<WorkflowCheck, ApiFailure> {
+  const key = JSON.stringify(document);
+
+  return useQuery<WorkflowCheck, ApiFailure>({
+    queryKey: queryKeys.check(key),
+    queryFn: ({ signal }) => checkWorkflow(document, { signal }),
+    placeholderData: keepPreviousData,
+    staleTime: Infinity,
+  });
+}
+
+/**
+ * Returns whether each step of a workflow document could run here now. It
+ * asks the providers, so it is asked only when `enabled`, and kept a minute.
+ */
+export function useReadiness(
+  document: unknown,
+  { enabled = true }: { readonly enabled?: boolean } = {},
+): UseQueryResult<WorkflowReadiness, ApiFailure> {
+  const key = JSON.stringify(document);
+
+  return useQuery<WorkflowReadiness, ApiFailure>({
+    queryKey: queryKeys.readiness(key),
+    queryFn: ({ signal }) => fetchReadiness(document, { signal }),
+    staleTime: 60_000,
+    enabled,
   });
 }

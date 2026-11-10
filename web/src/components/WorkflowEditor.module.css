@@ -243,6 +243,9 @@
 .aside {
   position: sticky;
   top: 5rem;
+  display: grid;
+  align-content: start;
+  gap: 0.9rem;
 }
 
 @media (max-width: 70rem) {
@@ -389,4 +392,9 @@
 
 .json .panelText {
   margin: 0 0 0.6rem;
+}
+
+.problems[data-checking="true"] {
+  opacity: 0.72;
+  transition: opacity 160ms ease;
 }

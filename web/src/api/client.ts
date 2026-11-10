@@ -16,6 +16,8 @@ import {
   isLiveRun,
   isRunDetail,
   isRunSummary,
+  isWorkflowCheck,
+  isWorkflowReadiness,
   isModelListing,
   isModelSummary,
   isPortfolioEntry,
@@ -30,6 +32,8 @@ import {
   type LiveRun,
   type RunDetail,
   type RunSummary,
+  type WorkflowCheck,
+  type WorkflowReadiness,
   type ModelListing,
   type ModelSummary,
   type PortfolioEntry,
@@ -401,4 +405,68 @@ export async function fetchRun(runId: string, options: RequestOptions = {}): Pro
   }
 
   return body;
+}
+
+/**
+ * Returns what Azathoth makes of a workflow document, saving nothing:
+ * `POST /api/workflows/check`.
+ */
+export async function checkWorkflow(
+  document: unknown,
+  options: RequestOptions = {},
+): Promise<WorkflowCheck> {
+  const body = await requestJson(
+    "/api/workflows/check",
+    { method: "POST", body: JSON.stringify(document) },
+    options,
+  );
+
+  if (!isWorkflowCheck(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/**
+ * Returns whether each step of a workflow document could run here now, as
+ * Azathoth resolves it, asking the providers: `POST /api/workflows/readiness`.
+ */
+export async function fetchReadiness(
+  document: unknown,
+  options: RequestOptions = {},
+): Promise<WorkflowReadiness> {
+  const body = await requestJson(
+    "/api/workflows/readiness",
+    { method: "POST", body: JSON.stringify(document) },
+    options,
+  );
+
+  if (!isWorkflowReadiness(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/**
+ * Returns the local portfolio's models that meet a step's requirements, in
+ * the order a run tries them, by Azathoth's own rules: `POST /api/models/matching`.
+ */
+export async function matchModels(
+  requirements: Readonly<Record<string, unknown>>,
+  options: RequestOptions = {},
+): Promise<ModelSummary[]> {
+  const body = await requestJson(
+    "/api/models/matching",
+    { method: "POST", body: JSON.stringify({ requirements }) },
+    options,
+  );
+  const items = itemsOf(body, isModelSummary);
+
+  if (items === null) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return items;
 }

@@ -21,23 +21,29 @@ import {
   newWorkflow,
   setMetadata,
   stepsOf,
+  withIds,
   type JsonObject,
   type VersionPart,
 } from "../editing";
 import { begin, record, redo, undo, type History } from "../history";
-import { problems, titleOf, type Problem } from "../problems";
-import { useDetail } from "../queries";
+import { problemsOf, titleOf, type Problem } from "../problems";
+import { useDetail, useReadiness, useWorkflowCheck } from "../queries";
 import { browserStorage } from "../theme";
+import { useDebounced } from "../useDebounced";
 import buttons from "./Buttons.module.css";
 import { problemsByStep, type Composing } from "./composing";
 import { JsonEditor } from "./JsonEditor";
 import { Notice } from "./Notice";
+import { ReadinessList } from "./Readiness";
 import styles from "./WorkflowEditor.module.css";
 import { WorkflowSteps } from "./WorkflowSteps";
 
 const MISSING_CODES = new Set(["not_found", "revision_not_found", "invalid_argument"]);
 
 const PARTS: readonly VersionPart[] = ["patch", "minor", "major"];
+
+/** How long the document stays the same before Azathoth is asked what it makes of it. */
+const CHECK_DELAY_MS = 300;
 
 /** What became of the last save: a revision made, or Azathoth's refusal. */
 type Outcome =
@@ -73,29 +79,72 @@ function Icon({ children }: { readonly children: ReactNode }) {
   );
 }
 
+/** Where asking Azathoth about the document stands. */
+interface Asking {
+  /** Whether it has not answered about the document as it now stands. */
+  readonly checking: boolean;
+  /** Why it could not be asked, when it could not. */
+  readonly failure: string | null;
+  /** Whether it has answered at all. */
+  readonly answered: boolean;
+}
+
 function Problems({
   found,
   document,
+  asking,
 }: {
   readonly found: readonly Problem[];
   readonly document: JsonObject;
+  readonly asking: Asking;
 }) {
   const [, setSearch] = useSearchParams();
   const steps = new Map(stepsOf(document).map((step) => [asText(step.id) ?? "", step]));
 
-  if (found.length === 0) {
+  if (asking.failure !== null) {
+    return (
+      <section className={styles.problems} aria-labelledby="problems-heading">
+        <h2 id="problems-heading" className={styles.panelTitle}>
+          Couldn’t ask Azathoth
+        </h2>
+        <p className={styles.panelText}>{asking.failure}</p>
+      </section>
+    );
+  }
+
+  if (!asking.answered) {
     return (
       <section className={styles.problems} data-clear="true" aria-labelledby="problems-heading">
         <h2 id="problems-heading" className={styles.panelTitle}>
+          Asking Azathoth…
+        </h2>
+        <p className={styles.panelText}>It says what it would refuse, as you write.</p>
+      </section>
+    );
+  }
+
+  if (found.length === 0) {
+    return (
+      <section
+        className={styles.problems}
+        data-clear="true"
+        data-checking={asking.checking ? "true" : undefined}
+        aria-labelledby="problems-heading"
+      >
+        <h2 id="problems-heading" className={styles.panelTitle}>
           Ready to save
         </h2>
-        <p className={styles.panelText}>The editor finds nothing Azathoth would refuse.</p>
+        <p className={styles.panelText}>Azathoth finds nothing it would refuse.</p>
       </section>
     );
   }
 
   return (
-    <section className={styles.problems} aria-labelledby="problems-heading">
+    <section
+      className={styles.problems}
+      data-checking={asking.checking ? "true" : undefined}
+      aria-labelledby="problems-heading"
+    >
       <h2 id="problems-heading" className={styles.panelTitle}>
         {found.length === 1 ? "1 thing to fix" : `${String(found.length)} things to fix`}
       </h2>
@@ -137,6 +186,64 @@ function Problems({
 }
 
 /**
+ * Whether the workflow, as it stands, could run here now, asked of Azathoth
+ * when the person asks (ADR 0007), as it asks the providers.
+ */
+function CanItRun({
+  document,
+  refused,
+}: {
+  readonly document: JsonObject;
+  /** Whether Azathoth would refuse the workflow as it stands, so can't say how it would run. */
+  readonly refused: boolean;
+}) {
+  const [asked, setAsked] = useState<JsonObject | null>(null);
+  const readiness = useReadiness(asked, { enabled: asked !== null });
+  const stale = asked !== null && asked !== document;
+
+  return (
+    <section className={styles.problems} data-clear="true" aria-labelledby="readiness-heading">
+      <h2 id="readiness-heading" className={styles.panelTitle}>
+        Can it run here?
+      </h2>
+      {asked === null ? (
+        <p className={styles.panelText}>
+          {refused
+            ? "Once nothing is left to fix, Azathoth can say which model each step would run on."
+            : "Azathoth says which model each step would run on now, or why it couldn’t."}
+        </p>
+      ) : readiness.isPending ? (
+        <p className={styles.panelText} role="status">
+          Asking your providers…
+        </p>
+      ) : readiness.isError ? (
+        <p className={styles.panelText}>Couldn’t ask: {readiness.error.message}</p>
+      ) : (
+        <>
+          <p className={styles.panelText}>
+            {readiness.data.ready
+              ? "Every step could run here now."
+              : "Some steps couldn’t run here now."}
+            {stale && " It has changed since."}
+          </p>
+          <ReadinessList readiness={readiness.data} document={asked} />
+        </>
+      )}
+      <button
+        type="button"
+        className={buttons.quiet}
+        disabled={refused || (asked !== null && readiness.isFetching)}
+        onClick={() => {
+          setAsked(document);
+        }}
+      >
+        {asked === null ? "Ask Azathoth" : "Ask again"}
+      </button>
+    </section>
+  );
+}
+
+/**
  * The editor of one workflow: its name, description and version, its steps,
  * and what Azathoth would refuse, with undo and redo. Edits are kept in this
  * browser until they are saved, which imports the document into the local
@@ -172,7 +279,17 @@ function Editor({
   const [discarding, setDiscarding] = useState(false);
   const present = history.present;
   const dirty = saved.document === null || !same(present, saved.document);
-  const found = useMemo(() => problems(present), [present]);
+  const asked = useDebounced(present, CHECK_DELAY_MS);
+  const check = useWorkflowCheck(asked);
+  const found = useMemo(
+    () => (check.data === undefined ? [] : problemsOf(check.data, asked)),
+    [check.data, asked],
+  );
+  const asking: Asking = {
+    checking: asked !== present || check.isFetching,
+    failure: check.isError ? check.error.message : null,
+    answered: check.data !== undefined,
+  };
   const composing = useMemo<Composing>(
     () => ({
       problems: problemsByStep(found),
@@ -494,7 +611,8 @@ function Editor({
           <WorkflowSteps document={present} composing={composing} />
         </div>
         <aside className={styles.aside}>
-          <Problems found={found} document={present} />
+          <Problems found={found} document={present} asking={asking} />
+          <CanItRun document={present} refused={found.length > 0 || asking.failure !== null} />
         </aside>
       </div>
 
@@ -509,7 +627,10 @@ function Editor({
           value={present}
           rows={24}
           onChange={(value) => {
-            change(value, "json");
+            change(
+              withIds(value, id, () => crypto.randomUUID()),
+              "json",
+            );
           }}
         />
       </details>

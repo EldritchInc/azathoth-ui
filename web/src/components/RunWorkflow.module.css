@@ -62,3 +62,30 @@
   align-items: center;
   gap: 0.75rem;
 }
+
+.checking {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.readiness {
+  display: grid;
+  gap: 0.7rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--tide) 35%, var(--line));
+  border-left: 3px solid var(--tide);
+  border-radius: var(--radius);
+  background: var(--tide-wash);
+}
+
+.readiness[data-ready="false"] {
+  border-color: color-mix(in srgb, var(--rose) 35%, var(--line));
+  border-left-color: var(--rose);
+  background: var(--rose-wash);
+}
+
+.readinessTitle {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  font-weight: 650;
+}

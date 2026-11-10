@@ -63,10 +63,10 @@ reaches the network, and records what changed.
 
 ## Consequences
 
-- `selection.ts` repeats rules Azathoth already has, as `problems.ts` does,
-  and can fall behind them. A core call such as
-  `models.matching(requirements)`, beside `workflows.check(document)`,
-  should become the source of truth.
+- `selection.ts` repeated rules Azathoth already has, and could fall behind
+  them. The portfolio's matches are now `models.matching(requirements)`'s
+  (ADR 0007); `selection.ts` still judges the models outside the portfolio,
+  until Azathoth can match the whole catalog.
 - The catalog can narrow by only part of a step's needs, not what a model
   writes, its longest answer or whether its prices are known, so a link from
   a step may show a few models the step would not choose.

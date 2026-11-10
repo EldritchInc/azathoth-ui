@@ -268,6 +268,42 @@ export interface LiveRun {
   readonly error: { readonly code: string; readonly message: string } | null;
 }
 
+/** One reason Azathoth would refuse a workflow document, and where it is. */
+export interface DocumentProblem {
+  readonly message: string;
+  /** The keys and indexes that lead to the value at fault; empty for the whole document. */
+  readonly location: readonly (string | number)[];
+  readonly step_id: string | null;
+}
+
+/** `POST /api/workflows/check`: whether Azathoth would import a document, and every reason not. */
+export interface WorkflowCheck {
+  readonly valid: boolean;
+  readonly problems: readonly DocumentProblem[];
+}
+
+/** How a step runs: a prompt, a prompt rendered from the context, or a tool. */
+export type StepKind = "prompt" | "context_prompt" | "tool";
+
+/** Whether one step of a document could run here now, and on what. */
+export interface StepReadiness {
+  readonly step_id: string;
+  readonly kind: StepKind;
+  readonly ready: boolean;
+  /** The models a prompt step could run on, in the order a run tries them. */
+  readonly models: readonly string[];
+  readonly tool_id: string | null;
+  readonly tool_version: string | null;
+  readonly tool_implementation_id: string | null;
+  readonly problem: string | null;
+}
+
+/** `POST /api/workflows/readiness`: whether every step of a document could run here now. */
+export interface WorkflowReadiness {
+  readonly ready: boolean;
+  readonly steps: readonly StepReadiness[];
+}
+
 /** How the server answers any error under `/api`. */
 export interface ErrorBody {
   readonly error: {
@@ -604,5 +640,51 @@ export function isRunDetail(value: unknown): value is RunDetail {
     isWholeNumber(value.resumes) &&
     Array.isArray(value.steps) &&
     value.steps.every(isRunStepDetail)
+  );
+}
+
+function isDocumentProblem(value: unknown): value is DocumentProblem {
+  return (
+    isRecord(value) &&
+    typeof value.message === "string" &&
+    Array.isArray(value.location) &&
+    value.location.every((key) => typeof key === "string" || isWholeNumber(key)) &&
+    isTextOrNull(value.step_id)
+  );
+}
+
+/** Returns whether a value is what Azathoth makes of a workflow document. */
+export function isWorkflowCheck(value: unknown): value is WorkflowCheck {
+  return (
+    isRecord(value) &&
+    typeof value.valid === "boolean" &&
+    Array.isArray(value.problems) &&
+    value.problems.every(isDocumentProblem)
+  );
+}
+
+const STEP_KINDS: readonly unknown[] = ["prompt", "context_prompt", "tool"];
+
+function isStepReadiness(value: unknown): value is StepReadiness {
+  return (
+    isRecord(value) &&
+    typeof value.step_id === "string" &&
+    STEP_KINDS.includes(value.kind) &&
+    typeof value.ready === "boolean" &&
+    isTextList(value.models) &&
+    isTextOrNull(value.tool_id) &&
+    isTextOrNull(value.tool_version) &&
+    isTextOrNull(value.tool_implementation_id) &&
+    isTextOrNull(value.problem)
+  );
+}
+
+/** Returns whether a value says whether a document could run here now. */
+export function isWorkflowReadiness(value: unknown): value is WorkflowReadiness {
+  return (
+    isRecord(value) &&
+    typeof value.ready === "boolean" &&
+    Array.isArray(value.steps) &&
+    value.steps.every(isStepReadiness)
   );
 }

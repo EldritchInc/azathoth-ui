@@ -7,13 +7,13 @@ import {
   addStep,
   asList,
   asObject,
-  setPromptText,
   setStepName,
   stepsOf,
   type JsonObject,
 } from "../editing";
-import { problems } from "../problems";
+import type { Problem } from "../problems";
 import { uuid, VALID_DOCUMENT } from "../test/documents";
+import { answering, LARGE_MODEL, SERVER, serving, urlOf } from "../test/instances";
 import { renderAt } from "../test/render";
 import { problemsByStep, type Composing } from "./composing";
 import { StepForm } from "./StepForm";
@@ -21,15 +21,38 @@ import { StepForm } from "./StepForm";
 const SELECT = uuid(11);
 const SUMMARIZE = uuid(12);
 
+/**
+ * A server that answers as the fake one does, and matches the local
+ * portfolio's one model, the large one, to requirements that ask for no
+ * capability, as Azathoth would.
+ */
+const matching: typeof fetch = (input, init) => {
+  if (urlOf(input).pathname !== "/api/models/matching") {
+    return serving(SERVER)(input, init);
+  }
+
+  const body = JSON.parse(typeof init?.body === "string" ? init.body : "{}") as {
+    readonly requirements?: { readonly required_capabilities?: readonly string[] };
+  };
+  const asked = body.requirements?.required_capabilities ?? [];
+
+  return answering(200, { items: asked.length === 0 ? [LARGE_MODEL] : [] })(input, init);
+};
+
 /** Opens one step's form on a document the form changes, recording each change's group. */
-function open(id: string, start: JsonObject = VALID_DOCUMENT) {
+function open(
+  id: string,
+  start: JsonObject = VALID_DOCUMENT,
+  found: readonly Problem[] = [],
+  fetcher: typeof fetch = matching,
+) {
   let latest = start;
   const groups: (string | null)[] = [];
 
   function Harness() {
     const [document, setDocument] = useState(start);
     const composing: Composing = {
-      problems: problemsByStep(problems(document)),
+      problems: problemsByStep(found),
       change: (edit, group) => {
         groups.push(group ?? null);
         setDocument((current) => edit(current));
@@ -42,7 +65,7 @@ function open(id: string, start: JsonObject = VALID_DOCUMENT) {
     return <StepForm composing={composing} id={id} />;
   }
 
-  renderAt(<Harness />);
+  renderAt(<Harness />, { fetcher });
 
   const step = (at = id): JsonObject => stepsOf(latest).find((each) => each.id === at) ?? {};
 
@@ -217,7 +240,7 @@ describe("StepForm for a prompt step", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "Streaming" }));
 
     expect(
-      screen.getByText(
+      await screen.findByText(
         "No model in your local portfolio meets these needs, so it can't run here yet.",
       ),
     ).toBeInTheDocument();
@@ -228,7 +251,9 @@ describe("StepForm for a prompt step", () => {
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Vision" }));
 
-    expect(screen.getByText("Nor does any model your providers serve now.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Nor does any model your providers serve now."),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /more your providers serve/ })).toBeNull();
   });
 
@@ -251,10 +276,16 @@ describe("StepForm for a prompt step", () => {
   });
 
   it("lists what is wrong with the step", () => {
-    open(SUMMARIZE, setPromptText(VALID_DOCUMENT, SUMMARIZE, ""));
+    open(SUMMARIZE, VALID_DOCUMENT, [
+      { step: SUMMARIZE, message: "Prompt › text can’t be empty." },
+      { step: SELECT, message: "Not this step's." },
+    ]);
 
     expect(screen.getByRole("list", { name: "What to fix" })).toHaveTextContent(
-      "It needs a prompt.",
+      "Prompt › text can’t be empty.",
+    );
+    expect(screen.getByRole("list", { name: "What to fix" })).not.toHaveTextContent(
+      "Not this step's.",
     );
   });
 

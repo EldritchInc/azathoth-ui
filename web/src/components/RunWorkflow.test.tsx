@@ -4,12 +4,13 @@ import { describe, expect, it } from "vitest";
 
 import { SERVER, WORKFLOW, urlOf, type Answers } from "../test/instances";
 import { renderAt } from "../test/render";
-import { LIVE_RUN, RUN_WORKFLOW } from "../test/runs";
+import { LIVE_RUN, NOT_READY, READY, RUN_WORKFLOW } from "../test/runs";
 import { RunWorkflow } from "./RunWorkflow";
 
 const ANSWERS: Answers = {
   ...SERVER,
   [`/api/workflows/${WORKFLOW.id}`]: [200, RUN_WORKFLOW],
+  "/api/workflows/readiness": [200, READY],
 };
 
 /** Opens the run page with a server that starts every run, keeping what each start sent. */
@@ -18,7 +19,7 @@ function open(answers: Answers = ANSWERS) {
   const fetcher: typeof fetch = (input, init) => {
     const path = urlOf(input).pathname;
 
-    if (init?.method === "POST" && typeof init.body === "string") {
+    if (path === "/api/live/runs" && typeof init?.body === "string") {
       sent.push(JSON.parse(init.body));
     }
 
@@ -44,8 +45,14 @@ function open(answers: Answers = ANSWERS) {
   return sent;
 }
 
-function run() {
-  fireEvent.click(screen.getByRole("button", { name: "Run" }));
+/** Runs it, once Azathoth has said it could run here. */
+async function run() {
+  const button = screen.getByRole("button", { name: "Run" });
+
+  await waitFor(() => {
+    expect(button).toBeEnabled();
+  });
+  fireEvent.click(button);
 }
 
 describe("RunWorkflow", () => {
@@ -58,7 +65,7 @@ describe("RunWorkflow", () => {
     fireEvent.change(screen.getByLabelText("The run's input, as text"), {
       target: { value: "My printer is on fire." },
     });
-    run();
+    await run();
 
     expect(await screen.findByText("The live run")).toBeVisible();
     expect(sent).toEqual([{ workflow_id: WORKFLOW.id, input: "My printer is on fire." }]);
@@ -81,7 +88,7 @@ describe("RunWorkflow", () => {
 
     expect(screen.getByText("Reads as JSON.")).toBeVisible();
 
-    run();
+    await run();
 
     await screen.findByText("The live run");
 
@@ -93,7 +100,7 @@ describe("RunWorkflow", () => {
     await screen.findByRole("heading", { level: 1, name: "Run summarize" });
 
     fireEvent.click(screen.getByRole("radio", { name: "Nothing" }));
-    run();
+    await run();
 
     await screen.findByText("The live run");
 
@@ -115,7 +122,7 @@ describe("RunWorkflow", () => {
     expect(await screen.findByText("notes.txt")).toBeVisible();
     expect(screen.getByText("text/plain · 1 KB")).toBeVisible();
 
-    run();
+    await run();
 
     await screen.findByText("The live run");
 
@@ -152,11 +159,50 @@ describe("RunWorkflow", () => {
     expect(screen.getByText("Drop a file here, or choose one")).toBeVisible();
   });
 
+  it("says on what each step would run, once Azathoth has said it could", async () => {
+    open();
+
+    expect(await screen.findByRole("heading", { name: "Ready to run here" })).toBeVisible();
+    expect(screen.getByRole("list", { name: "Each step" })).toHaveTextContent(
+      "Runs on openai/gpt-large, or 1 more if it fails.",
+    );
+  });
+
+  it("waits while Azathoth is asked, and won't run what couldn't run here", async () => {
+    open({ ...ANSWERS, "/api/workflows/readiness": [200, NOT_READY] });
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Asking Azathoth whether each step could run here…",
+    );
+    expect(screen.getByRole("button", { name: "Run" })).toBeDisabled();
+    expect(await screen.findByRole("heading", { name: "It can’t run here now" })).toBeVisible();
+    expect(screen.getByText("No model in the portfolio meets this step's needs.")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Run" })).toBeDisabled();
+  });
+
+  it("leaves the run to try when Azathoth couldn't be asked", async () => {
+    const sent = open({
+      ...ANSWERS,
+      "/api/workflows/readiness": [
+        502,
+        { error: { code: "azathoth_unavailable", message: "Azathoth isn't answering." } },
+      ],
+    });
+
+    expect(await screen.findByRole("note")).toHaveTextContent("Azathoth isn't answering.");
+
+    await run();
+
+    await screen.findByText("The live run");
+
+    expect(sent).toEqual([{ workflow_id: WORKFLOW.id, input: "" }]);
+  });
+
   it("says why a run didn't start", async () => {
-    const refusing: typeof fetch = (input, init) => {
+    const refusing: typeof fetch = (input) => {
       const path = urlOf(input).pathname;
       const [status, body] =
-        init?.method === "POST"
+        path === "/api/live/runs"
           ? [
               429,
               {
@@ -184,7 +230,7 @@ describe("RunWorkflow", () => {
     );
     await screen.findByRole("heading", { level: 1, name: "Run summarize" });
 
-    run();
+    await run();
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent("The run didn't start");

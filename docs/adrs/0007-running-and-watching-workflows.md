@@ -112,6 +112,29 @@ nothing about watching a run should depend on its running here.
   the model and what it measured, what it returned, what it added to the
   context, and every attempt that failed. A live run knows only what its
   events say until it has been kept.
+- **The editor's problems are Azathoth's.** Once the document has stayed
+  the same for 300 ms, the editor asks `POST /api/workflows/check`, and
+  `problems.ts` only words the answer: a field named as the editor names it,
+  an input or output by its name, and the commonest refusals in plain words,
+  anything else in Azathoth's own. The last answer stands, dimmed, while the
+  next is asked, and an editor that can't ask says so instead of guessing.
+- **Ids are made, never typed.** Every step, prompt and workflow id is a
+  UUID the editor makes. A document edited as JSON keeps the workflow's own
+  id, and a step whose id is missing, not a UUID, or another step's, or a
+  prompt whose id is not a UUID, is given a new one as it is typed;
+  changing a step as JSON keeps its ids.
+- **Whether a workflow could run here is asked, not guessed.** The editor's
+  "Can it run here?" asks `POST /api/workflows/readiness` when the person
+  asks, once Azathoth would take the document, and says on which model each
+  prompt step would run first, or why a step couldn't, and when the
+  document has changed since. The run page asks before it runs, and won't
+  run what couldn't run here; when it can't ask, it leaves the run to try.
+- **The models a step could use are Azathoth's answer too.** A step's
+  details list the portfolio's models that meet its needs from `POST
+  /api/models/matching`, asked once its needs have stayed the same for
+  250 ms. Only the hint of how many models outside the portfolio would meet
+  them, and a model's page listing the steps that could use it, are still
+  judged in the browser, until Azathoth can match the whole catalog.
 - **The rail points to the runs still running.** It asks which are every 2
   seconds while any is running, and every 15 while none is, and links to the
   newest.

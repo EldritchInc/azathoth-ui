@@ -1,0 +1,49 @@
+/* Whether each step of a workflow could run here now. */
+
+.list {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 1.3rem minmax(0, 1fr);
+  gap: 0.1rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+.mark {
+  display: grid;
+  grid-row: span 2;
+  place-items: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 999px;
+  background: var(--tide-wash);
+  color: var(--tide-strong);
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.step[data-ready="false"] .mark {
+  background: var(--rose-wash);
+  color: var(--rose);
+}
+
+.title {
+  color: var(--ink);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.detail {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.step[data-ready="false"] .detail {
+  color: var(--rose);
+}

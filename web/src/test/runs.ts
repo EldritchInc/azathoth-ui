@@ -11,6 +11,8 @@ import type {
   RunResult,
   RunStepDetail,
   RunSummary,
+  StepReadiness,
+  WorkflowReadiness,
 } from "../api/types";
 import { uuid, VALID_DOCUMENT, WORKFLOW_DETAIL } from "./documents";
 import { WORKFLOW } from "./instances";
@@ -131,6 +133,54 @@ export const RUN_DETAIL: RunDetail = {
       output: null,
       values: {},
       failures: [],
+    },
+  ],
+};
+
+/** The selecting step, ready to run its tool here. */
+const SELECT_READY: StepReadiness = {
+  step_id: SELECT,
+  kind: "tool",
+  ready: true,
+  models: [],
+  tool_id: uuid(31),
+  tool_version: "1.0.0",
+  tool_implementation_id: uuid(32),
+  problem: null,
+};
+
+/** The workflow could run here now: its tool here, its prompt on the large model first. */
+export const READY: WorkflowReadiness = {
+  ready: true,
+  steps: [
+    SELECT_READY,
+    {
+      step_id: SUMMARIZE,
+      kind: "prompt",
+      ready: true,
+      models: ["openai/gpt-large", "openai/gpt-small"],
+      tool_id: null,
+      tool_version: null,
+      tool_implementation_id: null,
+      problem: null,
+    },
+  ],
+};
+
+/** The workflow could not run here now: no model in the portfolio meets its prompt's needs. */
+export const NOT_READY: WorkflowReadiness = {
+  ready: false,
+  steps: [
+    SELECT_READY,
+    {
+      step_id: SUMMARIZE,
+      kind: "prompt",
+      ready: false,
+      models: [],
+      tool_id: null,
+      tool_version: null,
+      tool_implementation_id: null,
+      problem: "No model in the portfolio meets this step's needs.",
     },
   ],
 };

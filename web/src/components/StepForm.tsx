@@ -54,8 +54,9 @@ import {
 } from "../forms";
 import { titleOf } from "../problems";
 import { modelPath, nameOf, searchOf } from "../models";
-import { useList, useModels } from "../queries";
-import { choices, filterFor, meets, needsOf, type Needs } from "../selection";
+import { useList, useMatching, useModels } from "../queries";
+import { filterFor, meets, needsOf } from "../selection";
+import { useDebounced } from "../useDebounced";
 import styles from "./StepForm.module.css";
 import type { Composing, Edit } from "./composing";
 import { JsonEditor } from "./JsonEditor";
@@ -544,21 +545,35 @@ function Prompt({
 /** How many of a step's matches it names before it counts the rest. */
 const NAMED_MATCHES = 4;
 
+/** How long requirements stay the same before Azathoth is asked which models meet them. */
+const MATCHING_DELAY_MS = 250;
+
 /**
  * Which models in the local portfolio a step could choose from as its needs
- * stand, by Azathoth's rules, and how many more the providers serve, with a
- * link to the catalog filtered as near to its needs as it can be.
+ * stand, as Azathoth matches them, and how many more the providers serve,
+ * with a link to the catalog filtered as near to its needs as it can be.
  */
-function Matches({ needs }: { readonly needs: Needs }) {
+function Matches({ requirements }: { readonly requirements: JsonObject }) {
+  const asked = useDebounced(requirements, MATCHING_DELAY_MS);
+  const matched = useMatching(asked);
   const models = useModels();
 
-  if (models.data === undefined) {
+  if (matched.isError) {
+    return (
+      <p className={styles.matches} data-none="true">
+        Couldn’t ask Azathoth which models meet these needs: {matched.error.message}
+      </p>
+    );
+  }
+  if (matched.data === undefined) {
     return null;
   }
 
-  const all = models.data.items;
-  const local = choices(all, needs);
-  const elsewhere = all.filter((model) => !model.authorized && meets(model, needs)).length;
+  const needs = needsOf(requirements);
+  const local = matched.data;
+  const elsewhere = (models.data?.items ?? []).filter(
+    (model) => !model.authorized && meets(model, needs),
+  ).length;
   const query = searchOf(filterFor(needs)).toString();
   const catalog = query === "" ? "/models" : `/models?${query}`;
   const more = local.length - NAMED_MATCHES;
@@ -649,7 +664,7 @@ function Model({ editing }: { readonly editing: Editing }) {
 
   return (
     <Section title="Its model needs">
-      <Matches needs={needsOf(requirements)} />
+      <Matches requirements={requirements} />
       <fieldset className={styles.checks}>
         <legend className="visually-hidden">Capabilities</legend>
         {CAPABILITIES.map(([capability, label]) => (
@@ -1414,7 +1429,7 @@ export function StepForm({
         />
         <p className={styles.hint}>
           What the form leaves out is here: its message&apos;s values, its confidence, and what its
-          model reads and writes. Its id stays as it is; the workflow&apos;s JSON changes it.
+          model reads and writes. Its ids stay as the editor made them.
         </p>
       </details>
     </div>
