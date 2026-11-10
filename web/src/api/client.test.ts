@@ -1,18 +1,35 @@
 import { describe, expect, it } from "vitest";
 
 import { WORKFLOW_DETAIL } from "../test/documents";
-import { BENCHMARK, EDITOR, SQLITE_INSTANCE, TOOL, WORKFLOW, answering } from "../test/instances";
+import {
+  BENCHMARK,
+  EDITOR,
+  LARGE_ENTRY,
+  LARGE_MODEL,
+  LISTED_AT,
+  SMALL_MODEL,
+  SQLITE_INSTANCE,
+  TOOL,
+  WORKFLOW,
+  answering,
+} from "../test/instances";
 import {
   ApiFailure,
   INVALID_RESPONSE_MESSAGE,
   UNREACHABLE_MESSAGE,
+  addToPortfolio,
   fetchBenchmarks,
   fetchEditor,
   fetchInstance,
+  fetchModel,
+  fetchModels,
+  fetchPortfolio,
   fetchTools,
   fetchWorkflows,
   getJson,
   importDocument,
+  modelApiPath,
+  removeFromPortfolio,
 } from "./client";
 
 async function failure(promise: Promise<unknown>): Promise<ApiFailure> {
@@ -128,6 +145,120 @@ describe("fetchEditor", () => {
     const fetcher = answering(200, { ...EDITOR, shell: "fish" });
 
     expect((await failure(fetchEditor({ fetcher }))).code).toBe("invalid_response");
+  });
+
+  it("refuses a provider it does not know, or no list of them", async () => {
+    const unknown = answering(200, { ...EDITOR, providers: ["openrouter", "acme"] });
+    const missing = answering(200, { ...EDITOR, providers: "openrouter" });
+
+    expect((await failure(fetchEditor({ fetcher: unknown }))).code).toBe("invalid_response");
+    expect((await failure(fetchEditor({ fetcher: missing }))).code).toBe("invalid_response");
+  });
+});
+
+/** Returns a fetch that answers with one status and body, recording each request it gets. */
+function recording(status: number, body: unknown) {
+  const seen: { path: string; method: string; body: string | null }[] = [];
+  const fetcher: typeof fetch = (input, init) => {
+    seen.push({
+      path: input instanceof Request ? input.url : input.toString(),
+      method: init?.method ?? "GET",
+      body: typeof init?.body === "string" ? init.body : null,
+    });
+    return answering(status, body)(input, init);
+  };
+
+  return { seen, fetcher };
+}
+
+describe("the models", () => {
+  it("are listed with when the providers were asked, again when refreshed", async () => {
+    const listing = { items: [LARGE_MODEL, SMALL_MODEL], listed_at: LISTED_AT };
+    const { seen, fetcher } = recording(200, listing);
+
+    expect(await fetchModels({}, { fetcher })).toEqual(listing);
+    expect(await fetchModels({ refresh: true }, { fetcher })).toEqual(listing);
+    expect(seen.map((request) => request.path)).toEqual([
+      "/api/models",
+      "/api/models?refresh=true",
+    ]);
+  });
+
+  it("refuse a listing with a model the editor cannot show", async () => {
+    const broken = { ...LARGE_MODEL, context_window_tokens: "200K" };
+    const fetcher = answering(200, { items: [broken], listed_at: LISTED_AT });
+
+    expect((await failure(fetchModels({}, { fetcher }))).code).toBe("invalid_response");
+    expect((await failure(fetchModels({}, { fetcher: answering(200, { items: [] }) }))).code).toBe(
+      "invalid_response",
+    );
+  });
+
+  it("are found one at a time by identifier, each part encoded", async () => {
+    const { seen, fetcher } = recording(200, SMALL_MODEL);
+
+    expect(await fetchModel(SMALL_MODEL.identifier, { fetcher })).toEqual(SMALL_MODEL);
+    expect(seen[0]?.path).toBe("/api/models/openrouter/acme/small%3Afree");
+    expect(modelApiPath("bedrock/zeta.mini-v1")).toBe("/api/models/bedrock/zeta.mini-v1");
+  });
+});
+
+describe("the local portfolio", () => {
+  it("is listed", async () => {
+    const fetcher = answering(200, { items: [LARGE_ENTRY] });
+
+    expect(await fetchPortfolio({ fetcher })).toEqual([LARGE_ENTRY]);
+  });
+
+  it("gains a model by posting its identifier", async () => {
+    const { seen, fetcher } = recording(201, LARGE_ENTRY);
+
+    expect(await addToPortfolio(LARGE_MODEL.identifier, { fetcher })).toEqual(LARGE_ENTRY);
+    expect(seen).toEqual([
+      {
+        path: "/api/local/portfolio",
+        method: "POST",
+        body: JSON.stringify({ identifier: LARGE_MODEL.identifier }),
+      },
+    ]);
+  });
+
+  it("loses a model by posting its identifier, forced when asked", async () => {
+    const removal = { identifier: LARGE_MODEL.identifier, dependents: [], command: "c" };
+    const { seen, fetcher } = recording(200, removal);
+
+    expect(await removeFromPortfolio(LARGE_MODEL.identifier, {}, { fetcher })).toEqual(removal);
+    await removeFromPortfolio(LARGE_MODEL.identifier, { force: true }, { fetcher });
+
+    expect(seen.map((request) => [request.path, request.method, request.body])).toEqual([
+      [
+        "/api/local/portfolio/remove",
+        "POST",
+        JSON.stringify({ identifier: LARGE_MODEL.identifier, force: false }),
+      ],
+      [
+        "/api/local/portfolio/remove",
+        "POST",
+        JSON.stringify({ identifier: LARGE_MODEL.identifier, force: true }),
+      ],
+    ]);
+  });
+
+  it("says which workflows use a model it keeps", async () => {
+    const dependents = [
+      {
+        workflow_id: WORKFLOW.id,
+        workflow_name: "summarize",
+        steps: [{ step_id: "s", role: "primary" }],
+      },
+    ];
+    const fetcher = answering(409, {
+      error: { code: "model_in_use", message: "In use.", dependents },
+    });
+    const error = await failure(removeFromPortfolio(LARGE_MODEL.identifier, {}, { fetcher }));
+
+    expect([error.code, error.message, error.status]).toEqual(["model_in_use", "In use.", 409]);
+    expect(error.details).toEqual({ dependents });
   });
 });
 

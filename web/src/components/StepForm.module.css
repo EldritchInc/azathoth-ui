@@ -482,3 +482,46 @@
   display: block;
   margin: 0.45rem 0 0;
 }
+
+/* The models a step could choose from. */
+
+.matches {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--tide) 30%, var(--line));
+  border-radius: var(--radius-small);
+  background: color-mix(in srgb, var(--tide-wash) 60%, transparent);
+  color: var(--ink);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.matches[data-none="true"] {
+  border-color: color-mix(in srgb, var(--amber) 40%, var(--line));
+  background: var(--amber-wash);
+}
+
+.matches a {
+  color: var(--tide-strong);
+  font-weight: 600;
+  text-underline-offset: 0.2em;
+}
+
+.matchesText {
+  margin: 0;
+}
+
+.matchList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.catalogLink::after {
+  content: " →";
+}

@@ -12,3 +12,4 @@ the editor follows them, and the one it rests on is
 | [0003](0003-editor-http-api.md) | Editor HTTP API | Accepted |
 | [0004](0004-workflow-graph.md) | Workflow Graph | Accepted |
 | [0005](0005-composing-workflows.md) | Composing Workflows | Accepted |
+| [0006](0006-local-models-and-the-portfolio.md) | Local Models and the Portfolio | Accepted |

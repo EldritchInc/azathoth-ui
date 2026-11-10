@@ -1,4 +1,5 @@
 import { useId, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { Link } from "react-router";
 
 import {
   addCondition,
@@ -52,7 +53,9 @@ import {
   type Choice,
 } from "../forms";
 import { titleOf } from "../problems";
-import { useList } from "../queries";
+import { modelPath, nameOf, searchOf } from "../models";
+import { useList, useModels } from "../queries";
+import { choices, filterFor, meets, needsOf, type Needs } from "../selection";
 import styles from "./StepForm.module.css";
 import type { Composing, Edit } from "./composing";
 import { JsonEditor } from "./JsonEditor";
@@ -538,6 +541,86 @@ function Prompt({
   );
 }
 
+/** How many of a step's matches it names before it counts the rest. */
+const NAMED_MATCHES = 4;
+
+/**
+ * Which models in the local portfolio a step could choose from as its needs
+ * stand, by Azathoth's rules, and how many more the providers serve, with a
+ * link to the catalog filtered as near to its needs as it can be.
+ */
+function Matches({ needs }: { readonly needs: Needs }) {
+  const models = useModels();
+
+  if (models.data === undefined) {
+    return null;
+  }
+
+  const all = models.data.items;
+  const local = choices(all, needs);
+  const elsewhere = all.filter((model) => !model.authorized && meets(model, needs)).length;
+  const query = searchOf(filterFor(needs)).toString();
+  const catalog = query === "" ? "/models" : `/models?${query}`;
+  const more = local.length - NAMED_MATCHES;
+
+  return (
+    <div className={styles.matches} data-none={local.length === 0} aria-live="polite">
+      <p className={styles.matchesText}>
+        {local.length === 0
+          ? "No model in your local portfolio meets these needs, so it can't run here yet."
+          : local.length === 1
+            ? "1 model in your local portfolio meets these needs:"
+            : `${String(local.length)} models in your local portfolio meet these needs:`}
+      </p>
+      {local.length > 0 && (
+        <ul className={styles.matchList}>
+          {local.slice(0, NAMED_MATCHES).map((model) => (
+            <li key={model.identifier}>
+              <Link to={modelPath(model.identifier)}>{nameOf(model)}</Link>
+            </li>
+          ))}
+          {more > 0 && <li className={styles.quiet}>and {more} more</li>}
+        </ul>
+      )}
+      {elsewhere > 0 ? (
+        <Link className={styles.catalogLink} to={catalog}>
+          {elsewhere === 1
+            ? "1 more your providers serve"
+            : `${String(elsewhere)} more your providers serve`}
+        </Link>
+      ) : (
+        local.length === 0 && (
+          <span className={styles.hint}>Nor does any model your providers serve now.</span>
+        )
+      )}
+    </div>
+  );
+}
+
+/** Whether the providers serve the model a step always runs on, and the local portfolio holds it. */
+function Fixed({ identifier }: { readonly identifier: string }) {
+  const models = useModels();
+
+  if (models.data === undefined) {
+    return null;
+  }
+
+  const model = models.data.items.find((each) => each.identifier === identifier);
+
+  return model === undefined ? (
+    <p className={styles.matches} data-none="true">
+      Your providers don&apos;t serve it now.
+    </p>
+  ) : (
+    <p className={styles.matches}>
+      <Link to={modelPath(model.identifier)}>{nameOf(model)}</Link>
+      {model.authorized
+        ? " is served now, and in your local portfolio."
+        : " is served now. It isn't in your local portfolio, which a step that always runs on one model doesn't choose from."}
+    </p>
+  );
+}
+
 function Model({ editing }: { readonly editing: Editing }) {
   const { id, step, change } = editing;
   const selection = asObject(asObject(step.specification).model_selection);
@@ -553,6 +636,7 @@ function Model({ editing }: { readonly editing: Editing }) {
             ? "It names no model, nor what one needs."
             : `Always ${model}${provider === null ? "" : `, from ${provider}`}.`}
         </p>
+        {provider !== null && model !== null && <Fixed identifier={`${provider}/${model}`} />}
       </Section>
     );
   }
@@ -565,6 +649,7 @@ function Model({ editing }: { readonly editing: Editing }) {
 
   return (
     <Section title="Its model needs">
+      <Matches needs={needsOf(requirements)} />
       <fieldset className={styles.checks}>
         <legend className="visually-hidden">Capabilities</legend>
         {CAPABILITIES.map(([capability, label]) => (

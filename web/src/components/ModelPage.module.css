@@ -1,0 +1,236 @@
+/* One model: what is known of it, the local portfolio, and the steps that could run on it. */
+
+.header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
+  align-items: start;
+  gap: 1.25rem 2.5rem;
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.identifier {
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.provider {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.95em;
+}
+
+/* The local portfolio. */
+
+.panel {
+  display: grid;
+  justify-items: start;
+  gap: 0.55rem;
+  padding: 1rem 1.15rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--raised);
+}
+
+.panel[data-held="true"] {
+  border-color: color-mix(in srgb, var(--tide) 45%, var(--line));
+  background: color-mix(in srgb, var(--tide-wash) 55%, var(--raised));
+}
+
+.panelTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.panelTitle::before {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: var(--faint);
+  content: "";
+}
+
+.panel[data-held="true"] .panelTitle::before {
+  background: var(--tide);
+  box-shadow: 0 0 0 3px var(--tide-wash);
+}
+
+.panelText {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+/* What is known. */
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--line);
+}
+
+.facts > div {
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+  padding: 0.9rem 1.1rem;
+  background: var(--raised);
+}
+
+.facts .wide {
+  grid-column: span 4;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  align-items: center;
+}
+
+.facts dt {
+  color: var(--faint);
+  font-size: 0.8125rem;
+}
+
+.facts dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.facts .wide dd {
+  font-size: 1rem;
+}
+
+.unknown {
+  color: var(--faint);
+  font-size: 1rem;
+  font-style: italic;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tags li {
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+/* The steps that could run on it. */
+
+.uses {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.heading {
+  font-family: var(--display);
+  font-size: 1.5rem;
+  font-weight: 400;
+}
+
+.quiet {
+  max-width: 64ch;
+  margin: 0;
+  color: var(--muted);
+}
+
+.workflows {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workflows > li {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--raised);
+}
+
+.workflow {
+  color: var(--ink);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.workflow:hover,
+.steps a:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.steps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.875rem;
+}
+
+.steps a {
+  color: var(--tide-strong);
+  text-decoration: none;
+}
+
+.always {
+  color: var(--amber);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+@media (max-width: 56rem) {
+  .header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .facts .wide {
+    grid-column: span 2;
+  }
+}

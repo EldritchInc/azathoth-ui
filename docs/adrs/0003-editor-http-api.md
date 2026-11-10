@@ -28,7 +28,7 @@ answers in JSON, and is never cached.
 | Endpoint | Answer |
 | --- | --- |
 | `GET /api/instance` | The instance, as `describe()` |
-| `GET /api/editor` | The editor's version, its shell, and the prefix that names its database in a command |
+| `GET /api/editor` | The editor's version, its shell, the prefix that names its database in a command, and the providers it was opened with, by name |
 | `GET /api/workflows` | Every workflow at its latest revision |
 | `GET /api/workflows/{id}?revision=` | One revision with its document, the latest by default |
 | `GET /api/workflows/{id}/history?limit=` | Its revisions, newest first |
@@ -41,6 +41,11 @@ answers in JSON, and is never cached.
 | `GET /api/benchmarks/{id}?revision=` | One revision with its document |
 | `GET /api/benchmarks/{id}/history?limit=` | Its revisions, newest first |
 | `POST /api/benchmarks/import` | Imports a document as its next revision: 201 |
+| `GET /api/models?refresh=` | Every model the providers serve, marked by whether the local portfolio holds it, and when the providers were asked |
+| `GET /api/models/{identifier}` | One model, by its identifier, slashes and all |
+| `GET /api/local/portfolio` | The models the local portfolio authorizes, oldest first |
+| `POST /api/local/portfolio` | Authorizes one model locally, from `{"identifier"}`: 201 |
+| `POST /api/local/portfolio/remove` | Stops authorizing one model locally, from `{"identifier", "force"}` |
 
 - **Answers are `azathoth.api`'s own models,** dumped as JSON. A list or a
   history is `{"items": [...]}`, so either can gain fields without breaking

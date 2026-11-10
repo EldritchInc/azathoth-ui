@@ -1,0 +1,210 @@
+/* The catalog: what the providers serve, narrowed, compared, and kept locally. */
+
+.listed {
+  color: var(--faint);
+  font-size: 0.85rem;
+}
+
+.refresh {
+  width: 1rem;
+  height: 1rem;
+}
+
+button[aria-busy="true"] .refresh {
+  animation: turning 900ms linear infinite;
+}
+
+@keyframes turning {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button[aria-busy="true"] .refresh {
+    animation: none;
+  }
+}
+
+/* The filters. */
+
+.filters {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: -0.75rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--raised) 70%, transparent);
+}
+
+.chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+}
+
+.chipsLabel {
+  width: 3rem;
+  color: var(--faint);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  padding: 0.28rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--raised);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.chip:hover {
+  border-color: color-mix(in srgb, var(--tide) 45%, var(--line));
+  color: var(--ink);
+}
+
+.chip[aria-pressed="true"] {
+  border-color: var(--tide);
+  background: var(--tide-wash);
+  color: var(--tide-strong);
+  font-weight: 600;
+}
+
+.chip:focus-visible,
+.select:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.selects {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.select {
+  padding: 0.35rem 1.8rem 0.35rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--raised);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.order {
+  margin-left: auto;
+}
+
+/* The table. */
+
+.table td {
+  vertical-align: middle;
+}
+
+.table tbody tr[data-authorized="true"] {
+  background: color-mix(in srgb, var(--tide-wash) 45%, transparent);
+}
+
+.identifier {
+  overflow: hidden;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unknown {
+  color: var(--faint);
+  font-style: italic;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tags li {
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.tags[data-kind="modality"] {
+  min-width: 7.5rem;
+}
+
+.tags[data-kind="capability"] {
+  min-width: 11rem;
+}
+
+.tags[data-kind="capability"] li {
+  background: color-mix(in srgb, var(--tide-wash) 70%, var(--surface));
+  color: var(--tide-strong);
+}
+
+.table .portfolio {
+  width: 1%;
+  padding-right: 0;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Turning a provider on. */
+
+.setup {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  justify-self: stretch;
+  max-width: 40rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+}
+
+.setupText {
+  flex: 1;
+  margin: 0;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 48rem) {
+  .table .portfolio {
+    width: auto;
+    margin-left: auto;
+  }
+}

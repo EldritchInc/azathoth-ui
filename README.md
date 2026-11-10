@@ -24,8 +24,13 @@ that address can use the editor. Press Ctrl+C to stop it.
 - `--no-browser` prints the address without opening it.
 
 Providers are configured as they are for Azathoth's own command line, through
-the environment. [ADR 0001](docs/adrs/0001-local-server-security.md) explains
-how the server keeps other sites and other users out.
+the environment: set `OPENROUTER_API_KEY`, or `AZATHOTH_BEDROCK=1` with your
+AWS credentials, before launching it. The Models page then lists what they
+serve, and keeps the editor's local portfolio, the models its workflows may
+use; a shared server keeps its own
+([ADR 0006](docs/adrs/0006-local-models-and-the-portfolio.md)).
+[ADR 0001](docs/adrs/0001-local-server-security.md) explains how the server
+keeps other sites and other users out.
 
 ## Development
 

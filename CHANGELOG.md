@@ -114,3 +114,39 @@
   typed and undoes as one change, and what does not says on which line and
   column it stops reading, and why. The editor says when the version is
   still the saved revision's. ADR 0005 records how workflows are composed.
+- The models API: `GET /api/models` lists what the providers serve now,
+  each marked by whether the editor's local portfolio holds it, and
+  `GET /api/models/{identifier}` gives one. The editor keeps what the
+  providers said for ten minutes, or until a refresh. `/api/local/portfolio`
+  lists, adds and removes models in the local portfolio, which never
+  touches a shared instance; removing one that local production uses is
+  refused, naming the workflows and steps, unless it is forced.
+  `GET /api/editor` names the providers the editor was opened with, never
+  their keys.
+- The Models page lists what the providers serve now: each model's name and
+  identifier, context window, prices for a million tokens, what it reads
+  and what it can do, with what a provider does not publish said as
+  unknown. Filter by name, provider, what a model reads and can do, its
+  context and its prices, or to the local portfolio, and order by name,
+  price or context; the filters live in the page's address. A switch on
+  each row adds the model to the local portfolio or removes it, and a model
+  this instance's production uses is kept until it is removed anyway,
+  naming the workflows that use it. Refresh asks the providers again. With
+  no provider turned on, the page says how to turn one on. The rail counts
+  the models in the local portfolio.
+- Each model has its own page at `/models/<identifier>`: its context
+  window, longest answer, prices, what it reads, writes and can do, its
+  command, and whether the local portfolio holds it, with a button to add
+  or remove it. The page lists the prompt steps of local workflows that
+  could run on it: those whose needs it meets, by Azathoth's rules, and
+  those that always run on it. A model the providers no longer serve still
+  shows while the local portfolio holds it, so it can be removed.
+- While composing, a prompt step's model needs say which models in the
+  local portfolio meet them, by Azathoth's rules, as they are changed, and
+  how many more the providers serve, linking to the catalog filtered as
+  near to those needs as it can be; with none in the local portfolio, the
+  step says it can't run here yet. A step that always runs on one model
+  says whether the providers serve it, and whether the local portfolio
+  holds it.
+- ADR 0006 records how the editor keeps its local portfolio apart from a
+  shared server's, and says which models a step could run on.

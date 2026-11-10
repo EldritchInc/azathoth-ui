@@ -33,6 +33,20 @@ describe("App", () => {
     expect(within(navigation).getByText("Local instance")).toBeVisible();
   });
 
+  it("offers the models, with how many the local portfolio holds", async () => {
+    renderAt(<App />);
+    const models = within(screen.getByRole("navigation", { name: "Editor" })).getByRole("link", {
+      name: /^Models/,
+    });
+
+    expect(models).toHaveAttribute("href", "/models");
+    expect(await within(models).findByText("1")).toBeVisible();
+
+    fireEvent.click(models);
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Models" })).toBeVisible();
+  });
+
   it("opens the page its address names, and marks it in the rail", async () => {
     renderAt(<App />, { path: "/tools" });
 
