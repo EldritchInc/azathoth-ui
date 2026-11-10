@@ -127,7 +127,7 @@ def test_an_import_past_the_public_api_is_found(
     )
 
 
-INSTALL = 'python -m pip install "azathoth-ai>=1.4.0a1,==1.4.*" -e ".[dev]"'
+INSTALL = 'python -m pip install "azathoth-ai>=1.4.0a2,==1.4.*" -e ".[dev]"'
 """How CI and `make install` install the editor: Azathoth from PyPI, its pre-releases only."""
 
 

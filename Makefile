@@ -4,7 +4,7 @@
 # first pre-release lets pip take Azathoth's pre-releases, and no other
 # package's.
 install:
-	python -m pip install "azathoth-ai>=1.4.0a1,==1.4.*" -e ".[dev]"
+	python -m pip install "azathoth-ai>=1.4.0a2,==1.4.*" -e ".[dev]"
 
 # The web app's dependencies, exactly as web/package-lock.json pins them.
 install-web:

@@ -46,6 +46,11 @@ answers in JSON, and is never cached.
 | `GET /api/local/portfolio` | The models the local portfolio authorizes, oldest first |
 | `POST /api/local/portfolio` | Authorizes one model locally, from `{"identifier"}`: 201 |
 | `POST /api/local/portfolio/remove` | Stops authorizing one model locally, from `{"identifier", "force"}` |
+| `POST /api/live/runs` | Starts a live run of a workflow, from `{"workflow_id", "input" \| "file"}`: 201 ([ADR 0007](0007-running-and-watching-workflows.md)) |
+| `GET /api/live` | Every live run the editor remembers, newest first |
+| `GET /api/live/{handle}` | One live run: where it is, and how it ended |
+| `GET /api/live/{handle}/events?after=` | Its events as a server-sent event stream, then its end |
+| `POST /api/live/{handle}/cancel` | Asks it to stop: 202, as it stands now |
 
 - **Answers are `azathoth.api`'s own models,** dumped as JSON. A list or a
   history is `{"items": [...]}`, so either can gain fields without breaking
