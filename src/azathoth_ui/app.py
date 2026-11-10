@@ -23,6 +23,13 @@ from starlette.types import Scope
 
 from azathoth_ui import __version__
 from azathoth_ui.browsing import browsing_routes
+from azathoth_ui.catalog import (
+    Catalog,
+    ModelSource,
+    PortfolioSource,
+    catalog_routes,
+    model_in_use,
+)
 from azathoth_ui.commands import Shell, command_prefix, local_shell
 from azathoth_ui.pages import ASSETS_PATH, not_built_page
 from azathoth_ui.security import API_PREFIX, LocalOnly
@@ -113,10 +120,14 @@ def describe_instance(
 def describe_editor(
     request: Request,
 ) -> Response:
-    """`GET /api/editor`: the editor's version, and how its commands name its database."""
+    """`GET /api/editor`: the editor's version, how its commands name its database, its providers.
+
+    The providers are named, never their keys.
+    """
 
     instance: api.Azathoth = request.app.state.instance
     shell: Shell = request.app.state.shell
+    providers: tuple[str, ...] = request.app.state.providers
     database = instance.describe().database
 
     return JSONResponse(
@@ -124,6 +135,7 @@ def describe_editor(
             "version": __version__,
             "shell": shell,
             "command_prefix": command_prefix(database, shell),
+            "providers": list(providers),
         }
     )
 
@@ -192,12 +204,18 @@ def build_app(
     port: int,
     static_dir: Path | None = None,
     shell: Shell | None = None,
+    providers: tuple[str, ...] = (),
+    models: ModelSource | None = None,
+    portfolio: PortfolioSource | None = None,
 ) -> LocalOnly:
     """Return the editor's server for one open instance, one launch key and one port.
 
     `static_dir` is the built web app, the package's own by default. When it
     holds no `index.html`, every page says how to build one. `shell` is the
     shell the editor writes commands for, this computer's by default.
+    `providers` names the providers the instance was opened with. `models`
+    and `portfolio` are where models are listed and authorized, the
+    instance's own by default.
     """
 
     web = STATIC_DIRECTORY if static_dir is None else static_dir
@@ -205,6 +223,7 @@ def build_app(
         Route("/api/instance", describe_instance, methods=["GET"]),
         Route("/api/editor", describe_editor, methods=["GET"]),
         *browsing_routes(),
+        *catalog_routes(),
         Route("/api/{rest:path}", no_endpoint),
         Mount(ASSETS_PATH.rstrip("/"), StaticFiles(directory=ASSETS_DIRECTORY)),
     ]
@@ -216,10 +235,17 @@ def build_app(
 
     app = Starlette(
         routes=routes,
-        exception_handlers={api.ApiError: api_error, HTTPException: http_error},
+        exception_handlers={
+            api.ModelInUseError: model_in_use,
+            api.ApiError: api_error,
+            HTTPException: http_error,
+        },
     )
     app.state.instance = instance
     app.state.shell = local_shell() if shell is None else shell
+    app.state.providers = providers
+    app.state.catalog = Catalog(instance.models if models is None else models)
+    app.state.portfolio = instance.portfolio if portfolio is None else portfolio
 
     return LocalOnly(app, token=token, port=port)
 

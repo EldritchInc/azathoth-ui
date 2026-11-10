@@ -227,7 +227,25 @@ def test_the_editor_says_how_to_name_its_database_in_a_command(
             "version": __version__,
             "shell": shell,
             "command_prefix": command_prefix(database, shell),
+            "providers": [],
         }
+
+
+def test_the_editor_names_its_providers(
+    instance: api.Azathoth,
+    tmp_path: Path,
+) -> None:
+    app = build_app(
+        instance,
+        token=TOKEN,
+        port=PORT,
+        static_dir=tmp_path / "missing",
+        providers=("openrouter", "bedrock"),
+    )
+    client = TestClient(app, base_url=ORIGIN)
+    client.get(f"/?token={TOKEN}")
+
+    assert client.get("/api/editor").json()["providers"] == ["openrouter", "bedrock"]
 
 
 def test_the_editor_uses_this_computers_shell_by_default(

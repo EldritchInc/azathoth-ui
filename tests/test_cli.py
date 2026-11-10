@@ -23,6 +23,7 @@ class Launch:
         self.opened: list[str] = []
         self.served: list[tuple[str, int, bool]] = []
         self.answers: list[tuple[int, str]] = []
+        self.providers: list[list[str]] = []
 
     def open_browser(
         self,
@@ -50,6 +51,7 @@ class Launch:
             client.get(url.removeprefix(f"http://{HOST}:{port}"))
             response = client.get("/api/instance")
             self.answers.append((response.status_code, response.json()["database"]))
+            self.providers.append(client.get("/api/editor").json()["providers"])
 
 
 def run(
@@ -90,6 +92,20 @@ def test_it_creates_its_instance_serves_it_and_opens_the_browser_signed_in(
     assert out == f"Azathoth UI is running at\n\n  {url}\n\nPress Ctrl+C to stop.\n"
     assert launch.answers == [(200, str(database))]
     assert not inheritable
+
+
+def test_it_names_the_providers_its_environment_turns_on(
+    tmp_path: Path,
+) -> None:
+    launch = Launch()
+    environment = {"OPENROUTER_API_KEY": "sk-or-secret"}
+
+    status, _, _ = run(
+        "--database", str(tmp_path / "ui.db"), environment=environment, launch=launch
+    )
+
+    assert status == 0
+    assert launch.providers == [["openrouter"]]
 
 
 def test_without_a_database_it_opens_the_default_for_its_environment(

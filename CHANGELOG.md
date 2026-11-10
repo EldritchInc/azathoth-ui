@@ -114,3 +114,12 @@
   typed and undoes as one change, and what does not says on which line and
   column it stops reading, and why. The editor says when the version is
   still the saved revision's. ADR 0005 records how workflows are composed.
+- The models API: `GET /api/models` lists what the providers serve now,
+  each marked by whether the editor's local portfolio holds it, and
+  `GET /api/models/{identifier}` gives one. The editor keeps what the
+  providers said for ten minutes, or until a refresh. `/api/local/portfolio`
+  lists, adds and removes models in the local portfolio, which never
+  touches a shared instance; removing one that local production uses is
+  refused, naming the workflows and steps, unless it is forced.
+  `GET /api/editor` names the providers the editor was opened with, never
+  their keys.

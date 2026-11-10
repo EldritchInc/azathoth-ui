@@ -18,6 +18,7 @@ from starlette.types import ASGIApp
 
 from azathoth_ui import __version__
 from azathoth_ui.app import build_app
+from azathoth_ui.catalog import provider_names
 from azathoth_ui.paths import default_database
 from azathoth_ui.security import TOKEN_PARAMETER, new_token
 
@@ -124,12 +125,11 @@ def main(
     arguments = parser().parse_args(argv)
     database: str = arguments.database or default_database(environment=environment)
 
+    providers = api.ProviderSettings.from_environment(environment)
+
     try:
         api.initialize(database)
-        instance = api.open(
-            database,
-            providers=api.ProviderSettings.from_environment(environment),
-        )
+        instance = api.open(database, providers=providers)
     except api.ApiError as error:
         print(f"{PROGRAM}: {error}", file=err)
         return 1
@@ -146,7 +146,7 @@ def main(
             port = listener.getsockname()[1]
             token = new_token()
             url = f"http://{HOST}:{port}/?{TOKEN_PARAMETER}={token}"
-            app = build_app(instance, token=token, port=port)
+            app = build_app(instance, token=token, port=port, providers=provider_names(providers))
 
             print(f"Azathoth UI is running at\n\n  {url}\n\nPress Ctrl+C to stop.", file=out)
             out.flush()
