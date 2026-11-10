@@ -141,3 +141,10 @@
   could run on it: those whose needs it meets, by Azathoth's rules, and
   those that always run on it. A model the providers no longer serve still
   shows while the local portfolio holds it, so it can be removed.
+- While composing, a prompt step's model needs say which models in the
+  local portfolio meet them, by Azathoth's rules, as they are changed, and
+  how many more the providers serve, linking to the catalog filtered as
+  near to those needs as it can be; with none in the local portfolio, the
+  step says it can't run here yet. A step that always runs on one model
+  says whether the providers serve it, and whether the local portfolio
+  holds it.

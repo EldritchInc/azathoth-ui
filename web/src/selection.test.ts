@@ -2,7 +2,16 @@ import { describe, expect, it } from "vitest";
 
 import type { ModelSummary } from "./api/types";
 import { asObject, setRequirements, stepsOf, type JsonObject } from "./editing";
-import { meets, needsOf, selectionOf, stepsThatCouldUse, type Needs } from "./selection";
+import { NO_FILTER } from "./models";
+import {
+  choices,
+  filterFor,
+  meets,
+  needsOf,
+  selectionOf,
+  stepsThatCouldUse,
+  type Needs,
+} from "./selection";
 import { uuid, VALID_DOCUMENT } from "./test/documents";
 import { BEDROCK_MODEL, LARGE_MODEL, SMALL_MODEL } from "./test/instances";
 
@@ -156,5 +165,47 @@ describe("stepsThatCouldUse", () => {
       { stepId: SUMMARIZE, fixed: true },
     ]);
     expect(stepsThatCouldUse(LARGE_MODEL, [{ ...workflow, document }])).toEqual([]);
+  });
+});
+
+describe("choices", () => {
+  it("are the local portfolio's models that meet the needs", () => {
+    const models = [
+      LARGE_MODEL,
+      SMALL_MODEL,
+      { ...SMALL_MODEL, identifier: "x", authorized: true },
+    ];
+
+    expect(choices(models, ANY).map((model) => model.identifier)).toEqual([
+      LARGE_MODEL.identifier,
+      "x",
+    ]);
+    expect(choices(models, needing({ capabilities: ["vision"] }))).toEqual([LARGE_MODEL]);
+  });
+});
+
+describe("filterFor", () => {
+  it("asks the catalog for what it can of the needs", () => {
+    expect(filterFor(ANY)).toEqual(NO_FILTER);
+    expect(
+      filterFor(
+        needing({
+          reads: ["text", "image", "embeddings"],
+          capabilities: ["vision", "json_mode"],
+          context: 128_000,
+          inputPrice: 3,
+          outputPrice: 15,
+          output: 4096,
+          knownPricing: true,
+        }),
+      ),
+    ).toEqual({
+      ...NO_FILTER,
+      reads: ["image"],
+      can: ["vision"],
+      context: 128_000,
+      inputPrice: 3,
+      outputPrice: 15,
+    });
   });
 });

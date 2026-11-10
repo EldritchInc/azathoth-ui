@@ -18,6 +18,7 @@ import {
   type JsonObject,
   type JsonValue,
 } from "./editing";
+import { CAPABILITIES, MODALITIES, NO_FILTER, type ModelFilter } from "./models";
 import { titleOf } from "./problems";
 
 /** What a prompt step needs of its model; a need left out is any. */
@@ -145,4 +146,30 @@ export function stepsThatCouldUse(
         : [];
     }),
   );
+}
+
+/** The models a step could choose from: those of the local portfolio that meet its needs. */
+export function choices(models: readonly ModelSummary[], needs: Needs): ModelSummary[] {
+  return models.filter((model) => model.authorized && meets(model, needs));
+}
+
+/**
+ * Returns the catalog's filter nearest a step's needs: what it reads past
+ * text, what it can do, its context and its prices. The catalog cannot ask
+ * for what a model writes, its longest answer or known prices, so it may
+ * show a few models the step would not choose.
+ */
+export function filterFor(needs: Needs): ModelFilter {
+  return {
+    ...NO_FILTER,
+    reads: needs.reads.filter(
+      (modality) => modality !== "text" && MODALITIES.some(([each]) => each === modality),
+    ),
+    can: needs.capabilities.filter((capability) =>
+      CAPABILITIES.some(([each]) => each === capability),
+    ),
+    context: needs.context,
+    inputPrice: needs.inputPrice,
+    outputPrice: needs.outputPrice,
+  };
 }

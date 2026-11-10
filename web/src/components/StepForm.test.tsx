@@ -49,6 +49,24 @@ function open(id: string, start: JsonObject = VALID_DOCUMENT) {
   return { document: () => latest, step, groups };
 }
 
+/** Returns the document with the prompt step always running on one model. */
+function fixedTo(provider: string, model: string): JsonObject {
+  return {
+    ...VALID_DOCUMENT,
+    steps: stepsOf(VALID_DOCUMENT).map((each) =>
+      each.id === SUMMARIZE
+        ? {
+            ...each,
+            specification: {
+              ...asObject(each.specification),
+              model_selection: { provider, model },
+            },
+          }
+        : each,
+    ),
+  };
+}
+
 function textbox(name: string): HTMLInputElement {
   return screen.getByRole<HTMLInputElement>("textbox", { name });
 }
@@ -175,25 +193,61 @@ describe("StepForm for a prompt step", () => {
   });
 
   it("says which model a step always runs on", () => {
-    const fixed = {
-      ...VALID_DOCUMENT,
-      steps: stepsOf(VALID_DOCUMENT).map((each) =>
-        each.id === SUMMARIZE
-          ? {
-              ...each,
-              specification: {
-                ...asObject(each.specification),
-                model_selection: { provider: "openrouter", model: "acme/large" },
-              },
-            }
-          : each,
-      ),
-    };
-
-    open(SUMMARIZE, fixed);
+    open(SUMMARIZE, fixedTo("openrouter", "acme/large"));
 
     expect(screen.getByText("Always acme/large, from openrouter.")).toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: "Vision" })).toBeNull();
+  });
+
+  it("names the models of the local portfolio that meet its needs, and counts the rest", async () => {
+    open(SUMMARIZE);
+
+    expect(
+      await screen.findByText("1 model in your local portfolio meets these needs:"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Acme Large" })).toHaveAttribute(
+      "href",
+      "/models/openrouter/acme/large",
+    );
+    expect(screen.getByRole("link", { name: "2 more your providers serve" })).toHaveAttribute(
+      "href",
+      "/models",
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Streaming" }));
+
+    expect(
+      screen.getByText(
+        "No model in your local portfolio meets these needs, so it can't run here yet.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "1 more your providers serve" })).toHaveAttribute(
+      "href",
+      "/models?can=streaming",
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Vision" }));
+
+    expect(screen.getByText("Nor does any model your providers serve now.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /more your providers serve/ })).toBeNull();
+  });
+
+  it("says whether the one model a step always runs on is served, and held locally", async () => {
+    open(SUMMARIZE, fixedTo("openrouter", "acme/small:free"));
+
+    expect(await screen.findByRole("link", { name: "Acme Small (free)" })).toHaveAttribute(
+      "href",
+      "/models/openrouter/acme/small%3Afree",
+    );
+    expect(
+      screen.getByText(/is served now\. It isn't in your local portfolio/),
+    ).toBeInTheDocument();
+  });
+
+  it("says when the one model a step always runs on is not served", async () => {
+    open(SUMMARIZE, fixedTo("openrouter", "acme/gone"));
+
+    expect(await screen.findByText("Your providers don't serve it now.")).toBeInTheDocument();
   });
 
   it("lists what is wrong with the step", () => {
