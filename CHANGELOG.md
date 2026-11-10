@@ -134,3 +134,10 @@
   naming the workflows that use it. Refresh asks the providers again. With
   no provider turned on, the page says how to turn one on. The rail counts
   the models in the local portfolio.
+- Each model has its own page at `/models/<identifier>`: its context
+  window, longest answer, prices, what it reads, writes and can do, its
+  command, and whether the local portfolio holds it, with a button to add
+  or remove it. The page lists the prompt steps of local workflows that
+  could run on it: those whose needs it meets, by Azathoth's rules, and
+  those that always run on it. A model the providers no longer serve still
+  shows while the local portfolio holds it, so it can be removed.

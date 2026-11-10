@@ -5,6 +5,7 @@ import styles from "./App.module.css";
 import { ComponentList } from "./components/ComponentList";
 import { BenchmarkPage, ToolPage, WorkflowPage } from "./components/ComponentPages";
 import { ModelList } from "./components/ModelList";
+import { ModelPage } from "./components/ModelPage";
 import { NotFound } from "./components/NotFound";
 import { Overview } from "./components/Overview";
 import { Rail } from "./components/Rail";
@@ -41,6 +42,7 @@ export function App() {
           <Route path="/benchmarks" element={<ComponentList kind="benchmarks" />} />
           <Route path="/benchmarks/:id" element={<BenchmarkPage />} />
           <Route path="/models" element={<ModelList />} />
+          <Route path="/models/*" element={<ModelPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

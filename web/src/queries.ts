@@ -7,6 +7,7 @@
 import {
   QueryClient,
   useMutation,
+  useQueries,
   useQuery,
   useQueryClient,
   type UseMutationResult,
@@ -31,6 +32,8 @@ import type {
   PortfolioRemoval,
   Summary,
 } from "./api/types";
+import type { JsonObject } from "./editing";
+import type { WorkflowDocument } from "./selection";
 import {
   DESCRIPTIONS,
   detailApiPath,
@@ -159,4 +162,41 @@ export function usePortfolioChange(): UseMutationResult<
       add ? addToPortfolio(identifier) : removeFromPortfolio(identifier, { force }),
     onSettled: () => client.invalidateQueries({ queryKey: queryKeys.models }),
   });
+}
+
+/** The local instance's workflows, each at its latest revision with its document. */
+export interface WorkflowDocuments {
+  readonly workflows: readonly WorkflowDocument[];
+  /** Whether a workflow is still being fetched. */
+  readonly pending: boolean;
+  /** Whether a workflow could not be fetched; those that could are still given. */
+  readonly failed: boolean;
+}
+
+/** Returns every workflow in the local instance with its latest document. */
+export function useWorkflowDocuments(): WorkflowDocuments {
+  const list = useList("workflows");
+  const details = useQueries({
+    queries: (list.data ?? []).map((summary) => ({
+      queryKey: queryKeys.detail("workflows", { id: summary.id }, null),
+      queryFn: ({ signal }: { readonly signal: AbortSignal }) =>
+        fetchDetail(detailApiPath("workflows", { id: summary.id }, null), { signal }),
+    })),
+  });
+
+  return {
+    workflows: details.flatMap((detail) =>
+      detail.data === undefined
+        ? []
+        : [
+            {
+              id: detail.data.id,
+              name: detail.data.name,
+              document: detail.data.document as JsonObject,
+            },
+          ],
+    ),
+    pending: list.isPending || details.some((detail) => detail.isPending),
+    failed: list.isError || details.some((detail) => detail.isError),
+  };
 }
