@@ -4,10 +4,33 @@
  * refetched after anything changes it.
  */
 
-import { QueryClient, useQuery, type UseQueryResult } from "@tanstack/react-query";
+import {
+  QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationResult,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 
-import { ApiFailure, fetchDetail, fetchEditor, fetchHistory } from "./api/client";
-import type { ComponentDetail, EditorDescription, Summary } from "./api/types";
+import {
+  ApiFailure,
+  addToPortfolio,
+  fetchDetail,
+  fetchEditor,
+  fetchHistory,
+  fetchModels,
+  fetchPortfolio,
+  removeFromPortfolio,
+} from "./api/client";
+import type {
+  ComponentDetail,
+  EditorDescription,
+  ModelListing,
+  PortfolioEntry,
+  PortfolioRemoval,
+  Summary,
+} from "./api/types";
 import {
   DESCRIPTIONS,
   detailApiPath,
@@ -25,6 +48,9 @@ export const queryKeys = {
     [kind, "detail", ref.id, ref.version ?? null, revision] as const,
   history: (kind: Kind, ref: ComponentRef) =>
     [kind, "history", ref.id, ref.version ?? null] as const,
+  models: ["models"] as const,
+  modelList: ["models", "list"] as const,
+  portfolio: ["models", "portfolio"] as const,
 };
 
 /** Returns whether a failed request is worth trying again: not when the server refused it. */
@@ -77,5 +103,60 @@ export function useHistory(kind: Kind, ref: ComponentRef): UseQueryResult<Summar
   return useQuery<Summary[], ApiFailure>({
     queryKey: queryKeys.history(kind, ref),
     queryFn: ({ signal }) => fetchHistory(historyApiPath(kind, ref), { signal }),
+  });
+}
+
+/**
+ * Returns what the providers serve, marked by the local portfolio. The
+ * server keeps what the providers said for a while, so asking it again is
+ * cheap; `useRefreshModels` makes it ask the providers.
+ */
+export function useModels(): UseQueryResult<ModelListing, ApiFailure> {
+  return useQuery<ModelListing, ApiFailure>({
+    queryKey: queryKeys.modelList,
+    queryFn: ({ signal }) => fetchModels({}, { signal }),
+    staleTime: 60_000,
+  });
+}
+
+/** Returns a refresh of the catalog: the server asks the providers again. */
+export function useRefreshModels(): UseMutationResult<ModelListing, ApiFailure, void> {
+  const client = useQueryClient();
+
+  return useMutation<ModelListing, ApiFailure>({
+    mutationFn: () => fetchModels({ refresh: true }),
+    onSuccess: (listing) => {
+      client.setQueryData(queryKeys.modelList, listing);
+    },
+  });
+}
+
+/** Returns the models the local portfolio authorizes. */
+export function usePortfolio(): UseQueryResult<PortfolioEntry[], ApiFailure> {
+  return useQuery<PortfolioEntry[], ApiFailure>({
+    queryKey: queryKeys.portfolio,
+    queryFn: ({ signal }) => fetchPortfolio({ signal }),
+  });
+}
+
+/** One change to the local portfolio: a model added, or removed, forced or not. */
+export interface PortfolioChange {
+  readonly identifier: string;
+  readonly add: boolean;
+  readonly force?: boolean;
+}
+
+/** Returns a change to the local portfolio, after which every view of the models is fetched again. */
+export function usePortfolioChange(): UseMutationResult<
+  PortfolioEntry | PortfolioRemoval,
+  ApiFailure,
+  PortfolioChange
+> {
+  const client = useQueryClient();
+
+  return useMutation<PortfolioEntry | PortfolioRemoval, ApiFailure, PortfolioChange>({
+    mutationFn: ({ identifier, add, force = false }) =>
+      add ? addToPortfolio(identifier) : removeFromPortfolio(identifier, { force }),
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.models }),
   });
 }

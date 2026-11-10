@@ -13,6 +13,10 @@ import {
   isEditorDescription,
   isErrorBody,
   isInstanceDescription,
+  isModelListing,
+  isModelSummary,
+  isPortfolioEntry,
+  isPortfolioRemoval,
   isSummary,
   isToolSummary,
   itemsOf,
@@ -20,6 +24,10 @@ import {
   type ComponentDetail,
   type EditorDescription,
   type InstanceDescription,
+  type ModelListing,
+  type ModelSummary,
+  type PortfolioEntry,
+  type PortfolioRemoval,
   type Summary,
   type ToolSummary,
   type WorkflowSummary,
@@ -29,16 +37,27 @@ export const UNREACHABLE_MESSAGE = "The editor's server isn't answering.";
 
 export const INVALID_RESPONSE_MESSAGE = "The editor's server sent an answer the editor can't read.";
 
-/** A request to the server that did not get the answer it asked for. */
+/**
+ * A request to the server that did not get the answer it asked for. What
+ * else the server said of the error, past its code and message, is in
+ * `details`, such as the workflows that use a model it would not remove.
+ */
 export class ApiFailure extends Error {
   readonly code: string;
   readonly status: number | null;
+  readonly details: Readonly<Record<string, unknown>>;
 
-  constructor(code: string, message: string, status: number | null) {
+  constructor(
+    code: string,
+    message: string,
+    status: number | null,
+    details: Readonly<Record<string, unknown>> = {},
+  ) {
     super(message);
     this.name = "ApiFailure";
     this.code = code;
     this.status = status;
+    this.details = details;
   }
 }
 
@@ -89,7 +108,9 @@ async function requestJson(
 
   if (!response.ok) {
     if (isErrorBody(body)) {
-      throw new ApiFailure(body.error.code, body.error.message, response.status);
+      const { code, message, ...details } = body.error;
+
+      throw new ApiFailure(code, message, response.status, details);
     }
     throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, response.status);
   }
@@ -192,6 +213,89 @@ export async function importDocument(
 
   if (!isComponentDetail(body)) {
     throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 201);
+  }
+
+  return body;
+}
+
+/** Returns the path of one model in the API: its identifier's parts, each encoded. */
+export function modelApiPath(identifier: string): string {
+  return `/api/models/${identifier.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+/**
+ * Returns every model the providers serve, marked by the local portfolio:
+ * `GET /api/models`. With `refresh`, the server asks the providers again
+ * rather than answering with what it kept.
+ */
+export async function fetchModels(
+  { refresh = false }: { readonly refresh?: boolean } = {},
+  options: RequestOptions = {},
+): Promise<ModelListing> {
+  const body = await getJson(refresh ? "/api/models?refresh=true" : "/api/models", options);
+
+  if (!isModelListing(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/** Returns one model the providers serve: `GET /api/models/{identifier}`. */
+export async function fetchModel(
+  identifier: string,
+  options: RequestOptions = {},
+): Promise<ModelSummary> {
+  const body = await getJson(modelApiPath(identifier), options);
+
+  if (!isModelSummary(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/** Returns the models the local portfolio authorizes: `GET /api/local/portfolio`. */
+export function fetchPortfolio(options: RequestOptions = {}): Promise<PortfolioEntry[]> {
+  return fetchItems("/api/local/portfolio", isPortfolioEntry, options);
+}
+
+/** Adds one model to the local portfolio: `POST /api/local/portfolio`. */
+export async function addToPortfolio(
+  identifier: string,
+  options: RequestOptions = {},
+): Promise<PortfolioEntry> {
+  const body = await requestJson(
+    "/api/local/portfolio",
+    { method: "POST", body: JSON.stringify({ identifier }) },
+    options,
+  );
+
+  if (!isPortfolioEntry(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 201);
+  }
+
+  return body;
+}
+
+/**
+ * Removes one model from the local portfolio: `POST /api/local/portfolio/remove`.
+ * A model local production uses is kept, with a `model_in_use` failure whose
+ * details name its dependents, unless `force` is set.
+ */
+export async function removeFromPortfolio(
+  identifier: string,
+  { force = false }: { readonly force?: boolean } = {},
+  options: RequestOptions = {},
+): Promise<PortfolioRemoval> {
+  const body = await requestJson(
+    "/api/local/portfolio/remove",
+    { method: "POST", body: JSON.stringify({ identifier, force }) },
+    options,
+  );
+
+  if (!isPortfolioRemoval(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
   }
 
   return body;

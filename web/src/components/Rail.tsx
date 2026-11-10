@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router";
 
 import { DESCRIPTIONS, KINDS, type Kind } from "../kinds";
-import { useList } from "../queries";
+import { useList, usePortfolio } from "../queries";
 import type { ThemeChoice } from "../theme";
 import type { Connection } from "../useInstance";
 import { ConnectionStatus } from "./ConnectionStatus";
@@ -10,7 +10,9 @@ import { Mark } from "./Mark";
 import styles from "./Rail.module.css";
 import { ThemeSwitch } from "./ThemeSwitch";
 
-const ICONS: Record<Kind | "overview", ReactNode> = {
+type IconName = Kind | "overview" | "models";
+
+const ICONS: Record<IconName, ReactNode> = {
   overview: (
     <>
       <circle cx="12" cy="12" r="2.5" />
@@ -34,9 +36,15 @@ const ICONS: Record<Kind | "overview", ReactNode> = {
       <path d="M7 19v-5M12 19V8M17 19v-9" />
     </>
   ),
+  models: (
+    <>
+      <rect x="6.5" y="6.5" width="11" height="11" rx="2" />
+      <path d="M10 3v3.5M14 3v3.5M10 17.5V21M14 17.5V21M3 10h3.5M3 14h3.5M17.5 10H21M17.5 14H21" />
+    </>
+  ),
 };
 
-function Icon({ name }: { readonly name: Kind | "overview" }) {
+function Icon({ name }: { readonly name: IconName }) {
   return (
     <svg
       className={styles.icon}
@@ -71,6 +79,23 @@ function KindLink({ kind }: { readonly kind: Kind }) {
   );
 }
 
+/** The models link, counting the models the local portfolio holds. */
+function ModelsLink() {
+  const portfolio = usePortfolio();
+
+  return (
+    <NavLink className={styles.item} to="/models">
+      <Icon name="models" />
+      <span className={styles.label}>Models</span>
+      {portfolio.data !== undefined && (
+        <span className={styles.count} aria-hidden="true">
+          {portfolio.data.length}
+        </span>
+      )}
+    </NavLink>
+  );
+}
+
 /** The editor's rail: its mark, its pages, the connection and the theme. */
 export function Rail({
   connection,
@@ -96,6 +121,7 @@ export function Rail({
         {KINDS.map((kind) => (
           <KindLink key={kind} kind={kind} />
         ))}
+        <ModelsLink />
       </nav>
       <div className={styles.footer}>
         <ConnectionStatus connection={connection} />

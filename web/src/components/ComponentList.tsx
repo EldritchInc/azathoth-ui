@@ -46,7 +46,8 @@ function RevisionCell({ revision }: { readonly revision: Revision }) {
   );
 }
 
-function Skeleton({ label }: { readonly label: string }) {
+/** Rows that stand in for a list while it loads. */
+export function Skeleton({ label }: { readonly label: string }) {
   return (
     <div className={styles.skeleton} role="status" aria-label={label}>
       {[0, 1, 2].map((row) => (

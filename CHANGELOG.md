@@ -123,3 +123,14 @@
   refused, naming the workflows and steps, unless it is forced.
   `GET /api/editor` names the providers the editor was opened with, never
   their keys.
+- The Models page lists what the providers serve now: each model's name and
+  identifier, context window, prices for a million tokens, what it reads
+  and what it can do, with what a provider does not publish said as
+  unknown. Filter by name, provider, what a model reads and can do, its
+  context and its prices, or to the local portfolio, and order by name,
+  price or context; the filters live in the page's address. A switch on
+  each row adds the model to the local portfolio or removes it, and a model
+  this instance's production uses is kept until it is removed anyway,
+  naming the workflows that use it. Refresh asks the providers again. With
+  no provider turned on, the page says how to turn one on. The rail counts
+  the models in the local portfolio.

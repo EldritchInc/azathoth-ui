@@ -4,6 +4,7 @@ import { Route, Routes } from "react-router";
 import styles from "./App.module.css";
 import { ComponentList } from "./components/ComponentList";
 import { BenchmarkPage, ToolPage, WorkflowPage } from "./components/ComponentPages";
+import { ModelList } from "./components/ModelList";
 import { NotFound } from "./components/NotFound";
 import { Overview } from "./components/Overview";
 import { Rail } from "./components/Rail";
@@ -39,6 +40,7 @@ export function App() {
           <Route path="/tools/:id/versions/:version" element={<ToolPage />} />
           <Route path="/benchmarks" element={<ComponentList kind="benchmarks" />} />
           <Route path="/benchmarks/:id" element={<BenchmarkPage />} />
+          <Route path="/models" element={<ModelList />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
