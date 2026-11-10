@@ -1,0 +1,31 @@
+/* A JSON value, highlighted. */
+
+.code {
+  max-height: 36rem;
+  margin: 0;
+  padding: 1rem 1.15rem;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--ink) 3%, var(--raised));
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  tab-size: 2;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.key {
+  color: var(--ink);
+}
+
+.string {
+  color: var(--tide-strong);
+}
+
+.number,
+.literal {
+  color: var(--amber);
+}

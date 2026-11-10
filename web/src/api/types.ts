@@ -121,6 +121,94 @@ export interface PortfolioRemoval {
   readonly command: string;
 }
 
+/** Why a run did not succeed, as `azathoth.api` says. */
+export interface RunError {
+  readonly code: string;
+  readonly step_id: string | null;
+  readonly exception_type: string | null;
+  readonly message: string;
+}
+
+/** How one run ended, as `azathoth.api` returns it. */
+export interface RunResult {
+  readonly run_id: string;
+  readonly workflow_id: string;
+  readonly workflow_revision: number | null;
+  readonly succeeded: boolean;
+  readonly has_result: boolean;
+  readonly result: unknown;
+  readonly error: RunError | null;
+  readonly warnings: readonly string[];
+  readonly started_at: string;
+  readonly completed_at: string;
+  readonly command: string;
+}
+
+/** A run starting: the first event of every run. */
+export interface RunStarted {
+  readonly type: "run_started";
+  readonly workflow_id: string;
+}
+
+/** One step starting, with what it says as it runs. */
+export interface StepStarted {
+  readonly type: "step_started";
+  readonly step_id: string;
+  readonly layer: number;
+  readonly message: string | null;
+}
+
+/** How a step ended: executed, failed or skipped. */
+export type StepStatus = "executed" | "failed" | "skipped";
+
+/** One step finishing. */
+export interface StepFinished {
+  readonly type: "step_finished";
+  readonly step_id: string;
+  readonly layer: number;
+  readonly status: StepStatus;
+  readonly failure: string | null;
+  readonly confidence: number | null;
+}
+
+/** The values one step added to the run's context, by name. */
+export interface ContextChanged {
+  readonly type: "context_changed";
+  readonly step_id: string;
+  readonly values: Readonly<Record<string, unknown>>;
+}
+
+/** A run finishing: the run Azathoth kept, and whether it succeeded. */
+export interface RunFinished {
+  readonly type: "run_finished";
+  readonly run_id: string;
+  readonly succeeded: boolean;
+}
+
+/** One event of a run, as the service API reports it. */
+export type RunEvent = RunStarted | StepStarted | StepFinished | ContextChanged | RunFinished;
+
+/** What a live run runs: a workflow, or one step tried alone. */
+export type LiveKind = "run" | "step";
+
+/** Where a live run is. */
+export type LiveState = "running" | "finished" | "cancelled" | "refused";
+
+/** `GET /api/live/{handle}`: one run started from the editor, and how it ended. */
+export interface LiveRun {
+  readonly handle: string;
+  readonly kind: LiveKind;
+  readonly workflow_id: string;
+  readonly step_id: string | null;
+  readonly state: LiveState;
+  readonly started_at: string;
+  readonly finished_at: string | null;
+  readonly event_count: number;
+  /** A run's `RunResult`, or a tried step's trial, once it has finished. */
+  readonly result: Readonly<Record<string, unknown>> | null;
+  readonly error: { readonly code: string; readonly message: string } | null;
+}
+
 /** How the server answers any error under `/api`. */
 export interface ErrorBody {
   readonly error: {
@@ -299,5 +387,92 @@ export function isPortfolioRemoval(value: unknown): value is PortfolioRemoval {
     Array.isArray(value.dependents) &&
     value.dependents.every(isProductionDependent) &&
     typeof value.command === "string"
+  );
+}
+
+function isTextOrNull(value: unknown): value is string | null {
+  return value === null || typeof value === "string";
+}
+
+/** Returns whether a value says why a run did not succeed. */
+export function isRunError(value: unknown): value is RunError {
+  return (
+    isRecord(value) &&
+    typeof value.code === "string" &&
+    isTextOrNull(value.step_id) &&
+    isTextOrNull(value.exception_type) &&
+    typeof value.message === "string"
+  );
+}
+
+/** Returns whether a value is how one run ended. */
+export function isRunResult(value: unknown): value is RunResult {
+  return (
+    isRecord(value) &&
+    typeof value.run_id === "string" &&
+    typeof value.workflow_id === "string" &&
+    (value.workflow_revision === null || isWholeNumber(value.workflow_revision)) &&
+    typeof value.succeeded === "boolean" &&
+    typeof value.has_result === "boolean" &&
+    (value.error === null || isRunError(value.error)) &&
+    isTextList(value.warnings) &&
+    typeof value.started_at === "string" &&
+    typeof value.completed_at === "string" &&
+    typeof value.command === "string"
+  );
+}
+
+const STEP_STATUSES: readonly unknown[] = ["executed", "failed", "skipped"];
+
+/** Returns whether a value is one event of a run. */
+export function isRunEvent(value: unknown): value is RunEvent {
+  if (!isRecord(value)) {
+    return false;
+  }
+  switch (value.type) {
+    case "run_started":
+      return typeof value.workflow_id === "string";
+    case "step_started":
+      return (
+        typeof value.step_id === "string" &&
+        isWholeNumber(value.layer) &&
+        isTextOrNull(value.message)
+      );
+    case "step_finished":
+      return (
+        typeof value.step_id === "string" &&
+        isWholeNumber(value.layer) &&
+        STEP_STATUSES.includes(value.status) &&
+        isTextOrNull(value.failure) &&
+        isNumberOrNull(value.confidence)
+      );
+    case "context_changed":
+      return typeof value.step_id === "string" && isRecord(value.values);
+    case "run_finished":
+      return typeof value.run_id === "string" && typeof value.succeeded === "boolean";
+    default:
+      return false;
+  }
+}
+
+const LIVE_STATES: readonly unknown[] = ["running", "finished", "cancelled", "refused"];
+
+/** Returns whether a value is one run started from the editor. */
+export function isLiveRun(value: unknown): value is LiveRun {
+  return (
+    isRecord(value) &&
+    typeof value.handle === "string" &&
+    (value.kind === "run" || value.kind === "step") &&
+    typeof value.workflow_id === "string" &&
+    isTextOrNull(value.step_id) &&
+    LIVE_STATES.includes(value.state) &&
+    typeof value.started_at === "string" &&
+    isTextOrNull(value.finished_at) &&
+    isWholeNumber(value.event_count) &&
+    (value.result === null || isRecord(value.result)) &&
+    (value.error === null ||
+      (isRecord(value.error) &&
+        typeof value.error.code === "string" &&
+        typeof value.error.message === "string"))
   );
 }

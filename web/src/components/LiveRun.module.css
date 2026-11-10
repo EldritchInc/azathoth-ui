@@ -1,0 +1,270 @@
+/* A live run: its state, its steps lit on the graph, and its events. */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 76rem;
+}
+
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  color: var(--faint);
+  font-size: 0.875rem;
+}
+
+.crumbs a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.crumbs a:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.crumbs [aria-current="page"] {
+  color: var(--ink);
+}
+
+.header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 1rem 2rem;
+}
+
+.titles {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.eyebrow {
+  color: var(--tide-strong);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.title {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 400;
+  font-variation-settings:
+    "SOFT" 60,
+    "WONK" 1;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.9rem;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--faint) 16%, transparent);
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.pill::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.pill[data-state="running"] {
+  background: var(--tide-wash);
+  color: var(--tide-strong);
+}
+
+.pill[data-state="running"]::before {
+  animation: breathe 1.4s ease-in-out infinite;
+}
+
+.pill[data-state="succeeded"] {
+  background: var(--tide-wash);
+  color: var(--tide-strong);
+}
+
+.pill[data-state="failed"],
+.pill[data-state="refused"] {
+  background: var(--rose-wash);
+  color: var(--rose);
+}
+
+.pill[data-state="cancelled"] {
+  background: var(--amber-wash);
+  color: var(--amber);
+}
+
+.facts {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.sectionTitle {
+  font-size: 1.3rem;
+  font-weight: 450;
+}
+
+.outcome {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.quiet {
+  color: var(--muted);
+}
+
+.kept {
+  color: var(--faint);
+  font-size: 0.8125rem;
+}
+
+.kept code {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+
+.warnings {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.back {
+  color: var(--tide-strong);
+  text-underline-offset: 0.2em;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18rem;
+  gap: 2rem;
+  align-items: start;
+}
+
+.graph {
+  min-width: 0;
+}
+
+.timeline {
+  position: sticky;
+  top: 1.5rem;
+  display: grid;
+  gap: 0.75rem;
+  max-height: calc(100vh - 3rem);
+  min-width: 0;
+}
+
+.events {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.event {
+  position: relative;
+  padding: 0 0 0.85rem 1.25rem;
+  color: var(--ink);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.event::before {
+  content: "";
+  position: absolute;
+  top: 0.4rem;
+  left: 0;
+  width: 0.55rem;
+  height: 0.55rem;
+  border: 2px solid var(--tide);
+  border-radius: 999px;
+  background: var(--raised);
+}
+
+.event::after {
+  content: "";
+  position: absolute;
+  top: 1.05rem;
+  bottom: 0;
+  left: calc(0.275rem - 1px);
+  width: 2px;
+  background: var(--line);
+}
+
+.event:last-child::after {
+  display: none;
+}
+
+.event[data-type="run_started"]::before,
+.event[data-type="run_finished"]::before {
+  background: var(--tide);
+}
+
+.event[data-type="context_changed"] {
+  color: var(--muted);
+}
+
+.event[data-type="context_changed"]::before {
+  border-color: var(--faint);
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pill[data-state="running"]::before {
+    animation: none;
+  }
+}
+
+@media (max-width: 96rem) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .timeline {
+    position: static;
+    max-height: none;
+  }
+}
+
+@media (max-width: 40rem) {
+  .header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

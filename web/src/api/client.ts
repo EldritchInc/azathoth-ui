@@ -13,6 +13,7 @@ import {
   isEditorDescription,
   isErrorBody,
   isInstanceDescription,
+  isLiveRun,
   isModelListing,
   isModelSummary,
   isPortfolioEntry,
@@ -24,6 +25,7 @@ import {
   type ComponentDetail,
   type EditorDescription,
   type InstanceDescription,
+  type LiveRun,
   type ModelListing,
   type ModelSummary,
   type PortfolioEntry,
@@ -299,4 +301,74 @@ export async function removeFromPortfolio(
   }
 
   return body;
+}
+
+/** The largest file a run takes, as Azathoth holds it: 10 MB. */
+export const MAX_INPUT_FILE_BYTES = 10 * 1024 * 1024;
+
+/** A file as the server takes one: its media type, and its content in base64. */
+export interface SentFile {
+  readonly media_type: string;
+  readonly content: string;
+}
+
+/** What a run is given: JSON, a file, or nothing. */
+export type RunGiven =
+  | { readonly kind: "json"; readonly value: unknown }
+  | { readonly kind: "file"; readonly file: SentFile }
+  | { readonly kind: "none" };
+
+/** Returns the body that starts a run of a workflow, given what it is given. */
+export function startBody(workflowId: string, given: RunGiven): Record<string, unknown> {
+  switch (given.kind) {
+    case "json":
+      return { workflow_id: workflowId, input: given.value };
+    case "file":
+      return { workflow_id: workflowId, file: given.file };
+    case "none":
+      return { workflow_id: workflowId };
+  }
+}
+
+async function liveRunOf(path: string, body: string | undefined, options: RequestOptions) {
+  const answer = await requestJson(
+    path,
+    body === undefined ? { method: "GET" } : { method: "POST", body },
+    options,
+  );
+
+  if (!isLiveRun(answer)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return answer;
+}
+
+/** Starts a live run of a workflow: `POST /api/live/runs`. Returns it, running. */
+export function startRun(
+  workflowId: string,
+  given: RunGiven,
+  options: RequestOptions = {},
+): Promise<LiveRun> {
+  return liveRunOf("/api/live/runs", JSON.stringify(startBody(workflowId, given)), options);
+}
+
+/** Returns one live run: `GET /api/live/{handle}`. */
+export function fetchLiveRun(handle: string, options: RequestOptions = {}): Promise<LiveRun> {
+  return liveRunOf(`/api/live/${encodeURIComponent(handle)}`, undefined, options);
+}
+
+/** Returns every live run the editor remembers, newest first: `GET /api/live`. */
+export function fetchLiveRuns(options: RequestOptions = {}): Promise<LiveRun[]> {
+  return fetchItems("/api/live", isLiveRun, options);
+}
+
+/** Asks a live run to stop: `POST /api/live/{handle}/cancel`. Returns it as it stands. */
+export function cancelLiveRun(handle: string, options: RequestOptions = {}): Promise<LiveRun> {
+  return liveRunOf(`/api/live/${encodeURIComponent(handle)}/cancel`, "{}", options);
+}
+
+/** Returns the path of a live run's event stream. */
+export function liveEventsPath(handle: string): string {
+  return `/api/live/${encodeURIComponent(handle)}/events`;
 }

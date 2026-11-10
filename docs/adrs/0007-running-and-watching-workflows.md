@@ -86,6 +86,23 @@ nothing about watching a run should depend on its running here.
   /api/workflows/{id}/runs` newest first, and `GET /api/runs/{run_id}` with
   every step's output, values, measurements and failed attempts.
 
+- **The web app runs a workflow from its page.** Run opens
+  `/workflows/{id}/run`, where the run is given text, which most workflows
+  take; JSON, any value, run only once it reads as JSON; a file, checked for
+  its type and its 10 MB before it is read and sent; or nothing. Starting
+  the run opens `/live/{handle}`.
+- **A live run's page shows it as it goes.** Each step on the graph, and in
+  the outline, says where it is: waiting, running, done, failed, skipped, or
+  stopped when the run ended while it ran. Every event is said in words as
+  it comes, beside the graph on a wide screen and under it otherwise. Once
+  the run ends, the page shows its result, or the step it failed on and why,
+  or that it was cancelled or refused, and names the run Azathoth kept. The
+  page reads the stream from its handle, so a reload, or opening it from
+  another tab, shows the run from its first event.
+- **The rail points to the runs still running.** It asks which are every 2
+  seconds while any is running, and every 15 while none is, and links to the
+  newest.
+
 ## Consequences
 
 - The web app starts a run, reads its stream, and can be closed and opened

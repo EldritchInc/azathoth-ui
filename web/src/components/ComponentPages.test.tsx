@@ -39,6 +39,15 @@ function workflowPage(search = ""): void {
 }
 
 describe("a workflow's page", () => {
+  it("offers to run it", async () => {
+    workflowPage();
+
+    expect(await screen.findByRole("link", { name: "Run" })).toHaveAttribute(
+      "href",
+      `/workflows/${WORKFLOW_DETAIL.id}/run`,
+    );
+  });
+
   it("offers to edit it", async () => {
     workflowPage();
 

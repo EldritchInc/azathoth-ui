@@ -17,16 +17,22 @@ import {
 import {
   ApiFailure,
   addToPortfolio,
+  cancelLiveRun,
   fetchDetail,
   fetchEditor,
   fetchHistory,
+  fetchLiveRun,
+  fetchLiveRuns,
   fetchModels,
   fetchPortfolio,
   removeFromPortfolio,
+  startRun,
+  type RunGiven,
 } from "./api/client";
 import type {
   ComponentDetail,
   EditorDescription,
+  LiveRun,
   ModelListing,
   PortfolioEntry,
   PortfolioRemoval,
@@ -54,7 +60,16 @@ export const queryKeys = {
   models: ["models"] as const,
   modelList: ["models", "list"] as const,
   portfolio: ["models", "portfolio"] as const,
+  live: ["live"] as const,
+  liveList: ["live", "list"] as const,
+  liveRun: (handle: string) => ["live", "run", handle] as const,
 };
+
+/** How often the editor asks which live runs are running, while any is. */
+export const RUNNING_POLL_MS = 2_000;
+
+/** How often it asks while none is, to find runs started in another tab. */
+export const IDLE_POLL_MS = 15_000;
 
 /** Returns whether a failed request is worth trying again: not when the server refused it. */
 export function retryable(failures: number, error: unknown): boolean {
@@ -199,4 +214,56 @@ export function useWorkflowDocuments(): WorkflowDocuments {
     pending: list.isPending || details.some((detail) => detail.isPending),
     failed: list.isError || details.some((detail) => detail.isError),
   };
+}
+
+/**
+ * Returns every live run the editor remembers, newest first, asked again
+ * every couple of seconds while any is running and now and then while none is.
+ */
+export function useLiveRuns(): UseQueryResult<LiveRun[], ApiFailure> {
+  return useQuery<LiveRun[], ApiFailure>({
+    queryKey: queryKeys.liveList,
+    queryFn: ({ signal }) => fetchLiveRuns({ signal }),
+    refetchInterval: (query) =>
+      query.state.data?.some((run) => run.state === "running") === true
+        ? RUNNING_POLL_MS
+        : IDLE_POLL_MS,
+  });
+}
+
+/** Returns one live run as the server last described it. */
+export function useLiveRun(handle: string): UseQueryResult<LiveRun, ApiFailure> {
+  return useQuery<LiveRun, ApiFailure>({
+    queryKey: queryKeys.liveRun(handle),
+    queryFn: ({ signal }) => fetchLiveRun(handle, { signal }),
+  });
+}
+
+/** What starting a run takes: the workflow, and what it is given. */
+export interface RunStart {
+  readonly workflowId: string;
+  readonly given: RunGiven;
+}
+
+/** Returns a start of a live run, after which the live runs are fetched again. */
+export function useStartRun(): UseMutationResult<LiveRun, ApiFailure, RunStart> {
+  const client = useQueryClient();
+
+  return useMutation<LiveRun, ApiFailure, RunStart>({
+    mutationFn: ({ workflowId, given }) => startRun(workflowId, given),
+    onSuccess: (run) => {
+      client.setQueryData(queryKeys.liveRun(run.handle), run);
+    },
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.liveList }),
+  });
+}
+
+/** Returns a way to ask a live run to stop. */
+export function useCancelRun(): UseMutationResult<LiveRun, ApiFailure, string> {
+  const client = useQueryClient();
+
+  return useMutation<LiveRun, ApiFailure, string>({
+    mutationFn: (handle) => cancelLiveRun(handle),
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.live }),
+  });
 }
