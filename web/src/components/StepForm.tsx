@@ -60,6 +60,7 @@ import { useDebounced } from "../useDebounced";
 import styles from "./StepForm.module.css";
 import type { Composing, Edit } from "./composing";
 import { JsonEditor } from "./JsonEditor";
+import { TryStep } from "./TryStep";
 
 /** What every part of the form needs: the step, its document, and a way to change it. */
 interface Editing {
@@ -1403,6 +1404,15 @@ export function StepForm({
       <Outputs editing={editing} />
       <Conditions editing={editing} choices={choices} />
       <Failing editing={editing} />
+      <Section title="Try this step">
+        <TryStep
+          key={id}
+          document={document}
+          id={id}
+          title={titleOf(step)}
+          blocked={found.length > 0}
+        />
+      </Section>
       <details className={styles.advanced}>
         <summary>Advanced</summary>
         <dl className={styles.ids}>

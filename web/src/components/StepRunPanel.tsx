@@ -5,9 +5,20 @@ import styles from "./StepRunPanel.module.css";
 /**
  * What the run being shown did with one step: where it is, how long it
  * took and how often it was tried, what it ran on and measured, what it
- * returned and added, and every attempt that failed.
+ * returned and added, and every attempt that failed. A step tried alone is
+ * shown the same way, under a `heading` of its own.
  */
-export function StepRunPanel({ run, title }: { readonly run: StepRun; readonly title: string }) {
+export function StepRunPanel({
+  run,
+  title,
+  heading = "In this run",
+  label = `${title} in this run`,
+}: {
+  readonly run: StepRun;
+  readonly title: string;
+  readonly heading?: string;
+  readonly label?: string;
+}) {
   const facts = [
     run.attempts !== null && run.attempts > 1 ? `${String(run.attempts)} attempts` : null,
     run.startedAt !== null && run.completedAt !== null
@@ -18,9 +29,9 @@ export function StepRunPanel({ run, title }: { readonly run: StepRun; readonly t
   const measures = run.metrics === null ? [] : measured(run.metrics);
 
   return (
-    <section className={styles.panel} aria-label={`${title} in this run`}>
+    <section className={styles.panel} aria-label={label}>
       <div className={styles.top}>
-        <h4 className={styles.title}>In this run</h4>
+        <h4 className={styles.title}>{heading}</h4>
         <span className={styles.state} data-run={run.state}>
           {STEP_STATE_NAMES[run.state]}
         </span>

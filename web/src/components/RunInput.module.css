@@ -212,3 +212,30 @@
   color: var(--rose);
   font-size: 0.85rem;
 }
+
+.panel[data-compact="true"] {
+  gap: 0.6rem;
+  padding: 0.7rem 0.8rem 0.8rem;
+  border-radius: var(--radius-small);
+}
+
+.panel[data-compact="true"] .legend {
+  font-family: var(--sans);
+  font-size: 0.8125rem;
+  font-weight: 650;
+}
+
+.legend code {
+  font-family: var(--mono);
+  font-size: 0.95em;
+}
+
+.panel[data-compact="true"] .mode {
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.panel[data-compact="true"] .none {
+  font-size: 0.8125rem;
+}

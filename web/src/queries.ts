@@ -33,7 +33,9 @@ import {
   matchModels,
   removeFromPortfolio,
   startRun,
+  startTrial,
   type RunGiven,
+  type TrialStart,
 } from "./api/client";
 import type {
   ComponentDetail,
@@ -268,6 +270,19 @@ export function useStartRun(): UseMutationResult<LiveRun, ApiFailure, RunStart> 
 
   return useMutation<LiveRun, ApiFailure, RunStart>({
     mutationFn: ({ workflowId, given }) => startRun(workflowId, given),
+    onSuccess: (run) => {
+      client.setQueryData(queryKeys.liveRun(run.handle), run);
+    },
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.liveList }),
+  });
+}
+
+/** Returns a start of trying one step alone, after which the live runs are fetched again. */
+export function useTryStep(): UseMutationResult<LiveRun, ApiFailure, TrialStart> {
+  const client = useQueryClient();
+
+  return useMutation<LiveRun, ApiFailure, TrialStart>({
+    mutationFn: (start) => startTrial(start),
     onSuccess: (run) => {
       client.setQueryData(queryKeys.liveRun(run.handle), run);
     },

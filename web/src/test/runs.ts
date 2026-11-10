@@ -12,6 +12,7 @@ import type {
   RunStepDetail,
   RunSummary,
   StepReadiness,
+  StepTrial,
   WorkflowReadiness,
 } from "../api/types";
 import { uuid, VALID_DOCUMENT, WORKFLOW_DETAIL } from "./documents";
@@ -183,4 +184,19 @@ export const NOT_READY: WorkflowReadiness = {
       problem: "No model in the portfolio meets this step's needs.",
     },
   ],
+};
+
+/** The selecting step being tried alone, just started. */
+export const TRYING: LiveRun = { ...LIVE_RUN, handle: "tr1al", kind: "step", step_id: SELECT };
+
+/** What trying it did: as the kept run's first step did. */
+export const TRIAL: StepTrial = { step: SELECTED, warnings: [] };
+
+/** The try once it has finished. */
+export const TRIED: LiveRun = {
+  ...TRYING,
+  state: "finished",
+  finished_at: "2026-11-10T10:00:00.500Z",
+  event_count: 3,
+  result: { ...TRIAL },
 };

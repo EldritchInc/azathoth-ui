@@ -5,12 +5,37 @@ import { TAKEN_FILES, megabytes, type InputMode } from "../running";
 import { givenOf, readFile, type ChosenFile, type InputDraft } from "../runInput";
 import styles from "./RunInput.module.css";
 
-const MODES: readonly (readonly [InputMode, string])[] = [
-  ["text", "Text"],
-  ["json", "JSON"],
-  ["file", "File"],
-  ["none", "Nothing"],
-];
+const ALL_MODES: readonly InputMode[] = ["text", "json", "file", "none"];
+
+/** What a person reads of one way to give a value: its fields' labels and its words. */
+export interface InputLabels {
+  /** The group of ways to give it. */
+  readonly modes: string;
+  /** What giving nothing is called: "Nothing", or "As written" for a step's input. */
+  readonly noneName: string;
+  /** What giving nothing means. */
+  readonly none: string;
+  readonly text: string;
+  readonly json: string;
+  readonly file: string;
+  readonly placeholder: string;
+}
+
+const RUN_LABELS: InputLabels = {
+  modes: "Give the run",
+  noneName: "Nothing",
+  none: "The run is given no input. A step that reads the run’s input fails, as it would in any run.",
+  text: "The run's input, as text",
+  json: "The run's input, as JSON",
+  file: "Choose the run's file",
+  placeholder: "What the workflow reads as its input",
+};
+
+const MODE_NAMES: Readonly<Record<Exclude<InputMode, "none">, string>> = {
+  text: "Text",
+  json: "JSON",
+  file: "File",
+};
 
 const ACCEPT =
   ".json,.txt,.md,.csv,.html,.xml,.pdf,.png,.jpg,.jpeg,.webp,application/json,text/*,application/pdf,image/png,image/jpeg,image/webp";
@@ -41,9 +66,11 @@ function FileIcon() {
 /** Where a file is dropped or chosen, and the one chosen. */
 function FileDrop({
   file,
+  label,
   onFile,
 }: {
   readonly file: ChosenFile | null;
+  readonly label: string;
   readonly onFile: (file: ChosenFile | null) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
@@ -83,7 +110,7 @@ function FileDrop({
         className="visually-hidden"
         type="file"
         accept={ACCEPT}
-        aria-label="Choose the run's file"
+        aria-label={label}
         tabIndex={-1}
         onChange={(event) => {
           take(event.target.files);
@@ -159,15 +186,27 @@ function FileDrop({
 /**
  * How a person gives a run its input: as text, which most workflows take;
  * as JSON, any value; as a file, a PDF, an image or text; or as nothing.
+ * A step tried alone gives each of its inputs the same ways, its `labels`
+ * naming the input, with only the `modes` it may be given.
  */
 export function RunInput({
   draft,
   onChange,
   label = "Input",
+  labels = RUN_LABELS,
+  modes = ALL_MODES,
+  rows = 6,
+  compact = false,
 }: {
   readonly draft: InputDraft;
   readonly onChange: (draft: InputDraft) => void;
-  readonly label?: string;
+  readonly label?: ReactNode;
+  readonly labels?: InputLabels;
+  readonly modes?: readonly InputMode[];
+  /** How tall its text is. */
+  readonly rows?: number;
+  /** Whether it sits in a step's details, where room is short. */
+  readonly compact?: boolean;
 }) {
   const textId = useId();
   const { problem } = givenOf(draft);
@@ -179,9 +218,9 @@ export function RunInput({
         <textarea
           id={textId}
           className={styles.text}
-          rows={6}
-          placeholder="What the workflow reads as its input"
-          aria-label="The run's input, as text"
+          rows={rows}
+          placeholder={labels.placeholder}
+          aria-label={labels.text}
           value={draft.text}
           onChange={(event) => {
             onChange({ ...draft, text: event.target.value });
@@ -195,12 +234,12 @@ export function RunInput({
           <textarea
             id={textId}
             className={classNames(styles.text, styles.mono)}
-            rows={8}
+            rows={rows + 2}
             spellCheck={false}
             autoCapitalize="off"
             autoComplete="off"
             placeholder='{"text": "…"}'
-            aria-label="The run's input, as JSON"
+            aria-label={labels.json}
             aria-invalid={problem !== null && draft.json.trim() !== ""}
             value={draft.json}
             onChange={(event) => {
@@ -221,6 +260,7 @@ export function RunInput({
       body = (
         <FileDrop
           file={draft.file}
+          label={labels.file}
           onFile={(file) => {
             onChange({ ...draft, file });
           }}
@@ -228,20 +268,15 @@ export function RunInput({
       );
       break;
     case "none":
-      body = (
-        <p className={styles.none}>
-          The run is given no input. A step that reads the run’s input fails, as it would in any
-          run.
-        </p>
-      );
+      body = <p className={styles.none}>{labels.none}</p>;
       break;
   }
 
   return (
-    <fieldset className={styles.panel}>
+    <fieldset className={styles.panel} data-compact={compact ? "true" : undefined}>
       <legend className={styles.legend}>{label}</legend>
-      <div className={styles.modes} role="radiogroup" aria-label="Give the run">
-        {MODES.map(([mode, name]) => (
+      <div className={styles.modes} role="radiogroup" aria-label={labels.modes}>
+        {modes.map((mode) => (
           <button
             key={mode}
             type="button"
@@ -252,7 +287,7 @@ export function RunInput({
               onChange({ ...draft, mode });
             }}
           >
-            {name}
+            {mode === "none" ? labels.noneName : MODE_NAMES[mode]}
           </button>
         ))}
       </div>

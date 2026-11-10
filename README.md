@@ -33,7 +33,10 @@ A workflow's Run button runs it on text, JSON or a file, a PDF, an image or
 text, and shows the run as it goes: each step lit on the graph as it starts
 and ends, every event in words, and how it ended. A run goes on if you leave
 its page, and the editor's rail points to the runs still running. Every run
-is kept and listed on its workflow's page, with what each step did
+is kept and listed on its workflow's page, with what each step did. While
+you edit, the editor asks Azathoth what it would refuse and whether the
+workflow could run here, and a step's details try that one step alone, on
+the values you give its inputs, keeping nothing
 ([ADR 0007](docs/adrs/0007-running-and-watching-workflows.md)).
 [ADR 0001](docs/adrs/0001-local-server-security.md) explains how the server
 keeps other sites and other users out.

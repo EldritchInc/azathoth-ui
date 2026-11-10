@@ -361,6 +361,25 @@ export function startRun(
   return liveRunOf("/api/live/runs", JSON.stringify(startBody(workflowId, given)), options);
 }
 
+/**
+ * What trying one step alone is sent (ADR 0007): the document as it stands,
+ * the step, the values and files its inputs are given by name, and the run's
+ * input, for an input left to read it.
+ */
+export interface TrialStart {
+  readonly document: unknown;
+  readonly step_id: string;
+  readonly inputs: Readonly<Record<string, unknown>>;
+  readonly files: Readonly<Record<string, SentFile>>;
+  readonly input?: unknown;
+  readonly file?: SentFile;
+}
+
+/** Starts trying one step alone: `POST /api/live/steps`. Returns its live run, running. */
+export function startTrial(start: TrialStart, options: RequestOptions = {}): Promise<LiveRun> {
+  return liveRunOf("/api/live/steps", JSON.stringify(start), options);
+}
+
 /** Returns one live run: `GET /api/live/{handle}`. */
 export function fetchLiveRun(handle: string, options: RequestOptions = {}): Promise<LiveRun> {
   return liveRunOf(`/api/live/${encodeURIComponent(handle)}`, undefined, options);

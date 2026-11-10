@@ -630,6 +630,23 @@ export function isRunStepDetail(value: unknown): value is RunStepDetail {
   );
 }
 
+/** A step tried alone (`POST /api/live/steps`), as its live run's result: what it did. */
+export interface StepTrial {
+  readonly step: RunStepDetail;
+  /** What went wrong beside the step, such as an event callback that raised. */
+  readonly warnings: readonly string[];
+}
+
+/** Returns whether a value is a tried step's trial. */
+export function isStepTrial(value: unknown): value is StepTrial {
+  return (
+    isRecord(value) &&
+    isRunStepDetail(value.step) &&
+    Array.isArray(value.warnings) &&
+    value.warnings.every((warning) => typeof warning === "string")
+  );
+}
+
 /** Returns whether a value is one kept run with its steps. */
 export function isRunDetail(value: unknown): value is RunDetail {
   return (

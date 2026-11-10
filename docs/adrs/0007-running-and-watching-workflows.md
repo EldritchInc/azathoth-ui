@@ -135,6 +135,15 @@ nothing about watching a run should depend on its running here.
   250 ms. Only the hint of how many models outside the portfolio would meet
   them, and a model's page listing the steps that could use it, are still
   judged in the browser, until Azathoth can match the whole catalog.
+- **A step is tried from its details, as it stands.** "Try this step"
+  gives each of the step's inputs a value, as text, JSON or a file, or
+  leaves it as written where it may be: a constant, or a field of the run's
+  input, which is then asked for, as a run asks for it. An input another
+  step gives must be given, as no step gives it here. Trying it starts a
+  live run of kind `step` with the document as it stands, saved or not, and
+  shows the step as it runs and as it was tried, with what it returned and
+  added, in the same panel a run's step has; it can be cancelled, and its
+  page opened. A step Azathoth would refuse is fixed before it is tried.
 - **The rail points to the runs still running.** It asks which are every 2
   seconds while any is running, and every 15 while none is, and links to the
   newest.
