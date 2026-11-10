@@ -148,3 +148,5 @@
   step says it can't run here yet. A step that always runs on one model
   says whether the providers serve it, and whether the local portfolio
   holds it.
+- ADR 0006 records how the editor keeps its local portfolio apart from a
+  shared server's, and says which models a step could run on.
