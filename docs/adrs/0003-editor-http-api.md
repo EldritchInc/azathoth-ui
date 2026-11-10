@@ -46,6 +46,12 @@ answers in JSON, and is never cached.
 | `GET /api/local/portfolio` | The models the local portfolio authorizes, oldest first |
 | `POST /api/local/portfolio` | Authorizes one model locally, from `{"identifier"}`: 201 |
 | `POST /api/local/portfolio/remove` | Stops authorizing one model locally, from `{"identifier", "force"}` |
+| `POST /api/workflows/check` | Every reason importing a workflow document would refuse it, saving nothing ([ADR 0007](0007-running-and-watching-workflows.md)) |
+| `POST /api/workflows/readiness` | Whether each step of a workflow document could run here now, asking the providers |
+| `GET /api/workflows/{id}/runs?limit=` | A workflow's kept runs, newest first |
+| `GET /api/runs/{run_id}` | One kept run, with its input, its result and its steps |
+| `POST /api/models/matching` | The local portfolio's models that meet `{"requirements"}`, in the order a run tries them |
+| `POST /api/live/steps` | Starts trying one step of a document alone, from `{"document", "step_id", "inputs", "files", "input" \| "file"}`: 201 |
 | `POST /api/live/runs` | Starts a live run of a workflow, from `{"workflow_id", "input" \| "file"}`: 201 ([ADR 0007](0007-running-and-watching-workflows.md)) |
 | `GET /api/live` | Every live run the editor remembers, newest first |
 | `GET /api/live/{handle}` | One live run: where it is, and how it ended |

@@ -63,6 +63,29 @@ nothing about watching a run should depend on its running here.
   are remembered until the editor stops. Once a run has finished, the run
   Azathoth kept is its record; a live run's `result` names it by `run_id`.
 
+- **Trying one step is a live run too,** of kind `step`. `POST
+  /api/live/steps` takes the document, imported or not, the `step_id`, the
+  values its inputs are given by name as `inputs` and files as `files`, and
+  the run's input as `input` or `file`, for an input that reads it. Its
+  events and its end stream as a run's do; there is no run to start or
+  finish, so it reports only its step's events, and its `result` is
+  Azathoth's `StepTrial`. Nothing of it is kept.
+- **The editor asks Azathoth what it makes of a document,** rather than
+  repeating its rules. `POST /api/workflows/check` names every reason
+  importing the document would refuse it, with where and in which step,
+  asking no provider. `POST /api/workflows/readiness` says whether each step
+  could run here now, and on what, asking the providers. Neither saves
+  anything. Both take the document as an import does, at most 10 MB.
+- **The models a step's requirements match are Azathoth's answer, kept a
+  while.** `POST /api/models/matching` asks `models.matching`, which asks
+  the providers; the editor keeps each answer by its requirements for as
+  long as it keeps the catalog, so a step being edited asks once for each
+  set of requirements it has. Every answer is forgotten when the local
+  portfolio changes, or the catalog is refreshed.
+- **The runs Azathoth kept are read as it keeps them:** `GET
+  /api/workflows/{id}/runs` newest first, and `GET /api/runs/{run_id}` with
+  every step's output, values, measurements and failed attempts.
+
 ## Consequences
 
 - The web app starts a run, reads its stream, and can be closed and opened

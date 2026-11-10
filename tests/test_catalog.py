@@ -1,6 +1,6 @@
 """Tests of the models API: the providers' catalog, kept for a while, and the local portfolio."""
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
@@ -66,6 +66,7 @@ class Models:
         self.models = tuple(summary(identifier) for identifier in identifiers)
         self.error: api.ApiError | None = None
         self.asked = 0
+        self.matched = 0
 
     def list(self) -> tuple[api.ModelSummary, ...]:
         """Return what the providers serve, counting each time they are asked."""
@@ -76,6 +77,30 @@ class Models:
             raise self.error
 
         return self.models
+
+    def matching(
+        self,
+        requirements: Mapping[str, object],
+    ) -> tuple[api.ModelSummary, ...]:
+        """Return the served models with every capability asked, counting each time asked."""
+
+        self.matched += 1
+
+        if self.error is not None:
+            raise self.error
+
+        if set(requirements) - {"required_capabilities"}:
+            raise api.InvalidArgumentError("Unknown model requirement 'fast'.")
+
+        needed = requirements.get("required_capabilities", [])
+
+        assert isinstance(needed, list)
+
+        return tuple(
+            model.model_copy(update={"authorized": True})
+            for model in self.models
+            if all(capability in model.capabilities for capability in needed)
+        )
 
 
 class Portfolio:
@@ -496,6 +521,126 @@ def test_the_catalog_asks_again_once_what_it_keeps_is_old() -> None:
     catalog.listing(refresh=True)
 
     assert models.asked == 3
+
+
+#
+# The models a step's requirements match
+#
+
+
+def test_the_models_a_steps_requirements_match_are_listed(
+    instance: api.Azathoth,
+    tmp_path: Path,
+) -> None:
+    models = Models(LARGE, FREE)
+    client = client_of(instance, tmp_path, models, Portfolio(LARGE, FREE))
+
+    status, answer = change(
+        client,
+        "/api/models/matching",
+        {"requirements": {"required_capabilities": ["tool_use"]}},
+    )
+
+    assert status == 200
+    assert isinstance(answer, dict)
+    assert [item["identifier"] for item in answer["items"]] == [LARGE, FREE]
+    assert all(item["authorized"] for item in answer["items"])
+
+
+def test_the_same_requirements_are_matched_once_until_the_portfolio_changes(
+    instance: api.Azathoth,
+    tmp_path: Path,
+) -> None:
+    models = Models(LARGE, FREE)
+    client = client_of(instance, tmp_path, models, Portfolio(LARGE, FREE))
+    asked = {"requirements": {"required_capabilities": ["tool_use"]}}
+
+    change(client, "/api/models/matching", asked)
+    change(client, "/api/models/matching", asked)
+
+    assert models.matched == 1
+
+    change(client, "/api/models/matching", {"requirements": {}})
+
+    assert models.matched == 2
+
+    change(client, "/api/local/portfolio", {"identifier": LARGE})
+    change(client, "/api/models/matching", asked)
+
+    assert models.matched == 3
+
+    change(client, "/api/local/portfolio/remove", {"identifier": LARGE})
+    change(client, "/api/models/matching", asked)
+
+    assert models.matched == 4
+
+    client.get("/api/models?refresh=true")
+    change(client, "/api/models/matching", asked)
+
+    assert models.matched == 5
+
+
+def test_requirements_matched_again_once_what_is_kept_is_old() -> None:
+    clock = Clock()
+    models = Models(LARGE)
+    catalog = Catalog(models, clock=clock)
+
+    catalog.matching({})
+    clock.seconds = CATALOG_SECONDS - 1
+    catalog.matching({})
+
+    assert models.matched == 1
+
+    clock.seconds = CATALOG_SECONDS
+    catalog.matching({})
+
+    assert models.matched == 2
+
+
+def test_requirements_azathoth_refuses_are_refused(
+    instance: api.Azathoth,
+    tmp_path: Path,
+) -> None:
+    client = client_of(instance, tmp_path, Models(LARGE), Portfolio(LARGE))
+
+    status, answer = change(client, "/api/models/matching", {"requirements": {"fast": True}})
+
+    assert status == 422
+    assert answer == {
+        "error": {"code": "invalid_argument", "message": "Unknown model requirement 'fast'."}
+    }
+
+
+@pytest.mark.parametrize("body", [{}, {"requirements": []}, {"requirements": {}, "more": 1}])
+def test_requirements_must_be_an_object_and_nothing_else(
+    instance: api.Azathoth,
+    tmp_path: Path,
+    body: object,
+) -> None:
+    client = client_of(instance, tmp_path, Models(LARGE), Portfolio(LARGE))
+
+    status, answer = change(client, "/api/models/matching", body)
+
+    assert status == 422
+    assert answer == {
+        "error": {
+            "code": "invalid_argument",
+            "message": 'Send {"requirements": {...}}, a step\'s model requirements.',
+        }
+    }
+
+
+def test_a_provider_that_cannot_be_asked_while_matching_is_reported(
+    instance: api.Azathoth,
+    tmp_path: Path,
+) -> None:
+    models = Models(LARGE)
+    models.error = api.ProviderUnavailableError("OpenRouter could not be reached.")
+    client = client_of(instance, tmp_path, models, Portfolio(LARGE))
+
+    status, _ = change(client, "/api/models/matching", {"requirements": {}})
+
+    assert status == 502
 
 
 def test_the_providers_are_named_and_never_their_keys() -> None:

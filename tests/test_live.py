@@ -14,7 +14,7 @@ from azathoth import api
 from starlette.testclient import TestClient
 
 from azathoth_ui.app import build_app
-from azathoth_ui.live import MAX_START_BYTES, TOO_LARGE_MESSAGE, LiveRuns
+from azathoth_ui.live import DOCUMENT_MESSAGE, MAX_START_BYTES, TOO_LARGE_MESSAGE, LiveRuns
 from tests.test_app import ORIGIN, PORT, TOKEN
 from tests.test_browsing import TOOL
 
@@ -190,12 +190,14 @@ def running(
     client: TestClient,
     handle: str,
 ) -> None:
-    """Wait for a live run's first step to start."""
+    """Wait for a live run's first step to start: a run's second event, a tried step's first."""
 
     deadline = time.monotonic() + WAIT_SECONDS
 
     while time.monotonic() < deadline:
-        if client.get(f"/api/live/{handle}").json()["event_count"] >= 2:
+        state = client.get(f"/api/live/{handle}").json()
+
+        if state["event_count"] >= (1 if state["kind"] == "step" else 2):
             return
 
         time.sleep(0.02)
@@ -585,3 +587,175 @@ def test_starting_and_cancelling_need_this_servers_origin(
 
     assert response.status_code == 403
     assert client.post("/api/live/nope/cancel").status_code == 403
+
+
+#
+# Trying one step
+#
+
+
+def try_step(
+    client: TestClient,
+    body: object,
+) -> Any:
+    """Start trying one step, as the web app does, and return the response."""
+
+    return client.post(
+        "/api/live/steps",
+        content=json.dumps(body),
+        headers={"origin": ORIGIN, "content-type": "application/json"},
+    )
+
+
+def test_a_step_is_tried_alone_and_watched_as_it_runs(
+    instance: api.Azathoth,
+    client: TestClient,
+) -> None:
+    document = counting(workflow_id=MISSING_ID)
+    response = try_step(
+        client,
+        {"document": document, "step_id": STEP_ID, "inputs": {"text": "one two three"}},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["kind"] == "step"
+    assert response.json()["workflow_id"] == MISSING_ID
+    assert response.json()["step_id"] == STEP_ID
+
+    messages = stream(client, response.json()["handle"])
+
+    assert [data["type"] for _, event, data in messages if event == "run_event"] == [
+        "step_started",
+        "step_finished",
+        "context_changed",
+    ]
+
+    end = messages[-1][2]
+
+    assert end["state"] == "finished"
+    assert end["result"]["step"]["values"] == {"count": 3}
+    assert end["result"]["warnings"] == []
+    assert instance.runs.list(UUID(WORKFLOW_ID)) == ()
+
+
+def test_a_tried_step_reads_the_runs_input_given(
+    client: TestClient,
+) -> None:
+    body = {"document": counting(), "step_id": STEP_ID, "input": "one two"}
+
+    state = finished(client, try_step(client, body).json()["handle"])
+
+    assert state["result"]["step"]["values"] == {"count": 2}
+
+
+def test_a_tried_step_is_given_files_as_inputs_and_as_the_runs_input(
+    client: TestClient,
+) -> None:
+    by_input = {
+        "document": counting(),
+        "step_id": STEP_ID,
+        "files": {"text": file(b"one two three", "text/plain")},
+    }
+    by_run = {"document": counting(), "step_id": STEP_ID, "file": file(b"one", "text/plain")}
+
+    assert finished(client, try_step(client, by_input).json()["handle"])["result"]["step"][
+        "values"
+    ] == {"count": 3}
+    assert finished(client, try_step(client, by_run).json()["handle"])["result"]["step"][
+        "values"
+    ] == {"count": 1}
+
+
+def test_a_step_azathoth_refuses_to_try_ends_refused(
+    client: TestClient,
+) -> None:
+    body = {"document": counting(), "step_id": MISSING_ID}
+
+    state = finished(client, try_step(client, body).json()["handle"])
+
+    assert state["state"] == "refused"
+    assert state["error"] == {
+        "code": "not_found",
+        "message": f"The workflow document has no step {MISSING_ID}.",
+    }
+
+
+def test_a_tried_step_is_cancelled(
+    client: TestClient,
+) -> None:
+    body = {
+        "document": counting(SLOW_WORKFLOW_ID, SLOW_STEP_ID, "slow_count", "process"),
+        "step_id": SLOW_STEP_ID,
+        "inputs": {"text": "x"},
+    }
+    handle = try_step(client, body).json()["handle"]
+    running(client, handle)
+
+    client.post(f"/api/live/{handle}/cancel", headers={"origin": ORIGIN})
+
+    assert finished(client, handle)["state"] == "cancelled"
+
+
+@pytest.mark.parametrize(
+    ("body", "message"),
+    [
+        ({"step_id": STEP_ID}, DOCUMENT_MESSAGE),
+        (
+            {"document": [], "step_id": STEP_ID},
+            "document must be a workflow document, as a JSON object.",
+        ),
+        (
+            {"document": {"metadata": {}}, "step_id": STEP_ID},
+            "document's metadata.id must be a workflow id.",
+        ),
+        ({"document": counting(), "step_id": "nope"}, "step_id must be a step id."),
+        (
+            {"document": counting(), "step_id": STEP_ID, "inputs": []},
+            "inputs must be a JSON object of values by input name.",
+        ),
+        (
+            {"document": counting(), "step_id": STEP_ID, "files": {"text": "x"}},
+            'files.text must be {"media_type", "content"}, its content in base64.',
+        ),
+        (
+            {
+                "document": counting(),
+                "step_id": STEP_ID,
+                "inputs": {"text": "a"},
+                "files": {"text": file(b"b", "text/plain")},
+            },
+            "Give input 'text' as a value or a file, not both.",
+        ),
+        (
+            {
+                "document": counting(),
+                "step_id": STEP_ID,
+                "input": 1,
+                "file": file(b"b", "text/plain"),
+            },
+            "Give a run input or a file, not both.",
+        ),
+        (
+            {"document": counting(), "step_id": STEP_ID, "surprise": 1},
+            "A step to try takes document, step_id, inputs, files, input and file, not surprise.",
+        ),
+    ],
+)
+def test_a_step_to_try_that_cannot_be_read_is_refused(
+    client: TestClient,
+    body: object,
+    message: str,
+) -> None:
+    assert refused(try_step(client, body), 422, "invalid_argument") == message
+
+
+def test_trying_a_step_needs_this_servers_origin(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/api/live/steps",
+        content=json.dumps({"document": counting(), "step_id": STEP_ID}),
+        headers={"content-type": "application/json"},
+    )
+
+    assert response.status_code == 403

@@ -19,9 +19,9 @@ steps that use it.
 import json
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
-from typing import Final, Protocol
+from typing import Any, Final, Protocol
 
 from azathoth import api
 from starlette.concurrency import run_in_threadpool
@@ -37,12 +37,18 @@ MAX_BODY_BYTES: Final = 64 * 1024
 
 BODY_MESSAGE: Final = 'Send a JSON object, such as {"identifier": "openrouter/acme/large"}.'
 
+REQUIREMENTS_MESSAGE: Final = 'Send {"requirements": {...}}, a step\'s model requirements.'
+
 
 class ModelSource(Protocol):
     """What the providers serve now, as `azathoth.api.Models` answers."""
 
     def list(self) -> tuple[api.ModelSummary, ...]:
         """Return every model the configured providers serve now."""
+        ...
+
+    def matching(self, requirements: Mapping[str, Any]) -> tuple[api.ModelSummary, ...]:
+        """Return the portfolio's models that meet a step's model requirements."""
         ...
 
 
@@ -67,6 +73,11 @@ class Catalog:
 
     One listing is made at a time, so a burst of requests asks the providers
     once. A failed listing is not kept: the next request asks again.
+
+    The models each step's requirements match are kept the same while, by
+    the requirements, so a step being edited asks the providers once for
+    each set of requirements it has. They are forgotten when the local
+    portfolio changes, and when the catalog is refreshed.
     """
 
     def __init__(
@@ -85,6 +96,7 @@ class Catalog:
         self._now = now
         self._lock = threading.Lock()
         self._kept: tuple[float, datetime, tuple[api.ModelSummary, ...]] | None = None
+        self._matches: dict[str, tuple[float, tuple[api.ModelSummary, ...]]] = {}
 
     def listing(
         self,
@@ -109,7 +121,41 @@ class Catalog:
                 kept = (self._clock(), self._now(), models)
                 self._kept = kept
 
+                if refresh:
+                    self._matches.clear()
+
             return kept[1], kept[2]
+
+    def matching(
+        self,
+        requirements: Mapping[str, object],
+    ) -> tuple[api.ModelSummary, ...]:
+        """Return the local portfolio's models that meet a step's requirements, in the order tried.
+
+        Raises:
+            InvalidArgumentError: Azathoth refuses the requirements.
+            ProviderUnavailableError: A provider could not be asked.
+            ProviderConfigurationError: A provider cannot be used as configured.
+        """
+
+        key = json.dumps(requirements, sort_keys=True)
+
+        with self._lock:
+            kept = self._matches.get(key)
+
+            if kept is None or self._clock() - kept[0] >= self._seconds:
+                kept = (self._clock(), self._models.matching(requirements))
+                self._matches[key] = kept
+
+            return kept[1]
+
+    def forget_matches(
+        self,
+    ) -> None:
+        """Forget the models every set of requirements matched, once the portfolio has changed."""
+
+        with self._lock:
+            self._matches.clear()
 
 
 def provider_names(
@@ -272,6 +318,7 @@ async def add_to_portfolio(
 
     identifier = text_field(await body_of(request), "identifier")
     entry = await run_in_threadpool(portfolio_of(request).add, identifier)
+    catalog_of(request).forget_matches()
 
     return JSONResponse(entry.model_dump(mode="json"), status_code=201)
 
@@ -289,8 +336,28 @@ async def remove_from_portfolio(
         raise api.InvalidArgumentError("force must be true or false.")
 
     removal = await run_in_threadpool(lambda: portfolio_of(request).remove(identifier, force=force))
+    catalog_of(request).forget_matches()
 
     return JSONResponse(removal.model_dump(mode="json"))
+
+
+async def match_models(
+    request: Request,
+) -> Response:
+    """`POST /api/models/matching` `{"requirements"}`: the local portfolio's models that meet them.
+
+    The models are in the order a run tries them, by Azathoth's own rules.
+    """
+
+    body = await body_of(request)
+    requirements = body.get("requirements")
+
+    if set(body) != {"requirements"} or not isinstance(requirements, dict):
+        raise api.InvalidArgumentError(REQUIREMENTS_MESSAGE)
+
+    models = await run_in_threadpool(catalog_of(request).matching, requirements)
+
+    return JSONResponse({"items": [model.model_dump(mode="json") for model in models]})
 
 
 def model_in_use(
@@ -318,6 +385,7 @@ def catalog_routes() -> list[BaseRoute]:
 
     return [
         Route("/api/models", list_models, methods=["GET"]),
+        Route("/api/models/matching", match_models, methods=["POST"]),
         Route("/api/models/{identifier:path}", get_model, methods=["GET"]),
         Route("/api/local/portfolio", list_portfolio, methods=["GET"]),
         Route("/api/local/portfolio", add_to_portfolio, methods=["POST"]),
@@ -328,6 +396,7 @@ def catalog_routes() -> list[BaseRoute]:
 __all__ = [
     "BODY_MESSAGE",
     "CATALOG_SECONDS",
+    "REQUIREMENTS_MESSAGE",
     "MAX_BODY_BYTES",
     "Catalog",
     "ModelSource",

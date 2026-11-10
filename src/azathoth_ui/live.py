@@ -28,7 +28,7 @@ import threading
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Final, Literal
+from typing import Any, Final, Literal
 from uuid import UUID
 
 from azathoth import api
@@ -60,6 +60,11 @@ BODY_MESSAGE: Final = 'Send a JSON object, such as {"workflow_id": ..., "input":
 
 START_FIELDS: Final = ("workflow_id", "input", "file")
 """What a body that starts a run may hold."""
+
+STEP_FIELDS: Final = ("document", "step_id", "inputs", "files", "input", "file")
+"""What a body that starts trying one step may hold."""
+
+DOCUMENT_MESSAGE: Final = "document must be a workflow document, as a JSON object."
 
 LiveKind = Literal["run", "step"]
 """What a live run runs: a workflow, or one step of a document tried alone."""
@@ -347,11 +352,13 @@ def uuid_field(
     body: dict[str, object],
     name: str,
     kind: str,
+    *,
+    label: str | None = None,
 ) -> UUID:
-    """Return the id one field of a body names, or refuse it as an invalid argument."""
+    """Return the id one field of a body names, or refuse it, by `label`, as an invalid argument."""
 
     value = body.get(name)
-    refused = api.InvalidArgumentError(f"{name} must be a {kind} id.")
+    refused = api.InvalidArgumentError(f"{label or name} must be a {kind} id.")
 
     if not isinstance(value, str):
         raise refused
@@ -445,6 +452,106 @@ async def start_run(
 
     try:
         run = live_of(request).start("run", call, workflow_id=workflow_id)
+    except TooManyRunsError as exc:
+        return refusal(429, "too_many_runs", str(exc))
+
+    return started(run)
+
+
+def document_field(
+    body: dict[str, object],
+) -> tuple[dict[str, Any], UUID]:
+    """Return the workflow document a body sends, and the id its metadata gives.
+
+    Raises:
+        InvalidArgumentError: It is not a JSON object, or names no workflow id.
+    """
+
+    document = body.get("document")
+
+    if not isinstance(document, dict):
+        raise api.InvalidArgumentError(DOCUMENT_MESSAGE)
+
+    metadata = document.get("metadata")
+    workflow_id = uuid_field(
+        metadata if isinstance(metadata, dict) else {},
+        "id",
+        "workflow",
+        label="document's metadata.id",
+    )
+
+    return {str(key): value for key, value in document.items()}, workflow_id
+
+
+def step_inputs(
+    body: dict[str, object],
+) -> dict[str, Any]:
+    """Return the values and files a body gives a step's inputs, by input name.
+
+    A value is JSON as the body held it; a file is an `api.RunFile`.
+
+    Raises:
+        InvalidArgumentError: Either is not an object, a file cannot be read,
+            or an input is given both ways.
+    """
+
+    values = body.get("inputs", {})
+    files = body.get("files", {})
+
+    if not isinstance(values, dict):
+        raise api.InvalidArgumentError("inputs must be a JSON object of values by input name.")
+
+    if not isinstance(files, dict):
+        raise api.InvalidArgumentError("files must be a JSON object of files by input name.")
+
+    both = next((str(name) for name in values if name in files), None)
+
+    if both is not None:
+        raise api.InvalidArgumentError(f"Give input {both!r} as a value or a file, not both.")
+
+    return {
+        **{str(name): value for name, value in values.items()},
+        **{str(name): run_file(value, f"files.{name}") for name, value in files.items()},
+    }
+
+
+async def start_step(
+    request: Request,
+) -> Response:
+    """`POST /api/live/steps` `{"document", "step_id", ...}`: start trying one step: 201.
+
+    `inputs` gives the step's inputs values by name, and `files` gives them
+    files; `input` or `file` is the run's input, for an input that reads it.
+    """
+
+    body = await start_body(request, STEP_FIELDS, "step to try")
+
+    if isinstance(body, Response):
+        return body
+
+    document, workflow_id = document_field(body)
+    step_id = uuid_field(body, "step_id", "step")
+    given = step_inputs(body)
+    source = run_input(body)
+    instance = instance_of(request)
+
+    def call(
+        on_event: api.EventCallback,
+        cancel: api.CancellationToken,
+    ) -> api.StepTrial:
+        """Try the step, reporting its events, until it ends or is cancelled."""
+
+        return instance.runs.try_step(
+            document,
+            step_id,
+            inputs=given,
+            input=source,
+            on_event=on_event,
+            cancel=cancel,
+        )
+
+    try:
+        run = live_of(request).start("step", call, workflow_id=workflow_id, step_id=step_id)
     except TooManyRunsError as exc:
         return refusal(429, "too_many_runs", str(exc))
 
@@ -560,6 +667,7 @@ def live_routes() -> list[BaseRoute]:
     return [
         Route("/api/live", list_live, methods=["GET"]),
         Route("/api/live/runs", start_run, methods=["POST"]),
+        Route("/api/live/steps", start_step, methods=["POST"]),
         Route("/api/live/{handle}", get_live, methods=["GET"]),
         Route("/api/live/{handle}/events", stream_live, methods=["GET"]),
         Route("/api/live/{handle}/cancel", cancel_live, methods=["POST"]),
@@ -567,12 +675,15 @@ def live_routes() -> list[BaseRoute]:
 
 
 __all__ = [
+    "DOCUMENT_MESSAGE",
     "KEEP_ALIVE_SECONDS",
     "KEEP_FINISHED",
     "MAX_RUNNING",
     "MAX_START_BYTES",
     "POLL_SECONDS",
+    "STEP_FIELDS",
     "TOO_LARGE_MESSAGE",
+    "START_FIELDS",
     "LiveCall",
     "LiveKind",
     "LiveRun",
