@@ -3,9 +3,12 @@ import { use, type ReactNode } from "react";
 import type { StepView } from "../documents";
 import { stepNode, type GraphNode, type WorkflowGraph } from "../graph";
 import { connections, type Connection } from "../paths";
+import { keptStepRun } from "../running";
 import { ComposingContext } from "./composing";
+import { RunningContext } from "./runningContext";
 import styles from "./StepInspector.module.css";
 import { StepForm } from "./StepForm";
+import { StepRunPanel } from "./StepRunPanel";
 
 const KIND_NAMES: Record<StepView["kind"], string> = {
   prompt: "Prompt",
@@ -125,6 +128,7 @@ export function StepInspector({
   readonly onClose: () => void;
 }) {
   const composing = use(ComposingContext);
+  const running = use(RunningContext);
   const node = graph.nodes.find((each) => each.id === id);
   const step = node?.step ?? null;
 
@@ -191,6 +195,9 @@ export function StepInspector({
       {header}
       {step.description !== null && <p className={styles.description}>{step.description}</p>}
       {step.message !== null && <p className={styles.message}>Says “{step.message}” as it runs</p>}
+      {running !== null && (
+        <StepRunPanel run={running.get(step.id) ?? keptStepRun(undefined)} title={step.title} />
+      )}
       <Joined title="Comes from" joined={from} leading={false} onSelect={onSelect} />
       {constants.length > 0 && (
         <Section title="Constants">

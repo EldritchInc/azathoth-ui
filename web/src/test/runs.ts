@@ -3,7 +3,15 @@
  * the events it reported, and how it ended.
  */
 
-import type { ComponentDetail, LiveRun, RunEvent, RunResult } from "../api/types";
+import type {
+  ComponentDetail,
+  LiveRun,
+  RunDetail,
+  RunEvent,
+  RunResult,
+  RunStepDetail,
+  RunSummary,
+} from "../api/types";
 import { uuid, VALID_DOCUMENT, WORKFLOW_DETAIL } from "./documents";
 import { WORKFLOW } from "./instances";
 
@@ -68,4 +76,61 @@ export const FINISHED_RUN: LiveRun = {
   finished_at: "2026-11-10T10:00:02.500Z",
   event_count: RUN_EVENTS.length,
   result: { ...RUN_RESULT },
+};
+
+/** The run as the workflow's list of runs shows it. */
+export const RUN_SUMMARY: RunSummary = {
+  run_id: RUN_RESULT.run_id,
+  workflow_id: WORKFLOW.id,
+  workflow_name: "summarize",
+  workflow_revision: 3,
+  invocation_id: null,
+  succeeded: true,
+  error: null,
+  started_at: RUN_RESULT.started_at,
+  completed_at: RUN_RESULT.completed_at,
+  command: RUN_RESULT.command,
+};
+
+/** The kept run's first step: done, its text selected. */
+export const SELECTED: RunStepDetail = {
+  step_id: SELECT,
+  status: "executed",
+  attempts: 1,
+  confidence: null,
+  layer: 0,
+  started_at: "2026-11-10T10:00:00.100Z",
+  completed_at: "2026-11-10T10:00:00.400Z",
+  strategy: "json_select",
+  metrics: null,
+  output: { value: "A ticket.", length: 9 },
+  values: { text: "A ticket.", length: 9 },
+  failures: [],
+};
+
+/** The run as Azathoth kept it: its first step done, its second skipped. */
+export const RUN_DETAIL: RunDetail = {
+  ...RUN_SUMMARY,
+  has_result: true,
+  result: "A short summary.",
+  has_input: true,
+  input: { text: "My printer is on fire." },
+  resumes: 0,
+  steps: [
+    SELECTED,
+    {
+      step_id: SUMMARIZE,
+      status: "skipped",
+      attempts: 0,
+      confidence: null,
+      layer: 1,
+      started_at: null,
+      completed_at: null,
+      strategy: null,
+      metrics: null,
+      output: null,
+      values: {},
+      failures: [],
+    },
+  ],
 };

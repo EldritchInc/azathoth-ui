@@ -700,12 +700,14 @@
   color: var(--amber);
 }
 
-.step[data-run="waiting"] {
+.step[data-run="waiting"],
+.step[data-run="unreached"] {
   border-style: dashed;
   box-shadow: none;
 }
 
-.step[data-run="waiting"] > :not(.handle, .runState) {
+.step[data-run="waiting"] > :not(.handle, .runState),
+.step[data-run="unreached"] > :not(.handle, .runState) {
   opacity: 0.6;
 }
 

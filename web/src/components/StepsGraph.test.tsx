@@ -7,7 +7,9 @@ import { describeWorkflow, type WorkflowView } from "../documents";
 import { stepsOf, type JsonObject } from "../editing";
 import { TRIAGE_DOCUMENT, uuid, VALID_DOCUMENT } from "../test/documents";
 import { SERVER, serving } from "../test/instances";
+import { keptStepRun, type StepRun } from "../running";
 import { ComposingContext, type Composing, type Edit } from "./composing";
+import { RunningContext } from "./runningContext";
 import { StepsGraph } from "./StepsGraph";
 
 function triage(): WorkflowView {
@@ -406,5 +408,95 @@ describe("StepsGraph composing a workflow", () => {
 
     expect(screen.queryByRole("group", { name: "Compose" })).toBeNull();
     expect(node("Summarize").querySelector(".connectable")).toBeNull();
+  });
+});
+
+function ran(state: StepRun["state"], more: Partial<StepRun> = {}): StepRun {
+  return { ...keptStepRun(undefined), state, ...more };
+}
+
+describe("StepsGraph showing a run", () => {
+  it("says on each step where the run is, in place of its values", () => {
+    render(
+      <RunningContext
+        value={
+          new Map([
+            ["classify", ran("executed")],
+            ["draft-bug", ran("running")],
+            ["merge", ran("failed")],
+          ])
+        }
+      >
+        <StepsGraph view={triage()} />
+      </RunningContext>,
+    );
+
+    expect(node("Classify ticket")).toHaveAttribute("data-run", "executed");
+    expect(node("Classify ticket")).toHaveTextContent("Done");
+    expect(node("Draft bug reply")).toHaveAttribute("data-run", "running");
+    expect(node("Draft bug reply")).toHaveTextContent("Running");
+    expect(node("merge_replies")).toHaveTextContent("Failed");
+    expect(within(node("merge_replies")).queryByText("limit = 3")).toBeNull();
+    expect(node("Record triage")).toHaveAttribute("data-run", "waiting");
+  });
+
+  it("shows what the run did with the chosen step", () => {
+    render(
+      <RunningContext
+        value={
+          new Map([
+            [
+              "merge",
+              ran("executed", {
+                attempts: 2,
+                startedAt: "2026-11-10T10:00:00Z",
+                completedAt: "2026-11-10T10:00:01.500Z",
+                strategy: "merge_replies",
+                metrics: {
+                  provider: "openrouter",
+                  model: "acme/large",
+                  prompt_tokens: 1200,
+                  completion_tokens: 80,
+                  total_tokens: 1280,
+                  latency_ms: 840,
+                  estimated_cost_usd: 0.0042,
+                },
+                hasOutput: true,
+                output: { answer: "Merged." },
+                values: { answer: "Merged." },
+                failures: [
+                  { attempt: 1, exception_type: "ToolExecutionError", message: "Timed out." },
+                ],
+              }),
+            ],
+          ])
+        }
+      >
+        <StepsGraph view={triage()} selected="merge" />
+      </RunningContext>,
+    );
+    const panel = within(inspector()).getByRole("region", { name: "merge_replies in this run" });
+
+    expect(panel).toHaveTextContent("Done");
+    expect(panel).toHaveTextContent("2 attempts · 1.5 s");
+    expect(panel).toHaveTextContent("Ranmerge_replies");
+    expect(panel).toHaveTextContent("Modelopenrouter/acme/large");
+    expect(panel).toHaveTextContent("Tokens1,200 in, 80 out");
+    expect(panel).toHaveTextContent("Latency840 ms");
+    expect(panel).toHaveTextContent("Cost$0.0042");
+    expect(within(panel).getByRole("list", { name: "Failed attempts" })).toHaveTextContent(
+      "Attempt 1ToolExecutionErrorTimed out.",
+    );
+    expect(within(panel).getByLabelText("What merge_replies returned, as JSON")).toHaveTextContent(
+      '"answer": "Merged."',
+    );
+    expect(within(panel).getByLabelText("What merge_replies added, as JSON")).toBeInTheDocument();
+  });
+
+  it("shows no run when none is shown", () => {
+    render(<StepsGraph view={triage()} selected="merge" />);
+
+    expect(within(inspector()).queryByRole("region")).toBeNull();
+    expect(node("merge_replies")).not.toHaveAttribute("data-run");
   });
 });

@@ -27,7 +27,8 @@ function parsed(data: unknown): unknown {
  * Returns a live run's events as its server streams them (ADR 0007), from
  * the first, then how it ended. The browser reconnects a dropped stream by
  * itself, and each event is numbered, so none is shown twice. Once the run
- * ends, the editor's view of its live runs is fetched again.
+ * ends, the editor's view of its live runs, and of the runs kept, is
+ * fetched again.
  */
 export function useLiveEvents(handle: string): LiveEvents {
   const client = useQueryClient();
@@ -69,6 +70,7 @@ export function useLiveEvents(handle: string): LiveEvents {
         );
       }
       void client.invalidateQueries({ queryKey: queryKeys.liveList });
+      void client.invalidateQueries({ queryKey: queryKeys.runs });
     });
 
     source.addEventListener("error", () => {

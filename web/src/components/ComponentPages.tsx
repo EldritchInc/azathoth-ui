@@ -7,6 +7,7 @@ import buttons from "./Buttons.module.css";
 
 import { BenchmarkCases } from "./BenchmarkCases";
 import { DetailPage } from "./DetailPage";
+import { RunHistory } from "./RunHistory";
 import { ToolStructure } from "./ToolStructure";
 import { WorkflowSteps } from "./WorkflowSteps";
 
@@ -53,7 +54,12 @@ export function WorkflowPage() {
         </>
       }
     >
-      {(detail) => <WorkflowSteps document={detail.document} />}
+      {(detail) => (
+        <>
+          <WorkflowSteps document={detail.document} />
+          <RunHistory workflowId={id} />
+        </>
+      )}
     </DetailPage>
   );
 }

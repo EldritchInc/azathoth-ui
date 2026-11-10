@@ -1,11 +1,11 @@
 /**
- * What a graph needs to show a run on its steps: where each step is, by
- * its id (ADR 0007).
+ * What a graph needs to show a run on its steps: what the run says of each
+ * step, by its id (ADR 0007).
  */
 
 import { createContext } from "react";
 
-import type { StepState } from "../running";
+import type { StepRun } from "../running";
 
-/** Where each step of the run being shown is, or `null` when no run is shown. */
-export const RunningContext = createContext<ReadonlyMap<string, StepState> | null>(null);
+/** What the run being shown says of each step, or `null` when no run is shown. */
+export const RunningContext = createContext<ReadonlyMap<string, StepRun> | null>(null);

@@ -4,13 +4,21 @@
  */
 
 import { MAX_INPUT_FILE_BYTES } from "./api/client";
-import type { LiveRun, LiveState, RunEvent, StepStatus } from "./api/types";
+import type {
+  LiveRun,
+  LiveState,
+  RunEvent,
+  RunStepDetail,
+  StepFailure,
+  StepMetrics,
+  StepStatus,
+} from "./api/types";
 
 /**
- * Where one step of a run is: not started, running, how it ended, or
- * stopped, when the run ended while it was running.
+ * Where one step of a run is: not started, running, how it ended, stopped
+ * when the run ended while it was running, or, in a kept run, never reached.
  */
-export type StepState = "waiting" | "running" | "stopped" | StepStatus;
+export type StepState = "waiting" | "running" | "stopped" | "unreached" | StepStatus;
 
 /** What a run's events say of one step so far. */
 export interface StepProgress {
@@ -103,6 +111,7 @@ export const STEP_STATE_NAMES: Readonly<Record<StepState, string>> = {
   waiting: "Waiting",
   running: "Running",
   stopped: "Stopped",
+  unreached: "Not run",
   executed: "Done",
   failed: "Failed",
   skipped: "Skipped",
@@ -158,11 +167,14 @@ export function eventLine(event: RunEvent, titleOf: (step: string) => string): s
   }
 }
 
-/** Returns how long passed between two moments, as people say it: "0.4 s", "1 min 5 s". */
+/** Returns how long passed between two moments, as people say it: "40 ms", "0.4 s", "1 min 5 s". */
 export function duration(from: string, to: string | null, now: Date = new Date()): string {
   const end = to === null ? now.getTime() : new Date(to).getTime();
   const seconds = Math.max(0, (end - new Date(from).getTime()) / 1000);
 
+  if (seconds < 0.1) {
+    return `${String(Math.round(seconds * 1000))} ms`;
+  }
   if (seconds < 10) {
     return `${seconds.toFixed(1)} s`;
   }
@@ -266,4 +278,103 @@ export function base64Of(bytes: Uint8Array): string {
     binary += String.fromCharCode(...bytes.subarray(start, start + CHUNK));
   }
   return btoa(binary);
+}
+
+/** What one run says of one step: where it is, and what it did as far as it is known. */
+export interface StepRun {
+  readonly state: StepState;
+  /** What it says as it runs, while it runs. */
+  readonly message: string | null;
+  /** The message of a failed step's final attempt. */
+  readonly failure: string | null;
+  readonly values: Readonly<Record<string, unknown>>;
+  /** How many times it was tried, once that is known. */
+  readonly attempts: number | null;
+  readonly startedAt: string | null;
+  readonly completedAt: string | null;
+  readonly strategy: string | null;
+  readonly metrics: StepMetrics | null;
+  readonly hasOutput: boolean;
+  readonly output: unknown;
+  /** Each attempt that failed, once they are known. */
+  readonly failures: readonly StepFailure[];
+}
+
+/** Returns what a live run's events say of one step so far. */
+export function liveStepRun(progress: Progress, step: string, ended: boolean): StepRun {
+  const known = progress.steps.get(step);
+
+  return {
+    state: stepState(progress, step, ended),
+    message: known?.message ?? null,
+    failure: known?.failure ?? null,
+    values: known?.values ?? {},
+    attempts: null,
+    startedAt: null,
+    completedAt: null,
+    strategy: null,
+    metrics: null,
+    hasOutput: false,
+    output: null,
+    failures: [],
+  };
+}
+
+/** Returns what a kept run says of one step, never reached when it does not name it. */
+export function keptStepRun(detail: RunStepDetail | undefined): StepRun {
+  return {
+    state: detail?.status ?? "unreached",
+    message: null,
+    failure: detail?.failures.at(-1)?.message ?? null,
+    values: detail?.values ?? {},
+    attempts: detail?.attempts ?? 0,
+    startedAt: detail?.started_at ?? null,
+    completedAt: detail?.completed_at ?? null,
+    strategy: detail?.strategy ?? null,
+    metrics: detail?.metrics ?? null,
+    hasOutput: detail?.status === "executed",
+    output: detail?.output ?? null,
+    failures: detail?.failures ?? [],
+  };
+}
+
+/** Returns what a step's strategy measured, as labelled facts a person reads. */
+export function measured(metrics: StepMetrics): (readonly [string, string])[] {
+  const facts: (readonly [string, string])[] = [];
+  const { provider, model } = metrics;
+
+  if (model !== null) {
+    facts.push(["Model", provider === null ? model : `${provider}/${model}`]);
+  }
+  if (metrics.total_tokens !== null || metrics.prompt_tokens !== null) {
+    const parts = [
+      metrics.prompt_tokens === null ? null : `${metrics.prompt_tokens.toLocaleString("en")} in`,
+      metrics.completion_tokens === null
+        ? null
+        : `${metrics.completion_tokens.toLocaleString("en")} out`,
+    ].filter((part) => part !== null);
+    const total = metrics.total_tokens ?? 0;
+
+    facts.push(["Tokens", parts.length === 0 ? total.toLocaleString("en") : parts.join(", ")]);
+  }
+  if (metrics.latency_ms !== null) {
+    facts.push([
+      "Latency",
+      metrics.latency_ms < 1000
+        ? `${String(Math.round(metrics.latency_ms))} ms`
+        : `${(metrics.latency_ms / 1000).toFixed(1)} s`,
+    ]);
+  }
+  if (
+    metrics.estimated_cost_usd !== null &&
+    (metrics.estimated_cost_usd > 0 || metrics.model !== null)
+  ) {
+    facts.push(["Cost", cost(metrics.estimated_cost_usd)]);
+  }
+  return facts;
+}
+
+/** Returns an estimated cost in dollars: to the cent, or to four places below one. */
+export function cost(usd: number): string {
+  return usd === 0 ? "$0" : usd < 0.01 ? `$${usd.toFixed(4)}` : `$${usd.toFixed(2)}`;
 }

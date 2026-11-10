@@ -39,7 +39,7 @@ function Step({
   readonly current?: boolean;
 }) {
   const running = use(RunningContext);
-  const runState = running === null ? null : (running.get(step.id) ?? "waiting");
+  const runState = running === null ? null : (running.get(step.id)?.state ?? "waiting");
 
   return (
     <li

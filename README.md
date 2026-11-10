@@ -32,7 +32,8 @@ use; a shared server keeps its own
 A workflow's Run button runs it on text, JSON or a file, a PDF, an image or
 text, and shows the run as it goes: each step lit on the graph as it starts
 and ends, every event in words, and how it ended. A run goes on if you leave
-its page, and the editor's rail points to the runs still running
+its page, and the editor's rail points to the runs still running. Every run
+is kept and listed on its workflow's page, with what each step did
 ([ADR 0007](docs/adrs/0007-running-and-watching-workflows.md)).
 [ADR 0001](docs/adrs/0001-local-server-security.md) explains how the server
 keeps other sites and other users out.

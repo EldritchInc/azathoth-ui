@@ -268,3 +268,21 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* A kept run's input and result, side by side. */
+
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.pair pre {
+  max-height: 18rem;
+}
+
+@media (max-width: 52rem) {
+  .pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,12 +1,25 @@
 import { describe, expect, it } from "vitest";
 
 import { MAX_INPUT_FILE_BYTES, startBody } from "./api/client";
-import { isLiveRun, isRunEvent, isRunResult, type LiveRun, type RunEvent } from "./api/types";
 import {
+  isLiveRun,
+  isRunDetail,
+  isRunEvent,
+  isRunResult,
+  isRunSummary,
+  type LiveRun,
+  type RunEvent,
+} from "./api/types";
+import {
+  STEP_STATE_NAMES,
   base64Of,
+  cost,
   duration,
   eventLine,
   fileProblem,
+  keptStepRun,
+  liveStepRun,
+  measured,
   mediaTypeOf,
   megabytes,
   outcomeName,
@@ -15,7 +28,16 @@ import {
   stepState,
 } from "./running";
 import { givenOf, NEW_DRAFT } from "./runInput";
-import { LIVE_RUN, RUN_EVENTS, RUN_RESULT, SELECT, SUMMARIZE } from "./test/runs";
+import {
+  LIVE_RUN,
+  RUN_DETAIL,
+  RUN_EVENTS,
+  RUN_RESULT,
+  RUN_SUMMARY,
+  SELECT,
+  SELECTED,
+  SUMMARIZE,
+} from "./test/runs";
 
 const COUNT = SELECT;
 const NEXT = SUMMARIZE;
@@ -158,7 +180,9 @@ describe("duration", () => {
     expect(duration(start, "2026-11-10T10:00:12.600Z")).toBe("13 s");
     expect(duration(start, "2026-11-10T10:01:00Z")).toBe("1 min");
     expect(duration(start, "2026-11-10T10:01:05Z")).toBe("1 min 5 s");
-    expect(duration(start, "2026-11-10T09:59:00Z")).toBe("0.0 s");
+    expect(duration(start, "2026-11-10T09:59:00Z")).toBe("0 ms");
+    expect(duration(start, "2026-11-10T10:00:00.042Z")).toBe("42 ms");
+    expect(duration(start, "2026-11-10T10:00:00.100Z")).toBe("0.1 s");
   });
 
   it("measures to now while a run has not finished", () => {
@@ -253,6 +277,13 @@ describe("the guards", () => {
       }),
     ).toBe(false);
     expect(isRunEvent({ type: "invocation_finished" })).toBe(false);
+    expect(isRunDetail(RUN_DETAIL)).toBe(true);
+    expect(isRunSummary(RUN_SUMMARY)).toBe(true);
+    expect(isRunDetail({ ...RUN_DETAIL, steps: [{ ...SELECTED, status: "late" }] })).toBe(false);
+    expect(
+      isRunDetail({ ...RUN_DETAIL, steps: [{ ...SELECTED, failures: [{ attempt: 1 }] }] }),
+    ).toBe(false);
+    expect(isRunSummary({ ...RUN_SUMMARY, invocation_id: 7 })).toBe(false);
     expect(isRunResult(RUN_RESULT)).toBe(true);
     expect(isRunResult({ ...RUN_RESULT, succeeded: "yes" })).toBe(false);
   });
@@ -290,5 +321,125 @@ describe("givenOf", () => {
       given: null,
       problem: "Choose a file, or drop one here.",
     });
+  });
+});
+
+describe("a step's run", () => {
+  it("is what a live run's events say of it so far", () => {
+    const run = liveStepRun(progressOf(RUN_EVENTS), COUNT, false);
+
+    expect(run.state).toBe("executed");
+    expect(run.values).toEqual({ text: "A ticket.", length: 9 });
+    expect(run.attempts).toBeNull();
+    expect(run.hasOutput).toBe(false);
+    expect(liveStepRun(progressOf(RUN_EVENTS), NEXT, false).state).toBe("waiting");
+    expect(
+      liveStepRun(
+        progressOf([
+          {
+            type: "step_started",
+            step_id: NEXT,
+            layer: 1,
+            message: "Reading",
+          },
+        ]),
+        NEXT,
+        true,
+      ),
+    ).toMatchObject({ state: "stopped", message: "Reading" });
+  });
+
+  it("is what a kept run says of it, and never reached when it says nothing", () => {
+    const [selected, skipped] = RUN_DETAIL.steps;
+
+    expect(keptStepRun(selected)).toMatchObject({
+      state: "executed",
+      attempts: 1,
+      startedAt: "2026-11-10T10:00:00.100Z",
+      completedAt: "2026-11-10T10:00:00.400Z",
+      strategy: "json_select",
+      hasOutput: true,
+      output: { value: "A ticket.", length: 9 },
+    });
+    expect(keptStepRun(skipped)).toMatchObject({ state: "skipped", hasOutput: false });
+    expect(keptStepRun(undefined)).toMatchObject({
+      state: "unreached",
+      attempts: 0,
+      failure: null,
+      failures: [],
+    });
+    expect(STEP_STATE_NAMES.unreached).toBe("Not run");
+  });
+
+  it("names a failed step's last failure", () => {
+    const failed = keptStepRun({
+      ...SELECTED,
+      status: "failed",
+      failures: [
+        { attempt: 1, exception_type: "E", message: "First." },
+        { attempt: 2, exception_type: "E", message: "Last." },
+      ],
+    });
+
+    expect(failed.failure).toBe("Last.");
+    expect(failed.hasOutput).toBe(false);
+  });
+});
+
+describe("measured", () => {
+  const metrics = {
+    provider: "openrouter",
+    model: "acme/large",
+    prompt_tokens: 1200,
+    completion_tokens: 80,
+    total_tokens: 1280,
+    latency_ms: 1840,
+    estimated_cost_usd: 0.25,
+  };
+
+  it("says what a strategy measured, leaving out what it did not", () => {
+    expect(measured(metrics)).toEqual([
+      ["Model", "openrouter/acme/large"],
+      ["Tokens", "1,200 in, 80 out"],
+      ["Latency", "1.8 s"],
+      ["Cost", "$0.25"],
+    ]);
+    expect(
+      measured({
+        ...metrics,
+        provider: null,
+        prompt_tokens: null,
+        completion_tokens: null,
+        latency_ms: 840,
+        estimated_cost_usd: null,
+      }),
+    ).toEqual([
+      ["Model", "acme/large"],
+      ["Tokens", "1,280"],
+      ["Latency", "840 ms"],
+    ]);
+    expect(measured({ ...metrics, model: null, estimated_cost_usd: 0 })).toEqual([
+      ["Tokens", "1,200 in, 80 out"],
+      ["Latency", "1.8 s"],
+    ]);
+    expect(measured({ ...metrics, estimated_cost_usd: 0 })).toContainEqual(["Cost", "$0"]);
+    expect(
+      measured({
+        provider: null,
+        model: null,
+        prompt_tokens: null,
+        completion_tokens: null,
+        total_tokens: null,
+        latency_ms: null,
+        estimated_cost_usd: null,
+      }),
+    ).toEqual([]);
+  });
+
+  it("prices to the cent, or to four places below one", () => {
+    expect(cost(0)).toBe("$0");
+    expect(cost(0.0042)).toBe("$0.0042");
+    expect(cost(0.01)).toBe("$0.01");
+    expect(cost(1.5)).toBe("$1.50");
   });
 });

@@ -14,6 +14,8 @@ import {
   isErrorBody,
   isInstanceDescription,
   isLiveRun,
+  isRunDetail,
+  isRunSummary,
   isModelListing,
   isModelSummary,
   isPortfolioEntry,
@@ -26,6 +28,8 @@ import {
   type EditorDescription,
   type InstanceDescription,
   type LiveRun,
+  type RunDetail,
+  type RunSummary,
   type ModelListing,
   type ModelSummary,
   type PortfolioEntry,
@@ -371,4 +375,30 @@ export function cancelLiveRun(handle: string, options: RequestOptions = {}): Pro
 /** Returns the path of a live run's event stream. */
 export function liveEventsPath(handle: string): string {
   return `/api/live/${encodeURIComponent(handle)}/events`;
+}
+
+/** How many of a workflow's runs the editor lists at once. */
+export const RUNS_LISTED = 20;
+
+/** Returns a workflow's kept runs, newest first: `GET /api/workflows/{id}/runs`. */
+export function fetchWorkflowRuns(
+  workflowId: string,
+  options: RequestOptions = {},
+): Promise<RunSummary[]> {
+  return fetchItems(
+    `/api/workflows/${encodeURIComponent(workflowId)}/runs?limit=${String(RUNS_LISTED)}`,
+    isRunSummary,
+    options,
+  );
+}
+
+/** Returns one kept run with its steps: `GET /api/runs/{run_id}`. */
+export async function fetchRun(runId: string, options: RequestOptions = {}): Promise<RunDetail> {
+  const body = await getJson(`/api/runs/${encodeURIComponent(runId)}`, options);
+
+  if (!isRunDetail(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
 }

@@ -132,6 +132,7 @@ const STATE_ICONS: Readonly<Record<StepState, ReactNode>> = {
   waiting: <circle cx="12" cy="12" r="3.5" />,
   running: <path d="M12 4a8 8 0 1 1-8 8" />,
   stopped: <rect x="7" y="7" width="10" height="10" rx="1.5" />,
+  unreached: <path d="M7 12h10" />,
   executed: <path d="m5 12.5 4.5 4.5L19 7.5" />,
   failed: <path d="M7 7l10 10M17 7 7 17" />,
   skipped: <path d="M5 12h14M14 7l5 5-5 5" />,
@@ -151,7 +152,7 @@ function StepNode({ data, selected }: NodeProps<StepFlowNode>) {
   const { step, constants, result } = data;
   const detail = useStore(detailOf);
   const running = use(RunningContext);
-  const runState = running === null ? null : (running.get(step.id) ?? "waiting");
+  const runState = running === null ? null : (running.get(step.id)?.state ?? "waiting");
   const composing = use(ComposingContext);
   const editing = composing !== null;
   const problems = composing?.problems.get(step.id) ?? [];

@@ -8,10 +8,12 @@ import { useCancelRun, useDetail, useLiveRun } from "../queries";
 import {
   duration,
   eventLine,
+  liveStepRun,
   outcomeName,
   progressOf,
   stepState,
   type Progress,
+  type StepRun,
   type StepState,
 } from "../running";
 import { useLiveEvents } from "../useLiveEvents";
@@ -150,7 +152,11 @@ function Outcome({
         </Notice>
       )}
       <p className={styles.kept}>
-        Kept as run <code>{result.run_id}</code>.
+        Kept as{" "}
+        <Link className={styles.back} to={`/runs/${result.run_id}`}>
+          run <code>{result.run_id}</code>
+        </Link>
+        .
       </p>
     </section>
   );
@@ -235,8 +241,8 @@ function LiveRunView({
   const ended = live.state !== "running";
   const states = useMemo(
     () =>
-      new Map<string, StepState>(
-        steps.map((step) => [idOf(step), stepState(progress, idOf(step), ended)]),
+      new Map<string, StepRun>(
+        steps.map((step) => [idOf(step), liveStepRun(progress, idOf(step), ended)]),
       ),
     [steps, progress, ended],
   );

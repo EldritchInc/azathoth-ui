@@ -25,6 +25,8 @@ import {
   fetchLiveRuns,
   fetchModels,
   fetchPortfolio,
+  fetchRun,
+  fetchWorkflowRuns,
   removeFromPortfolio,
   startRun,
   type RunGiven,
@@ -36,6 +38,8 @@ import type {
   ModelListing,
   PortfolioEntry,
   PortfolioRemoval,
+  RunDetail,
+  RunSummary,
   Summary,
 } from "./api/types";
 import type { JsonObject } from "./editing";
@@ -63,6 +67,9 @@ export const queryKeys = {
   live: ["live"] as const,
   liveList: ["live", "list"] as const,
   liveRun: (handle: string) => ["live", "run", handle] as const,
+  runs: ["runs"] as const,
+  workflowRuns: (workflowId: string) => ["runs", "workflow", workflowId] as const,
+  run: (runId: string) => ["runs", "run", runId] as const,
 };
 
 /** How often the editor asks which live runs are running, while any is. */
@@ -265,5 +272,22 @@ export function useCancelRun(): UseMutationResult<LiveRun, ApiFailure, string> {
   return useMutation<LiveRun, ApiFailure, string>({
     mutationFn: (handle) => cancelLiveRun(handle),
     onSettled: () => client.invalidateQueries({ queryKey: queryKeys.live }),
+  });
+}
+
+/** Returns a workflow's kept runs, newest first: the newest `RUNS_LISTED` of them. */
+export function useWorkflowRuns(workflowId: string): UseQueryResult<RunSummary[], ApiFailure> {
+  return useQuery<RunSummary[], ApiFailure>({
+    queryKey: queryKeys.workflowRuns(workflowId),
+    queryFn: ({ signal }) => fetchWorkflowRuns(workflowId, { signal }),
+  });
+}
+
+/** Returns one kept run with its steps; a kept run never changes. */
+export function useRun(runId: string): UseQueryResult<RunDetail, ApiFailure> {
+  return useQuery<RunDetail, ApiFailure>({
+    queryKey: queryKeys.run(runId),
+    queryFn: ({ signal }) => fetchRun(runId, { signal }),
+    staleTime: Infinity,
   });
 }

@@ -144,6 +144,65 @@ export interface RunResult {
   readonly command: string;
 }
 
+/** One kept run of a workflow, as its list of runs shows it. */
+export interface RunSummary {
+  readonly run_id: string;
+  readonly workflow_id: string;
+  readonly workflow_name: string;
+  readonly workflow_revision: number | null;
+  /** The production invocation the run executed, when it executed one. */
+  readonly invocation_id: string | null;
+  readonly succeeded: boolean;
+  readonly error: RunError | null;
+  readonly started_at: string;
+  readonly completed_at: string;
+  readonly command: string;
+}
+
+/** What a step's strategy measured as it ran; what it did not measure is null. */
+export interface StepMetrics {
+  readonly provider: string | null;
+  readonly model: string | null;
+  readonly prompt_tokens: number | null;
+  readonly completion_tokens: number | null;
+  readonly total_tokens: number | null;
+  readonly latency_ms: number | null;
+  readonly estimated_cost_usd: number | null;
+}
+
+/** One attempt of a step that failed. */
+export interface StepFailure {
+  readonly attempt: number;
+  readonly exception_type: string;
+  readonly message: string;
+}
+
+/** One step of a kept run, with what it produced and every attempt that failed. */
+export interface RunStepDetail {
+  readonly step_id: string;
+  readonly status: StepStatus;
+  readonly attempts: number;
+  readonly confidence: number | null;
+  readonly layer: number;
+  readonly started_at: string | null;
+  readonly completed_at: string | null;
+  readonly strategy: string | null;
+  readonly metrics: StepMetrics | null;
+  readonly output: unknown;
+  readonly values: Readonly<Record<string, unknown>>;
+  readonly failures: readonly StepFailure[];
+}
+
+/** `GET /api/runs/{run_id}`: one kept run with its input, its result and each step. */
+export interface RunDetail extends RunSummary {
+  readonly has_result: boolean;
+  readonly result: unknown;
+  readonly has_input: boolean;
+  readonly input: unknown;
+  readonly resumes: number;
+  readonly steps: readonly RunStepDetail[];
+}
+
 /** A run starting: the first event of every run. */
 export interface RunStarted {
   readonly type: "run_started";
@@ -474,5 +533,76 @@ export function isLiveRun(value: unknown): value is LiveRun {
       (isRecord(value.error) &&
         typeof value.error.code === "string" &&
         typeof value.error.message === "string"))
+  );
+}
+
+/** Returns whether a value is one kept run, as a list of runs shows it. */
+export function isRunSummary(value: unknown): value is RunSummary {
+  return (
+    isRecord(value) &&
+    typeof value.run_id === "string" &&
+    typeof value.workflow_id === "string" &&
+    typeof value.workflow_name === "string" &&
+    (value.workflow_revision === null || isWholeNumber(value.workflow_revision)) &&
+    isTextOrNull(value.invocation_id) &&
+    typeof value.succeeded === "boolean" &&
+    (value.error === null || isRunError(value.error)) &&
+    typeof value.started_at === "string" &&
+    typeof value.completed_at === "string" &&
+    typeof value.command === "string"
+  );
+}
+
+function isStepMetrics(value: unknown): value is StepMetrics {
+  return (
+    isRecord(value) &&
+    isTextOrNull(value.provider) &&
+    isTextOrNull(value.model) &&
+    isNumberOrNull(value.prompt_tokens) &&
+    isNumberOrNull(value.completion_tokens) &&
+    isNumberOrNull(value.total_tokens) &&
+    isNumberOrNull(value.latency_ms) &&
+    isNumberOrNull(value.estimated_cost_usd)
+  );
+}
+
+function isStepFailure(value: unknown): value is StepFailure {
+  return (
+    isRecord(value) &&
+    isWholeNumber(value.attempt) &&
+    typeof value.exception_type === "string" &&
+    typeof value.message === "string"
+  );
+}
+
+/** Returns whether a value is one step of a kept run. */
+export function isRunStepDetail(value: unknown): value is RunStepDetail {
+  return (
+    isRecord(value) &&
+    typeof value.step_id === "string" &&
+    STEP_STATUSES.includes(value.status) &&
+    isWholeNumber(value.attempts) &&
+    isNumberOrNull(value.confidence) &&
+    isWholeNumber(value.layer) &&
+    isTextOrNull(value.started_at) &&
+    isTextOrNull(value.completed_at) &&
+    isTextOrNull(value.strategy) &&
+    (value.metrics === null || isStepMetrics(value.metrics)) &&
+    isRecord(value.values) &&
+    Array.isArray(value.failures) &&
+    value.failures.every(isStepFailure)
+  );
+}
+
+/** Returns whether a value is one kept run with its steps. */
+export function isRunDetail(value: unknown): value is RunDetail {
+  return (
+    isRunSummary(value) &&
+    isRecord(value) &&
+    typeof value.has_result === "boolean" &&
+    typeof value.has_input === "boolean" &&
+    isWholeNumber(value.resumes) &&
+    Array.isArray(value.steps) &&
+    value.steps.every(isRunStepDetail)
   );
 }

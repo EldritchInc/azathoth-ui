@@ -99,6 +99,19 @@ nothing about watching a run should depend on its running here.
   or that it was cancelled or refused, and names the run Azathoth kept. The
   page reads the stream from its handle, so a reload, or opening it from
   another tab, shows the run from its first event.
+- **A workflow's page lists its kept runs,** the 20 newest first: how each
+  ended, when, how long it took, the revision it ran, whether it ran for
+  production, and why one failed. Each opens `/runs/{run_id}`, which shows
+  the run as `run show` does: its command, its input and result side by
+  side, and the graph of the revision it ran, each step saying how it ended
+  or that it was never reached. A run that has finished on its live page
+  links there, and the list is fetched again when it does.
+- **A step's details say what the run did with it.** On a live or a kept
+  run, the chosen step's details open on what the run said of it: how it
+  ended, how often it was tried and how long it took, the strategy it ran,
+  the model and what it measured, what it returned, what it added to the
+  context, and every attempt that failed. A live run knows only what its
+  events say until it has been kept.
 - **The rail points to the runs still running.** It asks which are every 2
   seconds while any is running, and every 15 while none is, and links to the
   newest.

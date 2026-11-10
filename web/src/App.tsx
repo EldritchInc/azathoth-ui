@@ -10,6 +10,7 @@ import { ModelPage } from "./components/ModelPage";
 import { NotFound } from "./components/NotFound";
 import { Overview } from "./components/Overview";
 import { Rail } from "./components/Rail";
+import { RunPage } from "./components/RunPage";
 import { RunWorkflow } from "./components/RunWorkflow";
 import { NewWorkflow, WorkflowEditor } from "./components/WorkflowEditor";
 import { applyTheme, browserStorage, readTheme, saveTheme, type ThemeChoice } from "./theme";
@@ -41,6 +42,7 @@ export function App() {
           <Route path="/workflows/:id/edit" element={<WorkflowEditor />} />
           <Route path="/workflows/:id/run" element={<RunWorkflow />} />
           <Route path="/live/:handle" element={<LiveRunPage />} />
+          <Route path="/runs/:runId" element={<RunPage />} />
           <Route path="/tools" element={<ComponentList kind="tools" />} />
           <Route path="/tools/:id/versions/:version" element={<ToolPage />} />
           <Route path="/benchmarks" element={<ComponentList kind="benchmarks" />} />
