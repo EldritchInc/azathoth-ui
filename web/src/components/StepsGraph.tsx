@@ -60,8 +60,10 @@ import {
   type WorkflowGraph,
 } from "../graph";
 import { highlight, neighbour, nodeOfStep, stepOfNode, type Direction } from "../paths";
+import { STEP_STATE_NAMES, type StepState } from "../running";
 import { ComposerBar } from "./ComposerBar";
 import { ComposingContext, joining, unjoining, type Offer } from "./composing";
+import { RunningContext } from "./runningContext";
 import { StepInspector } from "./StepInspector";
 import styles from "./StepsGraph.module.css";
 
@@ -126,9 +128,31 @@ function kindLine(step: StepView): string {
   return extra === null ? KIND_NAMES[step.kind] : `${KIND_NAMES[step.kind]} · ${extra}`;
 }
 
+const STATE_ICONS: Readonly<Record<StepState, ReactNode>> = {
+  waiting: <circle cx="12" cy="12" r="3.5" />,
+  running: <path d="M12 4a8 8 0 1 1-8 8" />,
+  stopped: <rect x="7" y="7" width="10" height="10" rx="1.5" />,
+  unreached: <path d="M7 12h10" />,
+  executed: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  failed: <path d="M7 7l10 10M17 7 7 17" />,
+  skipped: <path d="M5 12h14M14 7l5 5-5 5" />,
+};
+
+/** Where a step of the run being shown is, on the step itself. */
+function RunState({ state }: { readonly state: StepState }) {
+  return (
+    <span className={styles.runState} data-run={state}>
+      <Icon className={styles.runIcon}>{STATE_ICONS[state]}</Icon>
+      {STEP_STATE_NAMES[state]}
+    </span>
+  );
+}
+
 function StepNode({ data, selected }: NodeProps<StepFlowNode>) {
   const { step, constants, result } = data;
   const detail = useStore(detailOf);
+  const running = use(RunningContext);
+  const runState = running === null ? null : (running.get(step.id)?.state ?? "waiting");
   const composing = use(ComposingContext);
   const editing = composing !== null;
   const problems = composing?.problems.get(step.id) ?? [];
@@ -153,6 +177,7 @@ function StepNode({ data, selected }: NodeProps<StepFlowNode>) {
       data-kind={step.kind}
       data-detail={detail}
       data-selected={selected ? "true" : undefined}
+      data-run={runState ?? undefined}
     >
       <Handle
         className={styles.handle}
@@ -183,7 +208,8 @@ function StepNode({ data, selected }: NodeProps<StepFlowNode>) {
       <p className={styles.stepTitle} title={step.title}>
         {step.title}
       </p>
-      {tags.length > 0 && (
+      {runState !== null && <RunState state={runState} />}
+      {runState === null && tags.length > 0 && (
         <ul className={styles.tags}>
           {shown.map((tag) => (
             <li key={tag.key} className={styles.tag} data-kind={tag.kind}>

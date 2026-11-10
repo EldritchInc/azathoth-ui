@@ -1,0 +1,59 @@
+/* Trying one step alone: what each input is given, and the try as it runs. */
+
+.form {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.hint,
+.quiet {
+  flex: 1 1 12rem;
+  margin: 0;
+  color: var(--faint);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.quiet {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.hint[data-problem="true"] {
+  color: var(--amber);
+}
+
+.trial {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.page {
+  color: var(--tide-strong);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.page:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.warnings {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.5rem 1.6rem;
+  border: 1px solid color-mix(in srgb, var(--amber) 35%, transparent);
+  border-radius: var(--radius-small);
+  background: var(--amber-wash);
+  font-size: 0.8125rem;
+}

@@ -652,3 +652,111 @@
   stroke-dasharray: 5 4;
   stroke-width: 2;
 }
+
+/* A run on its steps (ADR 0007). */
+
+.runState {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 0.3rem;
+  margin-top: 0.15rem;
+  padding: 0.1rem 0.5rem 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--faint) 14%, transparent);
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.runIcon {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+.runState[data-run="running"] {
+  background: var(--tide-wash);
+  color: var(--tide-strong);
+}
+
+.runState[data-run="running"] .runIcon {
+  animation: spin 900ms linear infinite;
+}
+
+.runState[data-run="executed"] {
+  background: var(--tide-wash);
+  color: var(--tide-strong);
+}
+
+.runState[data-run="failed"] {
+  background: var(--rose-wash);
+  color: var(--rose);
+}
+
+.runState[data-run="stopped"],
+.runState[data-run="skipped"] {
+  background: var(--amber-wash);
+  color: var(--amber);
+}
+
+.step[data-run="waiting"],
+.step[data-run="unreached"] {
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.step[data-run="waiting"] > :not(.handle, .runState),
+.step[data-run="unreached"] > :not(.handle, .runState) {
+  opacity: 0.6;
+}
+
+.step[data-run="running"] {
+  border-color: var(--tide);
+  animation: pulse 1.6s var(--ease-out) infinite;
+}
+
+.step[data-run="failed"] {
+  border-color: color-mix(in srgb, var(--rose) 55%, var(--line));
+}
+
+.step[data-run="failed"]::before {
+  background: var(--rose);
+}
+
+.step[data-run="skipped"] {
+  border-style: dashed;
+}
+
+.step[data-run="stopped"]::before,
+.step[data-run="skipped"]::before {
+  background: var(--amber);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 color-mix(in srgb, var(--tide) 32%, transparent),
+      0 6px 18px -6px color-mix(in srgb, var(--ink) 16%, transparent);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 6px color-mix(in srgb, var(--tide) 0%, transparent),
+      0 6px 18px -6px color-mix(in srgb, var(--ink) 16%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step[data-run="running"],
+  .runState[data-run="running"] .runIcon {
+    animation: none;
+  }
+}

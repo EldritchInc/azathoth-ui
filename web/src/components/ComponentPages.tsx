@@ -7,6 +7,7 @@ import buttons from "./Buttons.module.css";
 
 import { BenchmarkCases } from "./BenchmarkCases";
 import { DetailPage } from "./DetailPage";
+import { RunHistory } from "./RunHistory";
 import { ToolStructure } from "./ToolStructure";
 import { WorkflowSteps } from "./WorkflowSteps";
 
@@ -21,7 +22,19 @@ export function WorkflowPage() {
       component={{ id }}
       actions={
         <>
-          <Link className={buttons.primary} to={`/workflows/${id}/edit`}>
+          <Link className={buttons.primary} to={`/workflows/${id}/run`}>
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              focusable="false"
+              fill="currentColor"
+              stroke="none"
+            >
+              <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" />
+            </svg>
+            Run
+          </Link>
+          <Link className={buttons.quiet} to={`/workflows/${id}/edit`}>
             <svg
               viewBox="0 0 24 24"
               aria-hidden="true"
@@ -41,7 +54,12 @@ export function WorkflowPage() {
         </>
       }
     >
-      {(detail) => <WorkflowSteps document={detail.document} />}
+      {(detail) => (
+        <>
+          <WorkflowSteps document={detail.document} />
+          <RunHistory workflowId={id} />
+        </>
+      )}
     </DetailPage>
   );
 }

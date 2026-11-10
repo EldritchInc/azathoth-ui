@@ -31,6 +31,7 @@ from azathoth_ui.catalog import (
     model_in_use,
 )
 from azathoth_ui.commands import Shell, command_prefix, local_shell
+from azathoth_ui.live import LiveRuns, live_routes
 from azathoth_ui.pages import ASSETS_PATH, not_built_page
 from azathoth_ui.security import API_PREFIX, LocalOnly
 
@@ -207,6 +208,7 @@ def build_app(
     providers: tuple[str, ...] = (),
     models: ModelSource | None = None,
     portfolio: PortfolioSource | None = None,
+    live: LiveRuns | None = None,
 ) -> LocalOnly:
     """Return the editor's server for one open instance, one launch key and one port.
 
@@ -215,7 +217,8 @@ def build_app(
     shell the editor writes commands for, this computer's by default.
     `providers` names the providers the instance was opened with. `models`
     and `portfolio` are where models are listed and authorized, the
-    instance's own by default.
+    instance's own by default. `live` keeps the runs started from the
+    editor, a new keeper by default.
     """
 
     web = STATIC_DIRECTORY if static_dir is None else static_dir
@@ -224,6 +227,7 @@ def build_app(
         Route("/api/editor", describe_editor, methods=["GET"]),
         *browsing_routes(),
         *catalog_routes(),
+        *live_routes(),
         Route("/api/{rest:path}", no_endpoint),
         Mount(ASSETS_PATH.rstrip("/"), StaticFiles(directory=ASSETS_DIRECTORY)),
     ]
@@ -246,6 +250,7 @@ def build_app(
     app.state.providers = providers
     app.state.catalog = Catalog(instance.models if models is None else models)
     app.state.portfolio = instance.portfolio if portfolio is None else portfolio
+    app.state.live = LiveRuns() if live is None else live
 
     return LocalOnly(app, token=token, port=port)
 

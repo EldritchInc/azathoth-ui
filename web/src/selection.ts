@@ -1,10 +1,12 @@
 /**
- * How a prompt step chooses its model, as Azathoth does (ADR 0006): by what
- * it needs, from the models the portfolio authorizes, or one model always.
+ * How a prompt step chooses its model (ADR 0006): by what it needs, from the
+ * models the portfolio authorizes, or one model always.
  *
- * These rules repeat Azathoth's `ModelQuery.matches`, so the editor can say
- * which models a step could run on before it runs. Azathoth remains the
- * judge, and once it can answer the question itself the editor should ask.
+ * Which of the local portfolio's models a step could run on is Azathoth's
+ * to say, and the editor asks it (`models.matching`, ADR 0007). `meets`
+ * repeats Azathoth's `ModelQuery.matches` only for the hints about models
+ * outside the portfolio, which Azathoth does not match yet: how many more
+ * the providers serve, and the steps a model could serve once it is added.
  */
 
 import type { ModelSummary } from "./api/types";
@@ -146,11 +148,6 @@ export function stepsThatCouldUse(
         : [];
     }),
   );
-}
-
-/** The models a step could choose from: those of the local portfolio that meet its needs. */
-export function choices(models: readonly ModelSummary[], needs: Needs): ModelSummary[] {
-  return models.filter((model) => model.authorized && meets(model, needs));
 }
 
 /**

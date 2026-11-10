@@ -415,10 +415,22 @@ export function removeStep(document: JsonObject, id: string): JsonObject {
 
 /**
  * Returns the document with a step replaced by another as written, keeping
- * its id and its place: what changes a step's id is the workflow's own JSON.
+ * its place and the ids the editor made for it: its own, and its prompt's.
  */
 export function replaceStep(document: JsonObject, id: string, step: JsonObject): JsonObject {
-  return updateStep(document, id, () => ({ ...step, id }));
+  return updateStep(document, id, (current) => {
+    const kept = asObject(asObject(current.specification).metadata).id;
+    const specification = step.specification;
+
+    if (kept === undefined || !isObject(specification) || !isObject(specification.metadata)) {
+      return { ...step, id };
+    }
+    return {
+      ...step,
+      id,
+      specification: { ...specification, metadata: { ...specification.metadata, id: kept } },
+    };
+  });
 }
 
 /** Returns the document with a prompt step renamed; a tool step is named by its tool. */
@@ -879,4 +891,55 @@ export function disconnectInput(document: JsonObject, id: string): JsonObject {
       ),
     }),
   );
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Returns whether a value is a UUID, as the editor writes ids. */
+export function isUuid(value: JsonValue | undefined): boolean {
+  return typeof value === "string" && UUID.test(value);
+}
+
+function withSpecificationId(step: JsonObject, newId: () => string): JsonObject {
+  const specification = step.specification;
+
+  if (!isObject(specification) || !isObject(specification.metadata)) {
+    return step;
+  }
+  if (isUuid(specification.metadata.id)) {
+    return step;
+  }
+  return {
+    ...step,
+    specification: { ...specification, metadata: { ...specification.metadata, id: newId() } },
+  };
+}
+
+/**
+ * Returns the document with the ids the editor makes, never ones typed in
+ * (ADR 0005): the workflow keeps its own id, and a step, or a prompt's
+ * specification, whose id is missing, is not a UUID, or repeats another
+ * step's, is given a new one.
+ */
+export function withIds(document: JsonObject, workflow: string, newId: () => string): JsonObject {
+  const seen = new Set<string>();
+  const metadata = { ...asObject(document.metadata), id: workflow };
+
+  if (!isList(document.steps)) {
+    return { ...document, metadata };
+  }
+
+  const steps = document.steps.map((value) => {
+    if (!isObject(value)) {
+      return value;
+    }
+
+    const kept = asText(value.id);
+    const id = kept !== null && isUuid(kept) && !seen.has(kept) ? kept : newId();
+
+    seen.add(id);
+    return withSpecificationId({ ...value, id }, newId);
+  });
+
+  return { ...document, metadata, steps };
 }

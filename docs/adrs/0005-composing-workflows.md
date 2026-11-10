@@ -27,12 +27,11 @@ saving it, nor to run one step of a document it has not saved.
   working as they can: a prompt's `{variables}` bind to the inputs of their
   names as either changes, renaming an output renames what reads it from
   its step, and removing a step turns what read from it into reads by name.
-- **The editor says what Azathoth would refuse.** `problems.ts` checks a
-  document against Azathoth's rules: ids, dependencies and circles, where
-  each input comes from (a name from the context must be written by a step
-  it depends on directly), conditions, retries and the result. Each problem
-  names its step, and a step on the graph shows how many it has. Azathoth
-  remains the judge: Save shows its refusal and keeps the edits.
+- **The editor says what Azathoth would refuse.** Each problem names its
+  step, and a step on the graph shows how many it has. Azathoth remains the
+  judge: Save shows its refusal and keeps the edits. The editor first
+  checked a document against its own copy of Azathoth's rules; it now asks
+  Azathoth, and only words the answer (ADR 0007).
 - **History is the editor's, not the browser's.** Every edit goes through
   one history of documents that undo and redo walk, 200 changes deep. Edits
   made under one group in a row, such as the letters typed into one field,
@@ -68,10 +67,9 @@ saving it, nor to run one step of a document it has not saved.
 - Editing, problems, history, drafts, joining and the form's parsing are
   pure TypeScript, tested without a browser; component tests check fields,
   keys and what each change does to the document.
-- `problems.ts` repeats rules Azathoth already enforces, and can fall behind
-  them. Once Azathoth offers a check without saving, such as
-  `workflows.check(document)`, the editor should ask it and keep its own
-  checks for saying where in the document a problem is.
+- `problems.ts` repeated rules Azathoth already enforces, and could fall
+  behind them. Azathoth now offers `workflows.check(document)`, and the
+  editor asks it, keeping only the words it says each problem in (ADR 0007).
 - Running one step of an unsaved workflow, with the instance's model keys
   and a tool's test cases, waits on Azathoth too, for something like
   `runs.try_step(document, step_id, inputs)`.

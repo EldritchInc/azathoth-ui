@@ -11,6 +11,7 @@ import {
 } from "../test/documents";
 import { EDITOR, SERVER, type Answers } from "../test/instances";
 import { renderAt } from "../test/render";
+import { RUN_SUMMARY } from "../test/runs";
 
 const WORKFLOW_PATH = `/api/workflows/${WORKFLOW_DETAIL.id}`;
 
@@ -25,6 +26,7 @@ const ANSWERS: Answers = {
   [WORKFLOW_PATH]: [200, WORKFLOW_DETAIL],
   [`${WORKFLOW_PATH}?revision=1`]: [200, FIRST_REVISION],
   [`${WORKFLOW_PATH}/history?limit=100`]: [200, { items: WORKFLOW_HISTORY }],
+  [`${WORKFLOW_PATH}/runs?limit=20`]: [200, { items: [] }],
   [`/api/tools/${TOOL_DETAIL.id}/versions/1.0.0`]: [200, TOOL_DETAIL],
   [`/api/tools/${TOOL_DETAIL.id}/history?limit=100&version=1.0.0`]: [200, { items: [TOOL_DETAIL] }],
   [`/api/benchmarks/${BENCHMARK_DETAIL.id}`]: [200, BENCHMARK_DETAIL],
@@ -39,6 +41,64 @@ function workflowPage(search = ""): void {
 }
 
 describe("a workflow's page", () => {
+  it("offers to run it", async () => {
+    workflowPage();
+
+    expect(await screen.findByRole("link", { name: "Run" })).toHaveAttribute(
+      "href",
+      `/workflows/${WORKFLOW_DETAIL.id}/run`,
+    );
+  });
+
+  it("lists its runs, newest first, each opening the run", async () => {
+    renderAt(<App />, {
+      path: `/workflows/${WORKFLOW_DETAIL.id}`,
+      answers: {
+        ...ANSWERS,
+        [`${WORKFLOW_PATH}/runs?limit=20`]: [
+          200,
+          {
+            items: [
+              RUN_SUMMARY,
+              {
+                ...RUN_SUMMARY,
+                run_id: "b1000000-0000-4000-8000-000000000002",
+                invocation_id: "f1000000-0000-4000-8000-000000000001",
+                succeeded: false,
+                error: {
+                  code: "workflow_execution_failed",
+                  step_id: null,
+                  exception_type: "ModelError",
+                  message: "The model refused.",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    });
+    const runs = within(await screen.findByRole("region", { name: "Runs" }));
+    const links = await runs.findAllByRole("link");
+
+    expect(links).toHaveLength(2);
+    expect(links[0]).toHaveAttribute("href", `/runs/${RUN_SUMMARY.run_id}`);
+    expect(links[0]).toHaveTextContent("Succeeded");
+    expect(links[0]).toHaveTextContent("2.5 s · revision 3");
+    expect(links[1]).toHaveTextContent("Failed");
+    expect(links[1]).toHaveTextContent("Production");
+    expect(links[1]).toHaveTextContent("The model refused.");
+  });
+
+  it("says when it has no runs yet", async () => {
+    workflowPage();
+
+    expect(
+      await screen.findByText(
+        "No runs yet. Run it, and each run is kept here with what every step did.",
+      ),
+    ).toBeVisible();
+  });
+
   it("offers to edit it", async () => {
     workflowPage();
 

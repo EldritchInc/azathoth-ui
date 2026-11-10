@@ -13,6 +13,11 @@ import {
   isEditorDescription,
   isErrorBody,
   isInstanceDescription,
+  isLiveRun,
+  isRunDetail,
+  isRunSummary,
+  isWorkflowCheck,
+  isWorkflowReadiness,
   isModelListing,
   isModelSummary,
   isPortfolioEntry,
@@ -24,6 +29,11 @@ import {
   type ComponentDetail,
   type EditorDescription,
   type InstanceDescription,
+  type LiveRun,
+  type RunDetail,
+  type RunSummary,
+  type WorkflowCheck,
+  type WorkflowReadiness,
   type ModelListing,
   type ModelSummary,
   type PortfolioEntry,
@@ -299,4 +309,183 @@ export async function removeFromPortfolio(
   }
 
   return body;
+}
+
+/** The largest file a run takes, as Azathoth holds it: 10 MB. */
+export const MAX_INPUT_FILE_BYTES = 10 * 1024 * 1024;
+
+/** A file as the server takes one: its media type, and its content in base64. */
+export interface SentFile {
+  readonly media_type: string;
+  readonly content: string;
+}
+
+/** What a run is given: JSON, a file, or nothing. */
+export type RunGiven =
+  | { readonly kind: "json"; readonly value: unknown }
+  | { readonly kind: "file"; readonly file: SentFile }
+  | { readonly kind: "none" };
+
+/** Returns the body that starts a run of a workflow, given what it is given. */
+export function startBody(workflowId: string, given: RunGiven): Record<string, unknown> {
+  switch (given.kind) {
+    case "json":
+      return { workflow_id: workflowId, input: given.value };
+    case "file":
+      return { workflow_id: workflowId, file: given.file };
+    case "none":
+      return { workflow_id: workflowId };
+  }
+}
+
+async function liveRunOf(path: string, body: string | undefined, options: RequestOptions) {
+  const answer = await requestJson(
+    path,
+    body === undefined ? { method: "GET" } : { method: "POST", body },
+    options,
+  );
+
+  if (!isLiveRun(answer)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return answer;
+}
+
+/** Starts a live run of a workflow: `POST /api/live/runs`. Returns it, running. */
+export function startRun(
+  workflowId: string,
+  given: RunGiven,
+  options: RequestOptions = {},
+): Promise<LiveRun> {
+  return liveRunOf("/api/live/runs", JSON.stringify(startBody(workflowId, given)), options);
+}
+
+/**
+ * What trying one step alone is sent (ADR 0007): the document as it stands,
+ * the step, the values and files its inputs are given by name, and the run's
+ * input, for an input left to read it.
+ */
+export interface TrialStart {
+  readonly document: unknown;
+  readonly step_id: string;
+  readonly inputs: Readonly<Record<string, unknown>>;
+  readonly files: Readonly<Record<string, SentFile>>;
+  readonly input?: unknown;
+  readonly file?: SentFile;
+}
+
+/** Starts trying one step alone: `POST /api/live/steps`. Returns its live run, running. */
+export function startTrial(start: TrialStart, options: RequestOptions = {}): Promise<LiveRun> {
+  return liveRunOf("/api/live/steps", JSON.stringify(start), options);
+}
+
+/** Returns one live run: `GET /api/live/{handle}`. */
+export function fetchLiveRun(handle: string, options: RequestOptions = {}): Promise<LiveRun> {
+  return liveRunOf(`/api/live/${encodeURIComponent(handle)}`, undefined, options);
+}
+
+/** Returns every live run the editor remembers, newest first: `GET /api/live`. */
+export function fetchLiveRuns(options: RequestOptions = {}): Promise<LiveRun[]> {
+  return fetchItems("/api/live", isLiveRun, options);
+}
+
+/** Asks a live run to stop: `POST /api/live/{handle}/cancel`. Returns it as it stands. */
+export function cancelLiveRun(handle: string, options: RequestOptions = {}): Promise<LiveRun> {
+  return liveRunOf(`/api/live/${encodeURIComponent(handle)}/cancel`, "{}", options);
+}
+
+/** Returns the path of a live run's event stream. */
+export function liveEventsPath(handle: string): string {
+  return `/api/live/${encodeURIComponent(handle)}/events`;
+}
+
+/** How many of a workflow's runs the editor lists at once. */
+export const RUNS_LISTED = 20;
+
+/** Returns a workflow's kept runs, newest first: `GET /api/workflows/{id}/runs`. */
+export function fetchWorkflowRuns(
+  workflowId: string,
+  options: RequestOptions = {},
+): Promise<RunSummary[]> {
+  return fetchItems(
+    `/api/workflows/${encodeURIComponent(workflowId)}/runs?limit=${String(RUNS_LISTED)}`,
+    isRunSummary,
+    options,
+  );
+}
+
+/** Returns one kept run with its steps: `GET /api/runs/{run_id}`. */
+export async function fetchRun(runId: string, options: RequestOptions = {}): Promise<RunDetail> {
+  const body = await getJson(`/api/runs/${encodeURIComponent(runId)}`, options);
+
+  if (!isRunDetail(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/**
+ * Returns what Azathoth makes of a workflow document, saving nothing:
+ * `POST /api/workflows/check`.
+ */
+export async function checkWorkflow(
+  document: unknown,
+  options: RequestOptions = {},
+): Promise<WorkflowCheck> {
+  const body = await requestJson(
+    "/api/workflows/check",
+    { method: "POST", body: JSON.stringify(document) },
+    options,
+  );
+
+  if (!isWorkflowCheck(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/**
+ * Returns whether each step of a workflow document could run here now, as
+ * Azathoth resolves it, asking the providers: `POST /api/workflows/readiness`.
+ */
+export async function fetchReadiness(
+  document: unknown,
+  options: RequestOptions = {},
+): Promise<WorkflowReadiness> {
+  const body = await requestJson(
+    "/api/workflows/readiness",
+    { method: "POST", body: JSON.stringify(document) },
+    options,
+  );
+
+  if (!isWorkflowReadiness(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/**
+ * Returns the local portfolio's models that meet a step's requirements, in
+ * the order a run tries them, by Azathoth's own rules: `POST /api/models/matching`.
+ */
+export async function matchModels(
+  requirements: Readonly<Record<string, unknown>>,
+  options: RequestOptions = {},
+): Promise<ModelSummary[]> {
+  const body = await requestJson(
+    "/api/models/matching",
+    { method: "POST", body: JSON.stringify({ requirements }) },
+    options,
+  );
+  const items = itemsOf(body, isModelSummary);
+
+  if (items === null) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return items;
 }

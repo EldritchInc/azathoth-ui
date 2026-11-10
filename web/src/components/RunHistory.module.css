@@ -1,0 +1,124 @@
+/* A workflow's kept runs. */
+
+.section {
+  display: grid;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.title {
+  font-size: 1.4rem;
+  font-weight: 450;
+}
+
+.note,
+.quiet {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--raised);
+  list-style: none;
+}
+
+.list li + li {
+  border-top: 1px solid var(--line);
+}
+
+.run {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(7rem, auto) 1fr auto;
+  align-items: center;
+  gap: 0.35rem 1rem;
+  padding: 0.7rem 1rem;
+  color: var(--ink);
+  text-decoration: none;
+  transition: background-color 120ms ease;
+}
+
+.run:hover {
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+}
+
+.state {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 0.4rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.state::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.state[data-state="succeeded"] {
+  background: var(--tide-wash);
+  color: var(--tide-strong);
+}
+
+.state[data-state="failed"] {
+  background: var(--rose-wash);
+  color: var(--rose);
+}
+
+.when {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.facts {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.badge {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--orbit) 40%, var(--line));
+  border-radius: 999px;
+  color: var(--orbit);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.error {
+  grid-column: 2 / -1;
+  overflow: hidden;
+  color: var(--rose);
+  font-size: 0.8125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 40rem) {
+  .run {
+    grid-template-columns: auto 1fr;
+  }
+
+  .facts,
+  .error {
+    grid-column: 1 / -1;
+  }
+}

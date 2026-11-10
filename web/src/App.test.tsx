@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { App } from "./App";
 import { THEME_KEY } from "./theme";
 import { SERVER } from "./test/instances";
+import { FINISHED_RUN, LIVE_RUN } from "./test/runs";
 import { renderAt } from "./test/render";
 
 describe("App", () => {
@@ -116,5 +117,38 @@ describe("App", () => {
     renderAt(<App />, { answers: SERVER, path: "/workflows" });
 
     expect(await screen.findByRole("link", { name: "summarize" })).toBeVisible();
+  });
+
+  it("points to the runs that are running, the newest first, and to none once they end", async () => {
+    renderAt(<App />, {
+      answers: {
+        ...SERVER,
+        "/api/live": [
+          200,
+          {
+            items: [
+              { ...LIVE_RUN, handle: "n3west" },
+              LIVE_RUN,
+              { ...FINISHED_RUN, handle: "d0ne" },
+            ],
+          },
+        ],
+      },
+    });
+    const navigation = screen.getByRole("navigation", { name: "Editor" });
+
+    expect(await within(navigation).findByRole("link", { name: "2 runs running" })).toHaveAttribute(
+      "href",
+      "/live/n3west",
+    );
+  });
+
+  it("shows no runs while none is running", async () => {
+    renderAt(<App />, {
+      answers: { ...SERVER, "/api/live": [200, { items: [FINISHED_RUN] }] },
+    });
+
+    expect(await screen.findByRole("heading", { level: 1, name: "ui.db" })).toBeVisible();
+    expect(screen.queryByRole("link", { name: /running/ })).not.toBeInTheDocument();
   });
 });

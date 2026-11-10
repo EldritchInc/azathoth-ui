@@ -7,6 +7,7 @@ import {
   addInput,
   addOutput,
   addStep,
+  asList,
   bumped,
   canConnect,
   connect,
@@ -14,6 +15,8 @@ import {
   DEFAULT_RETRY,
   disconnect,
   disconnectInput,
+  isObject,
+  isUuid,
   newWorkflow,
   removeCondition,
   removeDependency,
@@ -45,8 +48,8 @@ import {
   variablesOf,
   WORKFLOW_INPUT,
   type JsonObject,
+  withIds,
 } from "./editing";
-import { problems } from "./problems";
 import { uuid, VALID_DOCUMENT } from "./test/documents";
 
 const DOCUMENT = VALID_DOCUMENT;
@@ -151,13 +154,6 @@ describe("newWorkflow", () => {
     });
   });
 
-  it("leaves only its descriptions for the person to write", () => {
-    expect(problems(document).map((problem) => problem.message)).toEqual([
-      "The workflow needs a description.",
-      "It needs a description.",
-    ]);
-  });
-
   it("takes the name it is given", () => {
     expect(
       newWorkflow({ workflow: uuid(1), step: uuid(2), specification: uuid(3) }, "triage").metadata,
@@ -254,6 +250,23 @@ describe("adding and removing steps", () => {
     expect(stepsOf(replaced).map((each) => each.id)).toEqual([PICK, SUMMARIZE]);
     expect(step(replaced, PICK)).toEqual({ id: PICK, confidence: "length" });
     expect(step(replaced, SUMMARIZE)).toBe(step(DOCUMENT, SUMMARIZE));
+  });
+
+  it("keeps the id the editor made for a prompt, whatever the step's JSON says", () => {
+    const summarize = step(DOCUMENT, SUMMARIZE);
+    const specification = asObject(summarize.specification);
+    const replaced = replaceStep(DOCUMENT, SUMMARIZE, {
+      ...summarize,
+      specification: {
+        ...specification,
+        metadata: { ...asObject(specification.metadata), id: "typed", name: "Shorten" },
+      },
+    });
+
+    expect(asObject(step(replaced, SUMMARIZE).specification).metadata).toMatchObject({
+      id: uuid(22),
+      name: "Shorten",
+    });
   });
 
   it("reads the result by name once the step it came from is gone", () => {
@@ -640,5 +653,75 @@ describe("connecting and disconnecting", () => {
       { name: "path", source: { value: ["text"] } },
     ]);
     expect(disconnectInput(DOCUMENT, SUMMARIZE)).toEqual(DOCUMENT);
+  });
+});
+
+describe("withIds", () => {
+  function counter(): () => string {
+    let next = 200;
+
+    return () => {
+      next += 1;
+      return uuid(next);
+    };
+  }
+
+  it("keeps the workflow's own id, and every step's UUID", () => {
+    const written = withIds(
+      { ...DOCUMENT, metadata: { ...asObject(DOCUMENT.metadata), id: "typed" } },
+      uuid(1),
+      counter(),
+    );
+
+    expect(asObject(written.metadata).id).toBe(uuid(1));
+    expect(stepsOf(written).map((each) => each.id)).toEqual([PICK, SUMMARIZE]);
+    expect(asObject(asObject(step(written, SUMMARIZE).specification).metadata).id).toBe(uuid(22));
+  });
+
+  it("makes ids for steps whose ids are missing, not UUIDs, or another's", () => {
+    const [pick, summarize] = stepsOf(DOCUMENT);
+    const written = withIds(
+      {
+        ...DOCUMENT,
+        steps: [
+          pick ?? {},
+          { ...summarize, id: PICK },
+          { specification: { metadata: { name: "new" } } },
+          { id: "three" },
+          "not a step",
+        ],
+      },
+      uuid(1),
+      counter(),
+    );
+
+    expect(asList(written.steps).map((each) => (isObject(each) ? each.id : each))).toEqual([
+      PICK,
+      uuid(201),
+      uuid(202),
+      uuid(204),
+      "not a step",
+    ]);
+    expect(asObject(asObject(stepsOf(written)[2]).specification).metadata).toEqual({
+      name: "new",
+      id: uuid(203),
+    });
+  });
+
+  it("gives a document without steps the workflow's id alone", () => {
+    expect(withIds({ steps: "nope" }, uuid(1), counter())).toEqual({
+      steps: "nope",
+      metadata: { id: uuid(1) },
+    });
+  });
+});
+
+describe("isUuid", () => {
+  it("knows a UUID as the editor writes one", () => {
+    expect(isUuid(uuid(1))).toBe(true);
+    expect(isUuid("00000000000040008000000000000001")).toBe(false);
+    expect(isUuid("nope")).toBe(false);
+    expect(isUuid(7)).toBe(false);
+    expect(isUuid(undefined)).toBe(false);
   });
 });

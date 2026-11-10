@@ -1,12 +1,14 @@
-import { useId, useMemo, useState, type ReactNode } from "react";
+import { use, useId, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 
 import { describeWorkflow, layers, type StepView } from "../documents";
 import { addStep } from "../editing";
 import { buildGraph } from "../graph";
+import { STEP_STATE_NAMES } from "../running";
 import { isNarrow, readStepsView, saveStepsView, type StepsView } from "../stepsView";
 import { browserStorage } from "../theme";
 import { ComposingContext, type Composing } from "./composing";
+import { RunningContext } from "./runningContext";
 import { StepsGraph } from "./StepsGraph";
 import styles from "./WorkflowSteps.module.css";
 
@@ -36,6 +38,9 @@ function Step({
   readonly card?: boolean;
   readonly current?: boolean;
 }) {
+  const running = use(RunningContext);
+  const runState = running === null ? null : (running.get(step.id)?.state ?? "waiting");
+
   return (
     <li
       className={card ? styles.card : styles.step}
@@ -55,6 +60,11 @@ function Step({
           )}
           {step.runtime !== null && ` (${step.runtime})`}
         </span>
+        {runState !== null && (
+          <span className={styles.runState} data-run={runState}>
+            {STEP_STATE_NAMES[runState]}
+          </span>
+        )}
       </div>
       {step.description !== null && <p className={styles.description}>{step.description}</p>}
       {step.message !== null && <p className={styles.message}>Says “{step.message}” as it runs</p>}

@@ -173,7 +173,13 @@ export const SERVER: Answers = {
   "/api/benchmarks": [200, { items: [BENCHMARK] }],
   "/api/models": [200, { items: [LARGE_MODEL, SMALL_MODEL, BEDROCK_MODEL], listed_at: LISTED_AT }],
   "/api/local/portfolio": [200, { items: [LARGE_ENTRY] }],
+  "/api/live": [200, { items: [] }],
 };
+
+/** Returns the URL one request asks for, on a stand-in for the editor's server. */
+export function urlOf(input: RequestInfo | URL): URL {
+  return new URL(input instanceof Request ? input.url : input.toString(), "http://127.0.0.1");
+}
 
 /**
  * Returns a fetch that answers each path as `answers` says, and 404 for any other.
@@ -182,10 +188,7 @@ export const SERVER: Answers = {
  */
 export function serving(answers: Answers): typeof fetch {
   return (input) => {
-    const url = new URL(
-      input instanceof Request ? input.url : input.toString(),
-      "http://127.0.0.1",
-    );
+    const url = urlOf(input);
     const path = url.pathname;
     const [status, body] = answers[`${path}${url.search}`] ??
       answers[path] ?? [

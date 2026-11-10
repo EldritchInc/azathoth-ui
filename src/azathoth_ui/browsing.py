@@ -1,4 +1,4 @@
-"""The browsing API: the workflows, tools and benchmarks in the editor's own instance (ADR 0003).
+"""The browsing API: the workflows, tools, benchmarks and runs in the editor's own instance.
 
 Every answer is `azathoth.api`'s own model as JSON. A list or a history is
 `{"items": [...]}`, newest revision first for a history. An id or a number
@@ -7,7 +7,8 @@ asked, and anything Azathoth refuses answers with its own code and message.
 
 Importing takes one document as `application/json`, at most
 `MAX_DOCUMENT_BYTES`, and makes it its component's next revision: nothing is
-ever changed in place.
+ever changed in place. Checking a workflow document, and asking whether it
+could run here, take one the same way and save nothing (ADR 0003, ADR 0007).
 """
 
 import re
@@ -103,11 +104,14 @@ def refusal(
     return JSONResponse({"error": {"code": code, "message": message}}, status_code=status)
 
 
-async def import_with(
+async def document_of(
     request: Request,
-    importer: Callable[[str], api.ApiModel],
-) -> Response:
-    """Import the request's document with one importer, as its component's next revision."""
+) -> str | Response:
+    """Return the document a request sends, or the response that refuses it.
+
+    Raises:
+        InvalidDocumentError: It is not UTF-8 text.
+    """
 
     media_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
 
@@ -128,11 +132,34 @@ async def import_with(
             return refusal(413, "document_too_large", TOO_LARGE_MESSAGE)
 
     try:
-        document = body.decode("utf-8")
+        return body.decode("utf-8")
     except UnicodeDecodeError:
         raise api.InvalidDocumentError(NOT_UTF8_MESSAGE) from None
 
-    return one(await run_in_threadpool(importer, document), status=201)
+
+async def judged_by(
+    request: Request,
+    judge: Callable[[str], api.ApiModel],
+    *,
+    status: int = 200,
+) -> Response:
+    """Answer with what one call of the service API makes of the request's document."""
+
+    document = await document_of(request)
+
+    if isinstance(document, Response):
+        return document
+
+    return one(await run_in_threadpool(judge, document), status=status)
+
+
+async def import_with(
+    request: Request,
+    importer: Callable[[str], api.ApiModel],
+) -> Response:
+    """Import the request's document with one importer, as its component's next revision."""
+
+    return await judged_by(request, importer, status=201)
 
 
 def list_workflows(
@@ -171,6 +198,47 @@ async def import_workflow(
     """`POST /api/workflows/import`: import a workflow document as its next revision."""
 
     return await import_with(request, instance_of(request).workflows.import_document)
+
+
+async def check_workflow(
+    request: Request,
+) -> Response:
+    """`POST /api/workflows/check`: every reason importing a document would refuse it.
+
+    Nothing is saved, and no provider is asked.
+    """
+
+    return await judged_by(request, instance_of(request).workflows.check)
+
+
+async def workflow_readiness(
+    request: Request,
+) -> Response:
+    """`POST /api/workflows/readiness`: whether each step of a document could run here now.
+
+    The providers are asked what they serve, as a run asks them; nothing is saved.
+    """
+
+    return await judged_by(request, instance_of(request).runs.readiness)
+
+
+def workflow_runs(
+    request: Request,
+) -> Response:
+    """`GET /api/workflows/{id}/runs?limit=`: a workflow's kept runs, newest first."""
+
+    workflow_id = identifier(request, "workflow_id", "workflow")
+    limit = whole_number(request, "limit")
+
+    return items(instance_of(request).runs.list(workflow_id, limit=limit))
+
+
+def get_run(
+    request: Request,
+) -> Response:
+    """`GET /api/runs/{run_id}`: one kept run, with its input, its result and its steps."""
+
+    return one(instance_of(request).runs.get(identifier(request, "run_id", "run")))
 
 
 def list_tools(
@@ -257,8 +325,12 @@ def browsing_routes() -> list[BaseRoute]:
     return [
         Route("/api/workflows", list_workflows, methods=["GET"]),
         Route("/api/workflows/import", import_workflow, methods=["POST"]),
+        Route("/api/workflows/check", check_workflow, methods=["POST"]),
+        Route("/api/workflows/readiness", workflow_readiness, methods=["POST"]),
         Route("/api/workflows/{workflow_id}", get_workflow, methods=["GET"]),
         Route("/api/workflows/{workflow_id}/history", workflow_history, methods=["GET"]),
+        Route("/api/workflows/{workflow_id}/runs", workflow_runs, methods=["GET"]),
+        Route("/api/runs/{run_id}", get_run, methods=["GET"]),
         Route("/api/tools", list_tools, methods=["GET"]),
         Route("/api/tools/import", import_tool, methods=["POST"]),
         Route("/api/tools/{tool_id}/history", tool_history, methods=["GET"]),

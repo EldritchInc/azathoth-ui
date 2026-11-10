@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router";
 
 import { DESCRIPTIONS, KINDS, type Kind } from "../kinds";
-import { useList, usePortfolio } from "../queries";
+import { useList, useLiveRuns, usePortfolio } from "../queries";
 import type { ThemeChoice } from "../theme";
 import type { Connection } from "../useInstance";
 import { ConnectionStatus } from "./ConnectionStatus";
@@ -96,6 +96,29 @@ function ModelsLink() {
   );
 }
 
+/**
+ * While runs started from the editor are running, how many, linking to the
+ * newest of them; nothing while none is.
+ */
+function RunningLink() {
+  const live = useLiveRuns();
+  const running = (live.data ?? []).filter((run) => run.state === "running");
+  const newest = running[0];
+
+  if (newest === undefined) {
+    return null;
+  }
+
+  return (
+    <NavLink className={styles.running} to={`/live/${newest.handle}`}>
+      <span className={styles.pulse} aria-hidden="true" />
+      <span className={styles.label}>
+        {running.length === 1 ? "1 run running" : `${String(running.length)} runs running`}
+      </span>
+    </NavLink>
+  );
+}
+
 /** The editor's rail: its mark, its pages, the connection and the theme. */
 export function Rail({
   connection,
@@ -122,6 +145,7 @@ export function Rail({
           <KindLink key={kind} kind={kind} />
         ))}
         <ModelsLink />
+        <RunningLink />
       </nav>
       <div className={styles.footer}>
         <ConnectionStatus connection={connection} />
