@@ -76,6 +76,14 @@ def test_it_requires_exactly_its_own_minor_release_of_azathoth() -> None:
     ]
 
 
+def test_it_is_released_as_stable() -> None:
+    classifiers = project()["classifiers"]
+
+    assert isinstance(classifiers, list)
+    assert "Development Status :: 5 - Production/Stable" in classifiers
+    assert not [each for each in classifiers if "Beta" in each or "Alpha" in each]
+
+
 def test_its_server_is_starlette_on_uvicorn() -> None:
     assert project()["dependencies"] == [
         "azathoth-ai==1.4.*",
@@ -127,16 +135,19 @@ def test_an_import_past_the_public_api_is_found(
     )
 
 
-INSTALL = 'python -m pip install "azathoth-ai>=1.4.0b1,==1.4.*" -e ".[dev]"'
-"""How CI and `make install` install the editor: Azathoth from PyPI, its pre-releases only."""
+INSTALL = 'python -m pip install -e ".[dev]"'
+"""How CI and `make install` install the editor: Azathoth as its requirement, from PyPI."""
 
 
-def test_ci_and_make_install_azathoth_from_pypi_admitting_only_its_pre_releases() -> None:
+def test_ci_and_make_install_azathoth_from_pypi_as_the_editor_requires_it() -> None:
     ci = (PROJECT_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     makefile = (PROJECT_ROOT / "Makefile").read_text(encoding="utf-8")
 
     assert INSTALL in ci
     assert INSTALL in makefile
-    assert "--pre" not in ci
-    assert "--pre" not in makefile
+
+    for text in (ci, makefile):
+        assert "--pre" not in text
+        assert "azathoth-ai>=" not in text
+        assert "azathoth-ai==" not in text
     assert "github.com/EldritchInc/azathoth" not in ci

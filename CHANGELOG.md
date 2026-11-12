@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased
+## 1.4.0
+
+The first release of the editor, for Azathoth 1.4. It keeps an Azathoth
+instance of its own on your computer and opens it in your browser: browse
+and import workflows, tools and benchmarks; see a workflow as a graph and
+compose it there; keep a local portfolio from the models the providers
+serve; run a workflow on text, JSON or a file and watch it run; and ship
+what you made to a shared remote, or pull what others shipped. It drives
+Azathoth only through its public service API, `azathoth.api`, and serves
+only `127.0.0.1`, with a key for each launch.
 
 - The package, `azathoth-ui`, requiring Azathoth 1.4 from PyPI, with its
   gates and CI.
@@ -23,7 +32,7 @@
   instance, any revision of each and its history, and importing a document as
   its component's next revision. `GET /api/editor` gives the prefix that
   names the editor's database in the commands it shows. Links into the web
-  app's own pages now open the web app (ADR 0003).
+  app's own pages open the web app (ADR 0003).
 - The web app browses the local instance: the rail opens Workflows, Tools and
   Benchmarks, each with how many the instance holds, and each list filters as
   you type. Every command the editor shows names its own database, ready to
@@ -39,8 +48,8 @@
   or drop them anywhere on a list. Each becomes its component's next revision,
   and the editor says which revision it made, whether it was identical to one
   already there, or why Azathoth refused it.
-- The Eldritch, Inc. logo replaces the orbit mark in the rail, the browser
-  tab and the server's own pages, in the theme's own colours.
+- The Eldritch, Inc. logo marks the rail, the browser tab and the server's
+  own pages, in the theme's own colours.
 - A workflow's steps are laid out in layers: the steps that can run at once
   side by side, and each layer after the deepest step its steps depend on or
   read a named step's output from. A workflow that cannot be layered is listed
@@ -150,11 +159,10 @@
   holds it.
 - ADR 0006 records how the editor keeps its local portfolio apart from a
   shared server's, and says which models a step could run on.
-- The editor needs Azathoth 1.4.0b1. Importing a document identical to the
-  latest revision makes no revision, as Azathoth now decides: the import
-  answers `{"created", "<kind>"}`, 201 when a revision was made and 200
-  when none was, and the editor says the component is unchanged. A revision
-  that returns to an earlier one says so.
+- Importing a document identical to the latest revision makes no revision,
+  as Azathoth decides: the import answers `{"created", "<kind>"}`, 201 when
+  a revision was made and 200 when none was, and the editor says the
+  component is unchanged. A revision that returns to an earlier one says so.
 - The remotes API: `GET /api/remotes` lists the remotes the editor's
   instance names, each with its URL, the variable its token is read from,
   and whether that variable is set in the editor's environment, never its
@@ -197,4 +205,3 @@
   handling a token, with a remote's errors keeping their statuses, status
   asked again while someone is looking, and divergence pulled, never
   overwritten.
-- The editor is version 1.4.0b1, with Azathoth 1.4.0b1.
