@@ -3,7 +3,9 @@
  * words, the components grouped by it, and where each one is shown here.
  */
 
-import type { ComponentStatus, Lineage, Relation, Shell } from "./api/types";
+import type { Selection } from "./api/client";
+import type { ComponentStatus, Lineage, NamedRemote, Relation, Shell } from "./api/types";
+import type { ComponentRef, Kind } from "./kinds";
 
 /** What each relation says, and what it means for the person: a push, a pull, or a choice. */
 export const RELATION_TEXT: Readonly<Record<Relation, { label: string; meaning: string }>> = {
@@ -88,4 +90,28 @@ export function lineageKey(lineage: Lineage): string {
 /** Returns the line that sets a token's variable in the shell the editor writes commands for. */
 export function tokenCommand(variable: string, shell: Shell): string {
   return shell === "powershell" ? `$env:${variable} = "<TOKEN>"` : `export ${variable}=<TOKEN>`;
+}
+
+/** Returns what a status, push or pull of one component names: its id, and a tool's version. */
+export function selectionOf(kind: Kind, ref: ComponentRef): Selection {
+  switch (kind) {
+    case "workflows":
+      return { workflows: [ref.id] };
+    case "tools":
+      return { tools: [{ id: ref.id, version: ref.version ?? "" }] };
+    case "benchmarks":
+      return { benchmarks: [ref.id] };
+  }
+}
+
+/** Returns a lineage in words: what this instance calls it, or its id, and a tool's version. */
+export function lineageLabel(lineage: Lineage, name: string | null): string {
+  const label = name ?? lineage.id;
+
+  return lineage.version === null ? label : `${label} ${lineage.version}`;
+}
+
+/** Returns the remote Ship starts on: the first whose token is set, or else the first. */
+export function firstRemote(remotes: readonly NamedRemote[]): NamedRemote | undefined {
+  return remotes.find((remote) => remote.token_set) ?? remotes[0];
 }

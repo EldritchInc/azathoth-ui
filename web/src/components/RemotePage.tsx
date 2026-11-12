@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { Link, useParams } from "react-router";
 
 import type { ComponentStatus, LineageKind, ModelStatus, RemoteStatus } from "../api/types";
-import { useEditor, useList, useRemoteStatus, useRemotes } from "../queries";
+import { useLineageNames } from "../lineageNames";
+import { useEditor, useRemoteStatus, useRemotes } from "../queries";
 import {
   RELATION_TEXT,
   groupByRelation,
@@ -27,24 +28,6 @@ const KIND_WORDS: Readonly<Record<LineageKind, string>> = {
   tool: "Tool",
   benchmark: "Benchmark",
 };
-
-/** Returns a function naming each lineage by what this instance calls it, or by its id. */
-function useNames(): (component: ComponentStatus) => string | null {
-  const workflows = useList("workflows");
-  const tools = useList("tools");
-  const benchmarks = useList("benchmarks");
-
-  return ({ lineage }) => {
-    const found =
-      lineage.kind === "workflow"
-        ? workflows.data?.find((each) => each.id === lineage.id)
-        : lineage.kind === "benchmark"
-          ? benchmarks.data?.find((each) => each.id === lineage.id)
-          : tools.data?.find((each) => each.id === lineage.id && each.version === lineage.version);
-
-    return found === undefined ? null : found.name;
-  };
-}
 
 function Side({
   number,
@@ -310,7 +293,8 @@ export function RemotePage() {
   const editor = useEditor();
   const named = remotes.data?.find((remote) => remote.name === name);
   const status = useRemoteStatus(name, {}, { enabled: named?.token_set === true });
-  const nameOf = useNames();
+  const lineageName = useLineageNames();
+  const nameOf = (component: ComponentStatus): string | null => lineageName(component.lineage);
 
   if (remotes.isPending) {
     return <Skeleton label="Loading the remote" />;

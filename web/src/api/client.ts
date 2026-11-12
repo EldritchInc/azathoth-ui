@@ -24,6 +24,8 @@ import {
   isNamedRemote,
   isPortfolioEntry,
   isPortfolioRemoval,
+  isPullReport,
+  isPushReport,
   isRemoteStatus,
   isSummary,
   isToolSummary,
@@ -43,6 +45,8 @@ import {
   type NamedRemote,
   type PortfolioEntry,
   type PortfolioRemoval,
+  type PullReport,
+  type PushReport,
   type RemoteStatus,
   type Summary,
   type ToolSummary,
@@ -585,6 +589,54 @@ export async function fetchRemoteStatus(
   );
 
   if (!isRemoteStatus(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/**
+ * Pushes what is selected, with what it needs, to a named remote:
+ * `POST /api/remotes/{name}/push`. A push that has diverged fails as
+ * `remote_diverged`; its warnings never refuse it.
+ */
+export async function pushToRemote(
+  name: string,
+  selection: Selection,
+  options: RequestOptions = {},
+): Promise<PushReport> {
+  const body = await requestJson(
+    remoteApiPath(name, "push"),
+    { method: "POST", body: JSON.stringify(selection) },
+    options,
+  );
+
+  if (!isPushReport(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/**
+ * Pulls what is selected from a named remote into the editor's instance:
+ * `POST /api/remotes/{name}/pull`. A restricted benchmark is withheld
+ * unless `includeRestricted`.
+ */
+export async function pullFromRemote(
+  name: string,
+  selection: Selection,
+  { includeRestricted = false }: { readonly includeRestricted?: boolean } = {},
+  options: RequestOptions = {},
+): Promise<PullReport> {
+  const sent = includeRestricted ? { ...selection, include_restricted: true } : selection;
+  const body = await requestJson(
+    remoteApiPath(name, "pull"),
+    { method: "POST", body: JSON.stringify(sent) },
+    options,
+  );
+
+  if (!isPullReport(body)) {
     throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
   }
 

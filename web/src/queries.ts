@@ -34,6 +34,8 @@ import {
   fetchRemoteStatus,
   fetchRemotes,
   matchModels,
+  pullFromRemote,
+  pushToRemote,
   removeFromPortfolio,
   removeRemote,
   startRun,
@@ -52,6 +54,8 @@ import type {
   NamedRemote,
   PortfolioEntry,
   PortfolioRemoval,
+  PullReport,
+  PushReport,
   RemoteStatus,
   RunDetail,
   RunSummary,
@@ -63,6 +67,7 @@ import type { JsonObject } from "./editing";
 import type { WorkflowDocument } from "./selection";
 import {
   DESCRIPTIONS,
+  KINDS,
   detailApiPath,
   historyApiPath,
   type ComponentRef,
@@ -429,5 +434,49 @@ export function useRemoteStatus(
     refetchInterval: REMOTE_STATUS_POLL_MS,
     refetchIntervalInBackground: false,
     enabled,
+  });
+}
+
+/** One push: the remote's name, and what is pushed. */
+export interface Push {
+  readonly name: string;
+  readonly selection: Selection;
+}
+
+/** Returns a push, after which every remote's status is asked again. */
+export function usePush(): UseMutationResult<PushReport, ApiFailure, Push> {
+  const client = useQueryClient();
+
+  return useMutation<PushReport, ApiFailure, Push>({
+    mutationFn: ({ name, selection }) => pushToRemote(name, selection),
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.remotes }),
+  });
+}
+
+/** One pull: the remote's name, what is pulled, and whether restricted benchmarks come too. */
+export interface Pull {
+  readonly name: string;
+  readonly selection: Selection;
+  readonly includeRestricted?: boolean;
+}
+
+/**
+ * Returns a pull, after which every remote's status, and every workflow,
+ * tool and benchmark here, is fetched again, since the pull may have saved
+ * revisions of any of them.
+ */
+export function usePull(): UseMutationResult<PullReport, ApiFailure, Pull> {
+  const client = useQueryClient();
+
+  return useMutation<PullReport, ApiFailure, Pull>({
+    mutationFn: ({ name, selection, includeRestricted = false }) =>
+      pullFromRemote(name, selection, { includeRestricted }),
+    onSettled: async () => {
+      await Promise.all(
+        [queryKeys.remotes, ...KINDS.map((kind) => [kind])].map((queryKey) =>
+          client.invalidateQueries({ queryKey }),
+        ),
+      );
+    },
   });
 }

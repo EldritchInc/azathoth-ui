@@ -860,3 +860,73 @@ export function isRemoteStatus(value: unknown): value is RemoteStatus {
     isTextOrNull(value.portfolio_synced_at)
   );
 }
+
+/** One revision a push or pull saved: its lineage, its digest, and its number where it was saved. */
+export interface ReceivedRevision {
+  readonly lineage: Lineage;
+  readonly revision_digest: string;
+  readonly number: number;
+}
+
+/** What a push sent, and what would stop it running at the remote (Azathoth's ADR 0125). */
+export interface PushReport {
+  readonly remote: string;
+  readonly received: readonly ReceivedRevision[];
+  readonly already_held: number;
+  readonly content_sent: number;
+  readonly unresolved: readonly string[];
+  readonly warnings: readonly string[];
+}
+
+/** What a pull saved here, what it forked, and what it withheld as restricted. */
+export interface PullReport {
+  readonly remote: string;
+  readonly received: readonly ReceivedRevision[];
+  readonly already_held: number;
+  readonly content_fetched: number;
+  readonly forked: readonly Lineage[];
+  readonly withheld: readonly Lineage[];
+  readonly unresolved: readonly string[];
+}
+
+function isReceivedRevision(value: unknown): value is ReceivedRevision {
+  return (
+    isRecord(value) &&
+    isLineage(value.lineage) &&
+    typeof value.revision_digest === "string" &&
+    isWholeNumber(value.number)
+  );
+}
+
+function isReport(value: unknown): value is Record<string, unknown> & {
+  readonly remote: string;
+  readonly received: readonly ReceivedRevision[];
+  readonly already_held: number;
+  readonly unresolved: readonly string[];
+} {
+  return (
+    isRecord(value) &&
+    typeof value.remote === "string" &&
+    Array.isArray(value.received) &&
+    value.received.every(isReceivedRevision) &&
+    isWholeNumber(value.already_held) &&
+    isTextList(value.unresolved)
+  );
+}
+
+/** Returns whether a value is a push's report. */
+export function isPushReport(value: unknown): value is PushReport {
+  return isReport(value) && isWholeNumber(value.content_sent) && isTextList(value.warnings);
+}
+
+/** Returns whether a value is a pull's report. */
+export function isPullReport(value: unknown): value is PullReport {
+  return (
+    isReport(value) &&
+    isWholeNumber(value.content_fetched) &&
+    Array.isArray(value.forked) &&
+    value.forked.every(isLineage) &&
+    Array.isArray(value.withheld) &&
+    value.withheld.every(isLineage)
+  );
+}

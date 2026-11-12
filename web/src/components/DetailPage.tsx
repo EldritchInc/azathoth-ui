@@ -1,15 +1,17 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import type { ComponentDetail } from "../api/types";
 import { DESCRIPTIONS, parseRevision, type ComponentRef, type Kind } from "../kinds";
 import { useDetail, useHistory } from "../queries";
+import buttons from "./Buttons.module.css";
 import { Command } from "./Command";
 import styles from "./DetailPage.module.css";
 import { DocumentView } from "./DocumentView";
 import { Notice } from "./Notice";
 import { RelativeTime } from "./RelativeTime";
 import { RevisionHistory } from "./RevisionHistory";
+import { Ship } from "./Ship";
 
 const MISSING_CODES = new Set(["not_found", "revision_not_found", "invalid_argument"]);
 
@@ -34,6 +36,7 @@ export function DetailPage({
   const detail = useDetail(kind, component, asked);
   const history = useHistory(kind, component);
   const description = DESCRIPTIONS[kind];
+  const [shipping, setShipping] = useState(false);
 
   const crumbs = (
     <nav className={styles.crumbs} aria-label="Breadcrumb">
@@ -93,7 +96,32 @@ export function DetailPage({
         <div className={styles.titles}>
           <h1 className={styles.title}>{shown.name}</h1>
           {shown.description !== "" && <p className={styles.lead}>{shown.description}</p>}
-          {actions !== undefined && <div className={styles.actions}>{actions}</div>}
+          <div className={styles.actions}>
+            {actions}
+            <button
+              type="button"
+              className={buttons.quiet}
+              aria-expanded={shipping}
+              onClick={() => {
+                setShipping((open) => !open);
+              }}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                focusable="false"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 3v12M7 8l5-5 5 5" />
+                <path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
+              </svg>
+              Ship
+            </button>
+          </div>
         </div>
         <div className={styles.remote} data-slot="remote-status" aria-hidden="true" />
         <dl className={styles.facts}>
@@ -121,6 +149,13 @@ export function DetailPage({
           </div>
         </dl>
       </header>
+      {shipping && (
+        <Ship
+          kind={kind}
+          component={component}
+          label={kind === "tools" ? `${shown.name} ${shown.version}` : shown.name}
+        />
+      )}
       {!latest && (
         <Notice title={`This is revision ${String(revision.number)}`} tone="note">
           <p>

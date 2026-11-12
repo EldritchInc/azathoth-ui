@@ -179,3 +179,11 @@
   when it is opened, when its tab is come back to after half a minute, and
   every minute while its tab is visible, and says how old what it shows is;
   a remote that isn't answering says so, with how old its models are.
+- Ship, on every workflow, tool version and benchmark page: choose a named
+  remote, see where the component stands there (its relation, each side's
+  revision, what is in production there), and push its latest revision with
+  what it needs, after confirming, since a pushed revision stays at the
+  remote. The report says what the remote received and already held, and
+  each of Azathoth's warnings of what would stop it running there. A push
+  that has diverged, or a status that says so, offers a pull instead, whose
+  report says what it saved and forked here.
