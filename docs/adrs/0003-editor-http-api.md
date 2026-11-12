@@ -57,6 +57,12 @@ answers in JSON, and is never cached.
 | `GET /api/live/{handle}` | One live run: where it is, and how it ended |
 | `GET /api/live/{handle}/events?after=` | Its events as a server-sent event stream, then its end |
 | `POST /api/live/{handle}/cancel` | Asks it to stop: 202, as it stands now |
+| `GET /api/remotes` | Every remote the instance names, by name, each with whether its token variable is set, never its value ([ADR 0008](0008-shipping-to-a-remote.md)) |
+| `POST /api/remotes` | Names one remote, from `{"name", "url", "token_variable"}`: 201 |
+| `POST /api/remotes/remove` | Forgets one name, from `{"name"}`; nothing at the remote changes |
+| `POST /api/remotes/{name}/status` | How the workflows, tool versions and benchmarks named, or everything either side holds, relate to the remote's, from `{"workflows", "tools", "benchmarks"}` |
+| `POST /api/remotes/{name}/push` | Pushes what is named, with what it needs; the report holds Azathoth's warnings |
+| `POST /api/remotes/{name}/pull` | Pulls what is named, and restricted benchmarks too with `"include_restricted": true`; the report says what it forked and withheld |
 
 - **Answers are `azathoth.api`'s own models,** dumped as JSON. A list or a
   history is `{"items": [...]}`, so either can gain fields without breaking
@@ -71,8 +77,11 @@ answers in JSON, and is never cached.
   `application/json` (otherwise 415, `unsupported_media_type`), at most 10 MB
   (otherwise 413, `document_too_large`, checked from its declared length and
   again as it arrives), in UTF-8 (otherwise `invalid_document`). It becomes
-  its component's next revision, even when identical to the last; the
-  revision says which it is identical to.
+  its component's next revision, and the answer is Azathoth's import,
+  `{"created", "<kind>"}`: 201 when a revision was made. A document
+  identical to the latest revision makes none, as Azathoth 1.4.0b1 decides
+  (its ADR 0122): 200, `created` false, and that revision. A revision that
+  returns to an earlier one says which, as `identical_to`.
 - **Tool versions live under `/versions/`,** so that no version name, such as
   `history`, can be mistaken for another endpoint.
 - **Commands name the editor's database.** `GET /api/editor` gives the

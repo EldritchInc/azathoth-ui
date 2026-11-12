@@ -354,7 +354,7 @@ function Editor({
     const sent = present;
 
     try {
-      const detail = await importDocument("workflows", JSON.stringify(sent));
+      const { detail } = await importDocument("workflows", JSON.stringify(sent));
 
       setSaved({ document: sent, number: detail.revision.number });
       setOutcome({ kind: "saved", number: detail.revision.number });

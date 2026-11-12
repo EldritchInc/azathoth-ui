@@ -132,6 +132,23 @@ def client(
     return browser(instance, tmp_path / "missing")
 
 
+SINGULAR: dict[str, str] = {"workflows": "workflow", "tools": "tool", "benchmarks": "benchmark"}
+"""The key an import's answer holds its component under, for each kind."""
+
+
+def described(
+    document: dict[str, Any],
+    description: str,
+) -> dict[str, Any]:
+    """Return a workflow, tool or benchmark document with another description."""
+
+    for key in ("metadata", "definition"):
+        if key in document:
+            return {**document, key: {**document[key], "description": description}}
+
+    return {**document, "description": description}
+
+
 def post(
     client: TestClient,
     path: str,
@@ -194,8 +211,8 @@ def test_a_workflows_history_is_newest_first_up_to_a_limit(
     instance: api.Azathoth,
     client: TestClient,
 ) -> None:
-    for _ in range(3):
-        instance.workflows.import_document(json.dumps(WORKFLOW))
+    for description in ("First.", "Second.", "First."):
+        instance.workflows.import_document(json.dumps(described(WORKFLOW, description)))
 
     history = client.get(f"/api/workflows/{WORKFLOW_ID}/history").json()["items"]
     limited = client.get(f"/api/workflows/{WORKFLOW_ID}/history?limit=2").json()["items"]
@@ -248,7 +265,7 @@ def test_a_tool_version_is_its_latest_revision_unless_one_is_named(
     client: TestClient,
 ) -> None:
     instance.tools.import_document(json.dumps(TOOL))
-    instance.tools.import_document(json.dumps(TOOL))
+    instance.tools.import_document(json.dumps(described(TOOL, "Counts again.")))
 
     latest = client.get(f"/api/tools/{TOOL_ID}/versions/1.0.0").json()
     first = client.get(f"/api/tools/{TOOL_ID}/versions/1.0.0?revision=1").json()
@@ -356,15 +373,48 @@ def test_importing_a_document_makes_its_next_revision(
     kind: str,
     document: dict[str, Any],
 ) -> None:
+    key = SINGULAR[kind]
     first = post(client, f"/api/{kind}/import", document)
-    second = post(client, f"/api/{kind}/import", document)
+    second = post(client, f"/api/{kind}/import", described(document, "Changed."))
 
     assert first.status_code == 201
     assert first.headers["cache-control"] == "no-store"
-    assert first.json()["revision"]["number"] == 1
-    assert second.json()["revision"]["number"] == 2
-    assert second.json()["revision"]["identical_to"] == 1
-    assert first.json()["document"] == second.json()["document"]
+    assert first.json()["created"] is True
+    assert first.json()[key]["revision"]["number"] == 1
+    assert second.status_code == 201
+    assert second.json()[key]["revision"]["number"] == 2
+    assert second.json()[key]["revision"]["identical_to"] is None
+
+
+@pytest.mark.parametrize(
+    ("kind", "document"),
+    [("workflows", WORKFLOW), ("tools", TOOL), ("benchmarks", BENCHMARK)],
+)
+def test_importing_the_latest_revisions_document_makes_none(
+    client: TestClient,
+    kind: str,
+    document: dict[str, Any],
+) -> None:
+    key = SINGULAR[kind]
+    first = post(client, f"/api/{kind}/import", document)
+    again = post(client, f"/api/{kind}/import", document)
+
+    assert again.status_code == 200
+    assert again.json()["created"] is False
+    assert again.json()[key] == first.json()[key]
+    assert again.json()[key]["latest_number"] == 1
+
+
+def test_importing_an_earlier_revisions_document_reverts_to_it(
+    client: TestClient,
+) -> None:
+    post(client, "/api/workflows/import", WORKFLOW)
+    post(client, "/api/workflows/import", described(WORKFLOW, "Changed."))
+    reverted = post(client, "/api/workflows/import", WORKFLOW)
+
+    assert reverted.status_code == 201
+    assert reverted.json()["workflow"]["revision"]["number"] == 3
+    assert reverted.json()["workflow"]["revision"]["identical_to"] == 1
 
 
 def test_an_invalid_document_is_refused_with_azathoths_message(

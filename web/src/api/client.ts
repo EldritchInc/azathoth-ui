@@ -9,6 +9,7 @@
 
 import {
   isBenchmarkSummary,
+  importOf,
   isComponentDetail,
   isEditorDescription,
   isErrorBody,
@@ -20,13 +21,18 @@ import {
   isWorkflowReadiness,
   isModelListing,
   isModelSummary,
+  isNamedRemote,
   isPortfolioEntry,
   isPortfolioRemoval,
+  isPullReport,
+  isPushReport,
+  isRemoteStatus,
   isSummary,
   isToolSummary,
   itemsOf,
   type BenchmarkSummary,
   type ComponentDetail,
+  type ComponentImport,
   type EditorDescription,
   type InstanceDescription,
   type LiveRun,
@@ -36,8 +42,12 @@ import {
   type WorkflowReadiness,
   type ModelListing,
   type ModelSummary,
+  type NamedRemote,
   type PortfolioEntry,
   type PortfolioRemoval,
+  type PullReport,
+  type PushReport,
+  type RemoteStatus,
   type Summary,
   type ToolSummary,
   type WorkflowSummary,
@@ -208,24 +218,26 @@ export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 
 /**
  * Imports one document into the local instance as its component's next
- * revision: `POST /api/{kind}/import`. Returns the revision it made.
+ * revision: `POST /api/{kind}/import`. Returns whether it made one, and the
+ * revision it is: a document identical to the latest revision makes none.
  */
 export async function importDocument(
   kind: "workflows" | "tools" | "benchmarks",
   document: string,
   options: RequestOptions = {},
-): Promise<ComponentDetail> {
+): Promise<ComponentImport> {
   const body = await requestJson(
     `/api/${kind}/import`,
     { method: "POST", body: document },
     options,
   );
+  const imported = importOf(body, kind);
 
-  if (!isComponentDetail(body)) {
+  if (imported === null) {
     throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 201);
   }
 
-  return body;
+  return imported;
 }
 
 /** Returns the path of one model in the API: its identifier's parts, each encoded. */
@@ -488,4 +500,145 @@ export async function matchModels(
   }
 
   return items;
+}
+
+/** Returns every remote the editor's instance names, by name: `GET /api/remotes`. */
+export function fetchRemotes(options: RequestOptions = {}): Promise<NamedRemote[]> {
+  return fetchItems("/api/remotes", isNamedRemote, options);
+}
+
+/** A remote to name: its name, URL, and the variable its token is read from, if not the usual. */
+export interface RemoteToAdd {
+  readonly name: string;
+  readonly url: string;
+  readonly tokenVariable?: string;
+}
+
+/** Names one remote in the editor's instance: `POST /api/remotes`. */
+export async function addRemote(
+  { name, url, tokenVariable }: RemoteToAdd,
+  options: RequestOptions = {},
+): Promise<NamedRemote> {
+  const sent =
+    tokenVariable === undefined || tokenVariable === ""
+      ? { name, url }
+      : { name, url, token_variable: tokenVariable };
+  const body = await requestJson(
+    "/api/remotes",
+    { method: "POST", body: JSON.stringify(sent) },
+    options,
+  );
+
+  if (!isNamedRemote(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 201);
+  }
+
+  return body;
+}
+
+/** Forgets one remote's name: `POST /api/remotes/remove`. Nothing at the remote changes. */
+export async function removeRemote(
+  name: string,
+  options: RequestOptions = {},
+): Promise<NamedRemote> {
+  const body = await requestJson(
+    "/api/remotes/remove",
+    { method: "POST", body: JSON.stringify({ name }) },
+    options,
+  );
+
+  if (!isNamedRemote(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/** One tool version, as a selection names it. */
+export interface ToolVersion {
+  readonly id: string;
+  readonly version: string;
+}
+
+/** What a status, push or pull is about; nothing named means everything, for a status. */
+export interface Selection {
+  readonly workflows?: readonly string[];
+  readonly tools?: readonly ToolVersion[];
+  readonly benchmarks?: readonly string[];
+}
+
+/** Returns where the API serves one action on a named remote. */
+export function remoteApiPath(name: string, action: "status" | "push" | "pull"): string {
+  return `/api/remotes/${encodeURIComponent(name)}/${action}`;
+}
+
+/**
+ * Asks how what is selected relates to a named remote's:
+ * `POST /api/remotes/{name}/status`. A remote that cannot be reached
+ * answers a status whose remote side is unknown.
+ */
+export async function fetchRemoteStatus(
+  name: string,
+  selection: Selection = {},
+  options: RequestOptions = {},
+): Promise<RemoteStatus> {
+  const body = await requestJson(
+    remoteApiPath(name, "status"),
+    { method: "POST", body: JSON.stringify(selection) },
+    options,
+  );
+
+  if (!isRemoteStatus(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/**
+ * Pushes what is selected, with what it needs, to a named remote:
+ * `POST /api/remotes/{name}/push`. A push that has diverged fails as
+ * `remote_diverged`; its warnings never refuse it.
+ */
+export async function pushToRemote(
+  name: string,
+  selection: Selection,
+  options: RequestOptions = {},
+): Promise<PushReport> {
+  const body = await requestJson(
+    remoteApiPath(name, "push"),
+    { method: "POST", body: JSON.stringify(selection) },
+    options,
+  );
+
+  if (!isPushReport(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/**
+ * Pulls what is selected from a named remote into the editor's instance:
+ * `POST /api/remotes/{name}/pull`. A restricted benchmark is withheld
+ * unless `includeRestricted`.
+ */
+export async function pullFromRemote(
+  name: string,
+  selection: Selection,
+  { includeRestricted = false }: { readonly includeRestricted?: boolean } = {},
+  options: RequestOptions = {},
+): Promise<PullReport> {
+  const sent = includeRestricted ? { ...selection, include_restricted: true } : selection;
+  const body = await requestJson(
+    remoteApiPath(name, "pull"),
+    { method: "POST", body: JSON.stringify(sent) },
+    options,
+  );
+
+  if (!isPullReport(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
 }

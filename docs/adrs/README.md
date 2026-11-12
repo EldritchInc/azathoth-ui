@@ -14,3 +14,4 @@ the editor follows them, and the one it rests on is
 | [0005](0005-composing-workflows.md) | Composing Workflows | Accepted |
 | [0006](0006-local-models-and-the-portfolio.md) | Local Models and the Portfolio | Accepted |
 | [0007](0007-running-and-watching-workflows.md) | Running and Watching Workflows | Accepted |
+| [0008](0008-shipping-to-a-remote.md) | Shipping to a Remote | Accepted |

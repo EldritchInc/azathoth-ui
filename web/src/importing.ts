@@ -20,6 +20,7 @@ export type Outcome =
       readonly id: number;
       readonly fileName: string;
       readonly state: "imported";
+      readonly created: boolean;
       readonly detail: ComponentDetail;
     }
   | {
@@ -106,8 +107,8 @@ export function useImporter(kind: Kind): {
         }
 
         try {
-          const detail = await importDocument(kind, text);
-          settle({ id, fileName, state: "imported", detail });
+          const { created, detail } = await importDocument(kind, text);
+          settle({ id, fileName, state: "imported", created, detail });
         } catch (error) {
           const message = error instanceof Error ? error.message : FAILED_MESSAGE;
           settle({ id, fileName, state: "failed", message });

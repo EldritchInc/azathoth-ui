@@ -4,8 +4,8 @@ A local editor for [Azathoth](https://github.com/EldritchInc/azathoth)
 workflows, served on your own computer and opened in your browser.
 
 The editor keeps an Azathoth instance of its own, and drives it only through
-Azathoth's public service API, `azathoth.api`. It is in development for
-Azathoth 1.4, and is not published yet.
+Azathoth's public service API, `azathoth.api`. It is in beta for Azathoth
+1.4, and needs Azathoth 1.4.0b1 or later.
 
 ## Running it
 
@@ -38,6 +38,14 @@ you edit, the editor asks Azathoth what it would refuse and whether the
 workflow could run here, and a step's details try that one step alone, on
 the values you give its inputs, keeping nothing
 ([ADR 0007](docs/adrs/0007-running-and-watching-workflows.md)).
+The Remotes page names the shared instances your workflows ship to, each
+with the environment variable its token is read from; set it before
+launching the editor, which never sees the token itself. A remote's page
+says where everything stands there, and pulls what it holds that you lack.
+Ship, on every workflow, tool and benchmark, pushes it to a remote after
+saying where it stands, and reports Azathoth's warnings of what would stop
+it running there
+([ADR 0008](docs/adrs/0008-shipping-to-a-remote.md)).
 [ADR 0001](docs/adrs/0001-local-server-security.md) explains how the server
 keeps other sites and other users out.
 

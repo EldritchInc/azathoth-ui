@@ -19,7 +19,7 @@ export const SQLITE_INSTANCE: InstanceDescription = {
 
 /** The editor, as `GET /api/editor` describes it on macOS. */
 export const EDITOR: EditorDescription = {
-  version: "1.4.0.dev0",
+  version: "1.4.0b1",
   shell: "posix",
   command_prefix: "AZATHOTH_DATABASE='/Users/eris/Library/Application Support/Azathoth/ui.db' ",
   providers: ["openrouter", "bedrock"],
@@ -174,6 +174,7 @@ export const SERVER: Answers = {
   "/api/models": [200, { items: [LARGE_MODEL, SMALL_MODEL, BEDROCK_MODEL], listed_at: LISTED_AT }],
   "/api/local/portfolio": [200, { items: [LARGE_ENTRY] }],
   "/api/live": [200, { items: [] }],
+  "/api/remotes": [200, { items: [] }],
 };
 
 /** Returns the URL one request asks for, on a stand-in for the editor's server. */

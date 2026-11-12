@@ -1,0 +1,542 @@
+import { useState, type ReactNode } from "react";
+import { Link, useParams } from "react-router";
+
+import type { Selection } from "../api/client";
+import type {
+  ComponentStatus,
+  Lineage,
+  LineageKind,
+  ModelStatus,
+  RemoteStatus,
+} from "../api/types";
+import { useLineageNames } from "../lineageNames";
+import { useEditor, usePull, useRemoteStatus, useRemotes } from "../queries";
+import {
+  PULLABLE,
+  RELATION_TEXT,
+  groupByRelation,
+  lineageKey,
+  lineageLabel,
+  lineagePath,
+  selectionFor,
+  shortDigest,
+  type RelationGroup,
+} from "../remotes";
+import { classNames } from "../classNames";
+import buttons from "./Buttons.module.css";
+import list from "./ComponentList.module.css";
+import { Skeleton } from "./ComponentList";
+import detail from "./DetailPage.module.css";
+import { Notice } from "./Notice";
+import { RelativeTime } from "./RelativeTime";
+import { TokenState } from "./RemoteList";
+import { PullReportView } from "./SyncReports";
+import styles from "./Remotes.module.css";
+
+/** What the editor calls each kind of lineage, in a row. */
+const KIND_WORDS: Readonly<Record<LineageKind, string>> = {
+  workflow: "Workflow",
+  tool: "Tool",
+  benchmark: "Benchmark",
+};
+
+function Side({
+  number,
+  digest,
+  known,
+}: {
+  readonly number: number | null;
+  readonly digest: string | null;
+  readonly known: boolean;
+}) {
+  if (!known) {
+    return <span className={styles.none}>unknown</span>;
+  }
+
+  if (number === null || digest === null) {
+    return <span className={styles.none}>none</span>;
+  }
+
+  return (
+    <span className={styles.side} title={digest}>
+      <span>revision {number}</span>
+      <code className={styles.mono}>{shortDigest(digest)}</code>
+    </span>
+  );
+}
+
+function Production({
+  component,
+  reachable,
+}: {
+  readonly component: ComponentStatus;
+  readonly reachable: boolean;
+}) {
+  if (component.lineage.kind !== "workflow") {
+    return null;
+  }
+
+  if (!reachable) {
+    return <span className={styles.none}>unknown</span>;
+  }
+
+  const digest = component.remote_production_digest;
+
+  return digest === null ? (
+    <span className={styles.none}>not in production</span>
+  ) : (
+    <code className={styles.mono} title={digest}>
+      {shortDigest(digest)}
+    </code>
+  );
+}
+
+/** What a group's rows can do: pull, while no other pull is under way. */
+interface Pulling {
+  readonly onPull: (lineages: readonly Lineage[]) => void;
+  readonly busy: boolean;
+}
+
+function ComponentRow({
+  component,
+  name,
+  reachable,
+  pulling,
+}: {
+  readonly component: ComponentStatus;
+  readonly name: string | null;
+  readonly reachable: boolean;
+  readonly pulling: Pulling | null;
+}) {
+  const { lineage } = component;
+  const path = lineagePath(lineage, component.local_number !== null);
+  const label = name ?? lineage.id;
+  const version = lineage.version === null ? null : ` ${lineage.version}`;
+
+  return (
+    <tr>
+      <td className={list.name}>
+        <div className={list.nameStack}>
+          {path === null ? (
+            <span>
+              {label}
+              {version}
+            </span>
+          ) : (
+            <Link className={list.link} to={path}>
+              {label}
+              {version}
+            </Link>
+          )}
+          <span className={list.description}>{KIND_WORDS[lineage.kind]}</span>
+        </div>
+      </td>
+      <td>
+        <Side number={component.local_number} digest={component.local_digest} known />
+      </td>
+      <td>
+        <Side number={component.remote_number} digest={component.remote_digest} known={reachable} />
+      </td>
+      <td>
+        <Production component={component} reachable={reachable} />
+      </td>
+      {pulling !== null && (
+        <td>
+          <button
+            type="button"
+            className={buttons.quiet}
+            disabled={pulling.busy}
+            onClick={() => {
+              pulling.onPull([lineage]);
+            }}
+          >
+            Pull <span className="visually-hidden">{lineageLabel(lineage, name)}</span>
+          </button>
+        </td>
+      )}
+    </tr>
+  );
+}
+
+function ComponentTable({
+  components,
+  reachable,
+  nameOf,
+  pulling,
+}: {
+  readonly components: readonly ComponentStatus[];
+  readonly reachable: boolean;
+  readonly nameOf: (component: ComponentStatus) => string | null;
+  readonly pulling: Pulling | null;
+}) {
+  return (
+    <table className={list.table}>
+      <thead>
+        <tr>
+          <th scope="col">Component</th>
+          <th scope="col">Here</th>
+          <th scope="col">There</th>
+          <th scope="col">In production there</th>
+          {pulling !== null && (
+            <th scope="col">
+              <span className="visually-hidden">Pull</span>
+            </th>
+          )}
+        </tr>
+      </thead>
+      <tbody>
+        {components.map((component) => (
+          <ComponentRow
+            key={lineageKey(component.lineage)}
+            component={component}
+            name={nameOf(component)}
+            reachable={reachable}
+            pulling={pulling}
+          />
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function Group({
+  group,
+  reachable,
+  nameOf,
+  pulling,
+}: {
+  readonly group: RelationGroup;
+  readonly reachable: boolean;
+  readonly nameOf: (component: ComponentStatus) => string | null;
+  readonly pulling: Pulling;
+}) {
+  const text =
+    group.relation === null
+      ? { label: "Unknown there", meaning: "The remote wasn't reached, so its side is unknown." }
+      : RELATION_TEXT[group.relation];
+  const count = <span className={styles.groupCount}>{String(group.components.length)}</span>;
+  const pullable = group.relation !== null && PULLABLE.has(group.relation);
+  const table = (
+    <ComponentTable
+      components={group.components}
+      reachable={reachable}
+      nameOf={nameOf}
+      pulling={pullable ? pulling : null}
+    />
+  );
+
+  if (group.relation === "in_sync") {
+    return (
+      <details className={classNames(styles.group, styles.folded)} data-relation="in_sync">
+        <summary className={styles.groupTitle}>
+          {text.label} {count}
+        </summary>
+        <p className={styles.meaning}>{text.meaning}</p>
+        {table}
+      </details>
+    );
+  }
+
+  return (
+    <section
+      className={styles.group}
+      data-relation={group.relation ?? "unknown"}
+      aria-label={text.label}
+    >
+      <div className={styles.groupHead}>
+        <h2 className={styles.groupTitle}>
+          {text.label} {count}
+        </h2>
+        {pullable && group.components.length > 1 && (
+          <button
+            type="button"
+            className={buttons.quiet}
+            disabled={pulling.busy}
+            onClick={() => {
+              pulling.onPull(group.components.map((component) => component.lineage));
+            }}
+          >
+            Pull all {String(group.components.length)}
+          </button>
+        )}
+      </div>
+      <p className={styles.meaning}>{text.meaning}</p>
+      {table}
+    </section>
+  );
+}
+
+function Authorized({ value }: { readonly value: boolean | null }) {
+  if (value === null) {
+    return <span className={styles.none}>unknown</span>;
+  }
+
+  return value ? <span className={styles.yes}>yes</span> : <span className={styles.no}>no</span>;
+}
+
+function Models({ models }: { readonly models: readonly ModelStatus[] }) {
+  if (models.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className={styles.group} aria-label="Models">
+      <h2 className={styles.groupTitle}>Models</h2>
+      <p className={styles.meaning}>
+        A workflow runs only on models the instance it runs on authorizes.
+      </p>
+      <table className={list.table}>
+        <thead>
+          <tr>
+            <th scope="col">Model</th>
+            <th scope="col">Authorized here</th>
+            <th scope="col">Authorized there</th>
+          </tr>
+        </thead>
+        <tbody>
+          {models.map((model) => (
+            <tr key={model.identifier}>
+              <td>
+                <code className={styles.mono}>{model.identifier}</code>
+              </td>
+              <td>
+                <Authorized value={model.authorized_locally} />
+              </td>
+              <td>
+                <Authorized value={model.authorized_remotely} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+/** What the status says of reaching the remote: nothing when it was reached. */
+function Reach({ status }: { readonly status: RemoteStatus }) {
+  if (status.reachable) {
+    return null;
+  }
+
+  return (
+    <Notice title="The remote isn't answering" tone="note">
+      <p>
+        What it holds is unknown until it answers again.{" "}
+        {status.portfolio_synced_at === null ? (
+          "Its models were never read here."
+        ) : (
+          <>
+            Its models are as it last said, <RelativeTime iso={status.portfolio_synced_at} />.
+          </>
+        )}
+      </p>
+    </Notice>
+  );
+}
+
+/**
+ * What the last pull from this page did, and, when it withheld restricted
+ * benchmarks, the way to pull them too: asked first, since restricted data
+ * is then kept in the editor's own database on this computer.
+ */
+function PullOutcome({
+  name,
+  pull,
+  onPull,
+}: {
+  readonly name: string;
+  readonly pull: ReturnType<typeof usePull>;
+  readonly onPull: (selection: Selection, includeRestricted: boolean) => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+
+  if (pull.isError) {
+    return <Notice title="The pull didn't go through">{pull.error.message}</Notice>;
+  }
+
+  if (!pull.isSuccess) {
+    return null;
+  }
+
+  const withheld = pull.data.withheld;
+
+  return (
+    <>
+      <PullReportView
+        report={pull.data}
+        name={name}
+        onIncludeRestricted={
+          withheld.length > 0 && !pull.variables.includeRestricted
+            ? () => {
+                setConfirming(true);
+              }
+            : undefined
+        }
+      />
+      {confirming && (
+        <div className={styles.confirm} role="group" aria-label="Confirm pulling restricted data">
+          <p>
+            Pull the restricted benchmarks from {name} too? Their restricted cases will be kept in
+            this editor&apos;s database on this computer. Pull them only where restricted data may
+            be kept.
+          </p>
+          <div className={styles.buttons}>
+            <button
+              type="button"
+              className={buttons.danger}
+              onClick={() => {
+                setConfirming(false);
+                onPull(selectionFor(withheld), true);
+              }}
+            >
+              Pull restricted data
+            </button>
+            <button
+              type="button"
+              className={buttons.quiet}
+              onClick={() => {
+                setConfirming(false);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function Crumbs({ name }: { readonly name: string }) {
+  return (
+    <nav className={detail.crumbs} aria-label="Breadcrumb">
+      <Link to="/remotes">Remotes</Link>
+      <span aria-hidden="true">/</span>
+      <span aria-current="page">{name}</span>
+    </nav>
+  );
+}
+
+/**
+ * One named remote: how everything either side holds relates, what needs
+ * a person first and what agrees folded away last, and where each model
+ * is authorized. It asks again on its own while it is shown.
+ */
+export function RemotePage() {
+  const { name = "" } = useParams();
+  const remotes = useRemotes();
+  const editor = useEditor();
+  const named = remotes.data?.find((remote) => remote.name === name);
+  const status = useRemoteStatus(name, {}, { enabled: named?.token_set === true });
+  const lineageName = useLineageNames();
+  const nameOf = (component: ComponentStatus): string | null => lineageName(component.lineage);
+  const pull = usePull();
+  const pullThese = (selection: Selection, includeRestricted: boolean): void => {
+    pull.mutate({ name, selection, includeRestricted });
+  };
+  const pulling: Pulling = {
+    onPull: (lineages) => {
+      pullThese(selectionFor(lineages), false);
+    },
+    busy: pull.isPending,
+  };
+
+  if (remotes.isPending) {
+    return <Skeleton label="Loading the remote" />;
+  }
+
+  if (remotes.isError) {
+    return <Notice title="Couldn't list the remotes">{remotes.error.message}</Notice>;
+  }
+
+  if (named === undefined) {
+    return (
+      <div className={detail.page}>
+        <Crumbs name={name} />
+        <Notice title={`No remote is named ${name}`}>
+          <p>
+            <Link to="/remotes">Name it on the Remotes page</Link>.
+          </p>
+        </Notice>
+      </div>
+    );
+  }
+
+  let body: ReactNode;
+
+  if (!named.token_set) {
+    body = (
+      <Notice title={`${named.token_variable} isn't set`} tone="note">
+        <p>
+          The editor reads this remote&apos;s token from {named.token_variable}. Set it in a
+          terminal, then launch <code>azathoth-ui</code> from it again.
+        </p>
+      </Notice>
+    );
+  } else if (status.isPending) {
+    body = <Skeleton label="Asking the remote" />;
+  } else if (status.isError) {
+    body = <Notice title="Couldn't ask the remote">{status.error.message}</Notice>;
+  } else {
+    const groups = groupByRelation(status.data.components);
+
+    body = (
+      <>
+        <Reach status={status.data} />
+        <PullOutcome name={named.name} pull={pull} onPull={pullThese} />
+        {groups.length === 0 && (
+          <p className={styles.meaning}>Neither side holds anything to compare.</p>
+        )}
+        {groups.map((group) => (
+          <Group
+            key={group.relation ?? "unknown"}
+            group={group}
+            reachable={status.data.reachable}
+            nameOf={nameOf}
+            pulling={pulling}
+          />
+        ))}
+        <Models models={status.data.models} />
+      </>
+    );
+  }
+
+  const asOf = status.dataUpdatedAt === 0 ? null : new Date(status.dataUpdatedAt).toISOString();
+
+  return (
+    <div className={detail.page}>
+      <Crumbs name={named.name} />
+      <header className={list.header}>
+        <div className={list.titles}>
+          <h1 className={list.title}>{named.name}</h1>
+          <p className={list.lead}>
+            <code className={styles.mono}>{named.url}</code>
+          </p>
+          <TokenState remote={named} shell={editor.data?.shell ?? "posix"} />
+        </div>
+        {named.token_set && (
+          <div className={list.actions}>
+            {asOf !== null && (
+              <span className={styles.when}>
+                As of <RelativeTime iso={asOf} />
+              </span>
+            )}
+            <button
+              type="button"
+              className={buttons.quiet}
+              disabled={status.isFetching}
+              aria-busy={status.isFetching}
+              onClick={() => {
+                void status.refetch();
+              }}
+            >
+              {status.isFetching ? "Asking…" : "Refresh"}
+            </button>
+          </div>
+        )}
+      </header>
+      {body}
+    </div>
+  );
+}

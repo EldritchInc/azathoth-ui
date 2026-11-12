@@ -1,0 +1,131 @@
+/* Shipping one component to a remote, and what a push or pull did. */
+
+.ship {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--raised);
+}
+
+.choose {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+  color: var(--muted);
+}
+
+.select {
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+.select:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+.all {
+  margin-left: auto;
+  color: var(--tide);
+  font-size: 0.9rem;
+}
+
+.standing {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.relation {
+  font-family: var(--display);
+  font-size: 1.35rem;
+}
+
+.standing[data-relation="diverged"] .relation {
+  color: var(--rose);
+}
+
+.standing[data-relation="ahead"] .relation,
+.standing[data-relation="local_only"] .relation {
+  color: var(--amber);
+}
+
+.standing[data-relation="in_sync"] .relation {
+  color: var(--tide);
+}
+
+.meaning {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.sides {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+}
+
+.sides dt {
+  color: var(--faint);
+  font-size: 0.8rem;
+}
+
+.none {
+  color: var(--faint);
+}
+
+.confirm {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: var(--radius-small);
+  background: var(--amber-wash);
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.report {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.summary {
+  font-weight: 600;
+}
+
+.received,
+.warnings,
+.lines {
+  display: grid;
+  gap: 0.35rem;
+  padding-left: 1.1rem;
+}
+
+.number {
+  color: var(--muted);
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tide);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

@@ -34,7 +34,7 @@ COMPLETE = {
     "azathoth_ui/static/assets/index-CeXuR1xu.js": "",
     "azathoth_ui/static/assets/index-BHY4PMxJ.css": "",
     "azathoth_ui/static/assets/fraunces-latin-full-normal-CFFu7zhK.woff2": "",
-    "azathoth_ui-1.4.0.dev0.dist-info/entry_points.txt": ENTRY_POINTS,
+    "azathoth_ui-1.4.0b1.dist-info/entry_points.txt": ENTRY_POINTS,
 }
 
 
@@ -44,7 +44,7 @@ def wheel(
 ) -> Path:
     """Write a wheel holding exactly these files, and return its path."""
 
-    path = directory / "azathoth_ui-1.4.0.dev0-py3-none-any.whl"
+    path = directory / "azathoth_ui-1.4.0b1-py3-none-any.whl"
 
     with zipfile.ZipFile(path, "w") as archive:
         for name, text in files.items():
@@ -146,7 +146,7 @@ def test_a_wheel_without_the_servers_own_pages_or_types_says_so(
 def test_a_wheel_without_the_command_says_so(
     tmp_path: Path,
 ) -> None:
-    files = without("azathoth_ui-1.4.0.dev0.dist-info/entry_points.txt")
+    files = without("azathoth_ui-1.4.0b1.dist-info/entry_points.txt")
 
     assert wheel_problems(wheel(tmp_path, files)) == ("the azathoth-ui command is not declared",)
 

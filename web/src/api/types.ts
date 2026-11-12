@@ -69,6 +69,16 @@ export interface ComponentDetail extends Summary {
   readonly document: Readonly<Record<string, unknown>>;
 }
 
+/**
+ * What importing one document did, as the editor reads Azathoth's import:
+ * whether a revision was made, and the revision it is. A document identical
+ * to the latest revision makes none, and is that revision.
+ */
+export interface ComponentImport {
+  readonly created: boolean;
+  readonly detail: ComponentDetail;
+}
+
 /** One model a provider serves now, as `azathoth.api` describes it. */
 export interface ModelSummary {
   readonly identifier: string;
@@ -403,6 +413,26 @@ export function isComponentDetail(value: unknown): value is ComponentDetail {
   );
 }
 
+/** The key Azathoth's import holds its component under, for each kind. */
+export const IMPORTED_KEYS = {
+  workflows: "workflow",
+  tools: "tool",
+  benchmarks: "benchmark",
+} as const;
+
+/**
+ * Returns what one import answer says, `{"created", "<kind>"}` as Azathoth
+ * answers it, or `null` when it is not one.
+ */
+export function importOf(value: unknown, kind: keyof typeof IMPORTED_KEYS): ComponentImport | null {
+  if (!isRecord(value) || typeof value.created !== "boolean") {
+    return null;
+  }
+  const detail = value[IMPORTED_KEYS[kind]];
+
+  return isComponentDetail(detail) ? { created: value.created, detail } : null;
+}
+
 /** Returns the items of a list the server answered with, when each is what `guard` expects. */
 export function itemsOf<T>(value: unknown, guard: (item: unknown) => item is T): T[] | null {
   if (!isRecord(value) || !Array.isArray(value.items)) {
@@ -703,5 +733,200 @@ export function isWorkflowReadiness(value: unknown): value is WorkflowReadiness 
     typeof value.ready === "boolean" &&
     Array.isArray(value.steps) &&
     value.steps.every(isStepReadiness)
+  );
+}
+
+/** A remote the editor's instance names: its URL, and the variable its token is read from. */
+export interface NamedRemote {
+  readonly name: string;
+  readonly url: string;
+  readonly token_variable: string;
+  readonly added_at: string;
+  /** Whether that variable is set in the editor's environment; its value never leaves it. */
+  readonly token_set: boolean;
+}
+
+/** Returns whether a value is a remote the editor's instance names. */
+export function isNamedRemote(value: unknown): value is NamedRemote {
+  return (
+    isRecord(value) &&
+    typeof value.name === "string" &&
+    typeof value.url === "string" &&
+    typeof value.token_variable === "string" &&
+    typeof value.added_at === "string" &&
+    typeof value.token_set === "boolean"
+  );
+}
+
+/** What kind of document a lineage is. */
+export type LineageKind = "workflow" | "tool" | "benchmark";
+
+/** One workflow, tool version or benchmark, as revisions name it: a tool by its version too. */
+export interface Lineage {
+  readonly kind: LineageKind;
+  readonly id: string;
+  readonly version: string | null;
+}
+
+const LINEAGE_KINDS: readonly unknown[] = ["workflow", "tool", "benchmark"];
+
+/** Returns whether a value is a lineage. */
+export function isLineage(value: unknown): value is Lineage {
+  return (
+    isRecord(value) &&
+    LINEAGE_KINDS.includes(value.kind) &&
+    typeof value.id === "string" &&
+    isTextOrNull(value.version)
+  );
+}
+
+/** How a lineage here relates to the same lineage at a remote (Azathoth's ADR 0125). */
+export type Relation = "in_sync" | "ahead" | "behind" | "diverged" | "local_only" | "remote_only";
+
+export const RELATIONS: readonly Relation[] = [
+  "in_sync",
+  "ahead",
+  "behind",
+  "diverged",
+  "local_only",
+  "remote_only",
+];
+
+const RELATION_VALUES: readonly unknown[] = RELATIONS;
+
+/** One component as each side holds it; `relation` is `null` when the remote was not reached. */
+export interface ComponentStatus {
+  readonly lineage: Lineage;
+  readonly relation: Relation | null;
+  readonly local_digest: string | null;
+  readonly local_number: number | null;
+  readonly remote_digest: string | null;
+  readonly remote_number: number | null;
+  readonly remote_production_digest: string | null;
+}
+
+/** Whether one model is authorized here, and at the remote, `null` when that is not known. */
+export interface ModelStatus {
+  readonly identifier: string;
+  readonly authorized_locally: boolean;
+  readonly authorized_remotely: boolean | null;
+}
+
+/** `POST /api/remotes/{name}/status`: what each side holds, and how each component relates. */
+export interface RemoteStatus {
+  readonly remote: string;
+  readonly reachable: boolean;
+  readonly components: readonly ComponentStatus[];
+  readonly models: readonly ModelStatus[];
+  readonly portfolio_synced_at: string | null;
+}
+
+function isNumberOrNullWhole(value: unknown): value is number | null {
+  return value === null || isWholeNumber(value);
+}
+
+function isComponentStatus(value: unknown): value is ComponentStatus {
+  return (
+    isRecord(value) &&
+    isLineage(value.lineage) &&
+    (value.relation === null || RELATION_VALUES.includes(value.relation)) &&
+    isTextOrNull(value.local_digest) &&
+    isNumberOrNullWhole(value.local_number) &&
+    isTextOrNull(value.remote_digest) &&
+    isNumberOrNullWhole(value.remote_number) &&
+    isTextOrNull(value.remote_production_digest)
+  );
+}
+
+function isModelStatus(value: unknown): value is ModelStatus {
+  return (
+    isRecord(value) &&
+    typeof value.identifier === "string" &&
+    typeof value.authorized_locally === "boolean" &&
+    (value.authorized_remotely === null || typeof value.authorized_remotely === "boolean")
+  );
+}
+
+/** Returns whether a value is a remote's status. */
+export function isRemoteStatus(value: unknown): value is RemoteStatus {
+  return (
+    isRecord(value) &&
+    typeof value.remote === "string" &&
+    typeof value.reachable === "boolean" &&
+    Array.isArray(value.components) &&
+    value.components.every(isComponentStatus) &&
+    Array.isArray(value.models) &&
+    value.models.every(isModelStatus) &&
+    isTextOrNull(value.portfolio_synced_at)
+  );
+}
+
+/** One revision a push or pull saved: its lineage, its digest, and its number where it was saved. */
+export interface ReceivedRevision {
+  readonly lineage: Lineage;
+  readonly revision_digest: string;
+  readonly number: number;
+}
+
+/** What a push sent, and what would stop it running at the remote (Azathoth's ADR 0125). */
+export interface PushReport {
+  readonly remote: string;
+  readonly received: readonly ReceivedRevision[];
+  readonly already_held: number;
+  readonly content_sent: number;
+  readonly unresolved: readonly string[];
+  readonly warnings: readonly string[];
+}
+
+/** What a pull saved here, what it forked, and what it withheld as restricted. */
+export interface PullReport {
+  readonly remote: string;
+  readonly received: readonly ReceivedRevision[];
+  readonly already_held: number;
+  readonly content_fetched: number;
+  readonly forked: readonly Lineage[];
+  readonly withheld: readonly Lineage[];
+  readonly unresolved: readonly string[];
+}
+
+function isReceivedRevision(value: unknown): value is ReceivedRevision {
+  return (
+    isRecord(value) &&
+    isLineage(value.lineage) &&
+    typeof value.revision_digest === "string" &&
+    isWholeNumber(value.number)
+  );
+}
+
+function isReport(value: unknown): value is Record<string, unknown> & {
+  readonly remote: string;
+  readonly received: readonly ReceivedRevision[];
+  readonly already_held: number;
+  readonly unresolved: readonly string[];
+} {
+  return (
+    isRecord(value) &&
+    typeof value.remote === "string" &&
+    Array.isArray(value.received) &&
+    value.received.every(isReceivedRevision) &&
+    isWholeNumber(value.already_held) &&
+    isTextList(value.unresolved)
+  );
+}
+
+/** Returns whether a value is a push's report. */
+export function isPushReport(value: unknown): value is PushReport {
+  return isReport(value) && isWholeNumber(value.content_sent) && isTextList(value.warnings);
+}
+
+/** Returns whether a value is a pull's report. */
+export function isPullReport(value: unknown): value is PullReport {
+  return (
+    isReport(value) &&
+    isWholeNumber(value.content_fetched) &&
+    Array.isArray(value.forked) &&
+    value.forked.every(isLineage) &&
+    Array.isArray(value.withheld) &&
+    value.withheld.every(isLineage)
   );
 }

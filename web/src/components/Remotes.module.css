@@ -1,0 +1,160 @@
+/* The remotes the editor's instance names, and each one's status. */
+
+.form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  align-items: end;
+  gap: 0.75rem 1rem;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--raised);
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.input {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.input:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+.token {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.token::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--tide);
+}
+
+.token[data-set="false"]::before {
+  background: var(--amber);
+}
+
+.unset {
+  color: var(--amber);
+  font-size: 0.85rem;
+}
+
+.when {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.group {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.groupTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-family: var(--display);
+  font-size: 1.35rem;
+  font-weight: 400;
+}
+
+.groupCount {
+  color: var(--faint);
+  font-family: var(--sans);
+  font-size: 0.9rem;
+}
+
+.meaning {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.group[data-relation="diverged"] .groupTitle {
+  color: var(--rose);
+}
+
+.group[data-relation="ahead"] .groupTitle,
+.group[data-relation="behind"] .groupTitle {
+  color: var(--amber);
+}
+
+.folded > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.folded > summary::-webkit-details-marker {
+  display: none;
+}
+
+.folded > summary::before {
+  content: "▸ ";
+  color: var(--faint);
+}
+
+.folded[open] > summary::before {
+  content: "▾ ";
+}
+
+.side {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.none {
+  color: var(--faint);
+}
+
+.yes {
+  color: var(--tide);
+}
+
+.no {
+  color: var(--rose);
+}
+
+.groupHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.confirm {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: var(--radius-small);
+  background: var(--rose-wash);
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}

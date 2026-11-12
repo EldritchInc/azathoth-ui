@@ -10,6 +10,8 @@ import { ModelPage } from "./components/ModelPage";
 import { NotFound } from "./components/NotFound";
 import { Overview } from "./components/Overview";
 import { Rail } from "./components/Rail";
+import { RemoteList } from "./components/RemoteList";
+import { RemotePage } from "./components/RemotePage";
 import { RunPage } from "./components/RunPage";
 import { RunWorkflow } from "./components/RunWorkflow";
 import { NewWorkflow, WorkflowEditor } from "./components/WorkflowEditor";
@@ -49,6 +51,8 @@ export function App() {
           <Route path="/benchmarks/:id" element={<BenchmarkPage />} />
           <Route path="/models" element={<ModelList />} />
           <Route path="/models/*" element={<ModelPage />} />
+          <Route path="/remotes" element={<RemoteList />} />
+          <Route path="/remotes/:name" element={<RemotePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

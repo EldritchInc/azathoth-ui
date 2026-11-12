@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router";
 
 import { DESCRIPTIONS, KINDS, type Kind } from "../kinds";
-import { useList, useLiveRuns, usePortfolio } from "../queries";
+import { useList, useLiveRuns, usePortfolio, useRemotes } from "../queries";
 import type { ThemeChoice } from "../theme";
 import type { Connection } from "../useInstance";
 import { ConnectionStatus } from "./ConnectionStatus";
@@ -10,7 +10,7 @@ import { Mark } from "./Mark";
 import styles from "./Rail.module.css";
 import { ThemeSwitch } from "./ThemeSwitch";
 
-type IconName = Kind | "overview" | "models";
+type IconName = Kind | "overview" | "models" | "remotes";
 
 const ICONS: Record<IconName, ReactNode> = {
   overview: (
@@ -40,6 +40,13 @@ const ICONS: Record<IconName, ReactNode> = {
     <>
       <rect x="6.5" y="6.5" width="11" height="11" rx="2" />
       <path d="M10 3v3.5M14 3v3.5M10 17.5V21M14 17.5V21M3 10h3.5M3 14h3.5M17.5 10H21M17.5 14H21" />
+    </>
+  ),
+  remotes: (
+    <>
+      <circle cx="6" cy="12" r="2.5" />
+      <circle cx="18" cy="12" r="2.5" />
+      <path d="M8.5 12h7M13 9l2.5 3-2.5 3" />
     </>
   ),
 };
@@ -96,6 +103,23 @@ function ModelsLink() {
   );
 }
 
+/** The remotes link, counting the remotes the editor's instance names. */
+function RemotesLink() {
+  const remotes = useRemotes();
+
+  return (
+    <NavLink className={styles.item} to="/remotes">
+      <Icon name="remotes" />
+      <span className={styles.label}>Remotes</span>
+      {remotes.data !== undefined && (
+        <span className={styles.count} aria-hidden="true">
+          {remotes.data.length}
+        </span>
+      )}
+    </NavLink>
+  );
+}
+
 /**
  * While runs started from the editor are running, how many, linking to the
  * newest of them; nothing while none is.
@@ -146,6 +170,8 @@ export function Rail({
         ))}
         <ModelsLink />
         <RunningLink />
+        <p className={styles.section}>Sharing</p>
+        <RemotesLink />
       </nav>
       <div className={styles.footer}>
         <ConnectionStatus connection={connection} />

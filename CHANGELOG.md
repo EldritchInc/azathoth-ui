@@ -150,3 +150,51 @@
   holds it.
 - ADR 0006 records how the editor keeps its local portfolio apart from a
   shared server's, and says which models a step could run on.
+- The editor needs Azathoth 1.4.0b1. Importing a document identical to the
+  latest revision makes no revision, as Azathoth now decides: the import
+  answers `{"created", "<kind>"}`, 201 when a revision was made and 200
+  when none was, and the editor says the component is unchanged. A revision
+  that returns to an earlier one says so.
+- The remotes API: `GET /api/remotes` lists the remotes the editor's
+  instance names, each with its URL, the variable its token is read from,
+  and whether that variable is set in the editor's environment, never its
+  value; `POST /api/remotes` names one, and `POST /api/remotes/remove`
+  forgets one. A remote that cannot be reached, or speaks another protocol,
+  answers 502, and one that refuses 403.
+- `POST /api/remotes/{name}/status` says how the workflows, tool versions
+  and benchmarks named, or everything either side holds, relate to the
+  remote's, which revision is in production there, and where each model is
+  authorized; a remote that cannot be reached is a status whose remote side
+  is unknown. `POST /api/remotes/{name}/push` and `.../pull` push and pull
+  what is named, answering Azathoth's report with its warnings, and what a
+  pull forked or withheld. Only a name the instance gives is reached, with
+  the token its variable holds when the request comes.
+- The web app's Remotes page, under Sharing in the rail: the remotes the
+  editor's instance names, each with its URL and whether its token is set,
+  with the line that sets it for this computer's shell when it is not; a
+  form names another, and each can be forgotten. A remote's own page says
+  how everything either side holds relates, grouped by what needs doing
+  (diverged first, in sync folded away last), each side's revision, what is
+  in production there, and where each model is authorized. It asks again
+  when it is opened, when its tab is come back to after half a minute, and
+  every minute while its tab is visible, and says how old what it shows is;
+  a remote that isn't answering says so, with how old its models are.
+- Ship, on every workflow, tool version and benchmark page: choose a named
+  remote, see where the component stands there (its relation, each side's
+  revision, what is in production there), and push its latest revision with
+  what it needs, after confirming, since a pushed revision stays at the
+  remote. The report says what the remote received and already held, and
+  each of Azathoth's warnings of what would stop it running there. A push
+  that has diverged, or a status that says so, offers a pull instead, whose
+  report says what it saved and forked here.
+- A remote's page pulls: each component the remote holds revisions of that
+  this instance lacks (behind, only there, or diverged) has a Pull, and each
+  such group pulls all of its components at once. The report says what was
+  saved and forked here, and what was withheld as restricted, which can then
+  be pulled too, after confirming that restricted data will be kept in the
+  editor's own database.
+- ADR 0008 records how the editor ships to a remote: by name only, never
+  handling a token, with a remote's errors keeping their statuses, status
+  asked again while someone is looking, and divergence pulled, never
+  overwritten.
+- The editor is version 1.4.0b1, with Azathoth 1.4.0b1.

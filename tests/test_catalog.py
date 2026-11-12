@@ -136,6 +136,13 @@ class Portfolio:
             identifier=identifier,
             provider=provider,
             model=model,
+            content_digest="0" * 64,
+            author=None,
+            added_at=None,
+            data_policy=api.DataPolicy(),
+            receives_restricted=False,
+            policy_declared_by=None,
+            policy_declared_at=None,
             command=f"azathoth model show {identifier}",
         )
         self.entries.append(entry)

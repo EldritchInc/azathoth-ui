@@ -10,7 +10,10 @@ import { ComponentList } from "./ComponentList";
 
 const IMPORTED = { ...WORKFLOW_DETAIL, revision: { ...WORKFLOW_DETAIL.revision, number: 4 } };
 
-const ANSWERS: Answers = { ...SERVER, "/api/workflows/import": [201, IMPORTED] };
+const ANSWERS: Answers = {
+  ...SERVER,
+  "/api/workflows/import": [201, { created: true, workflow: IMPORTED }],
+};
 
 /** Renders the workflows list, recording every request the page makes. */
 function workflows(answers: Answers = ANSWERS): { path: string; init?: RequestInit }[] {
@@ -67,17 +70,31 @@ describe("importing", () => {
     });
   });
 
-  it("says when a document is identical to a revision already there", async () => {
-    const identical = { ...IMPORTED, revision: { ...IMPORTED.revision, identical_to: 3 } };
-    workflows({ ...SERVER, "/api/workflows/import": [201, identical] });
+  it("says when a document is the latest revision's, so none was made", async () => {
+    workflows({
+      ...SERVER,
+      "/api/workflows/import": [200, { created: false, workflow: IMPORTED }],
+    });
     await screen.findByRole("table");
 
     choose(jsonFile("summarize.json"));
 
     expect(
       await screen.findByText(
-        "Imported summarize 1.0.0 as revision 4, identical to revision 3: the workflow is unchanged.",
+        "summarize 1.0.0 is unchanged at revision 4: it is the latest workflow's document.",
       ),
+    ).toBeVisible();
+  });
+
+  it("says when a revision returns to an earlier one", async () => {
+    const returned = { ...IMPORTED, revision: { ...IMPORTED.revision, identical_to: 2 } };
+    workflows({ ...SERVER, "/api/workflows/import": [201, { created: true, workflow: returned }] });
+    await screen.findByRole("table");
+
+    choose(jsonFile("summarize.json"));
+
+    expect(
+      await screen.findByText("Imported summarize 1.0.0 as revision 4, a return to revision 2."),
     ).toBeVisible();
   });
 
