@@ -193,3 +193,8 @@
   saved and forked here, and what was withheld as restricted, which can then
   be pulled too, after confirming that restricted data will be kept in the
   editor's own database.
+- ADR 0008 records how the editor ships to a remote: by name only, never
+  handling a token, with a remote's errors keeping their statuses, status
+  asked again while someone is looking, and divergence pulled, never
+  overwritten.
+- The editor is version 1.4.0b1, with Azathoth 1.4.0b1.

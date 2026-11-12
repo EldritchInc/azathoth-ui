@@ -19,7 +19,7 @@ export const SQLITE_INSTANCE: InstanceDescription = {
 
 /** The editor, as `GET /api/editor` describes it on macOS. */
 export const EDITOR: EditorDescription = {
-  version: "1.4.0.dev0",
+  version: "1.4.0b1",
   shell: "posix",
   command_prefix: "AZATHOTH_DATABASE='/Users/eris/Library/Application Support/Azathoth/ui.db' ",
   providers: ["openrouter", "bedrock"],

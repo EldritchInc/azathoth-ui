@@ -57,6 +57,12 @@ answers in JSON, and is never cached.
 | `GET /api/live/{handle}` | One live run: where it is, and how it ended |
 | `GET /api/live/{handle}/events?after=` | Its events as a server-sent event stream, then its end |
 | `POST /api/live/{handle}/cancel` | Asks it to stop: 202, as it stands now |
+| `GET /api/remotes` | Every remote the instance names, by name, each with whether its token variable is set, never its value ([ADR 0008](0008-shipping-to-a-remote.md)) |
+| `POST /api/remotes` | Names one remote, from `{"name", "url", "token_variable"}`: 201 |
+| `POST /api/remotes/remove` | Forgets one name, from `{"name"}`; nothing at the remote changes |
+| `POST /api/remotes/{name}/status` | How the workflows, tool versions and benchmarks named, or everything either side holds, relate to the remote's, from `{"workflows", "tools", "benchmarks"}` |
+| `POST /api/remotes/{name}/push` | Pushes what is named, with what it needs; the report holds Azathoth's warnings |
+| `POST /api/remotes/{name}/pull` | Pulls what is named, and restricted benchmarks too with `"include_restricted": true`; the report says what it forked and withheld |
 
 - **Answers are `azathoth.api`'s own models,** dumped as JSON. A list or a
   history is `{"items": [...]}`, so either can gain fields without breaking
