@@ -75,7 +75,7 @@ def test_the_wheel_job_builds_checks_installs_and_starts_the_editor() -> None:
         "python -m build",
         "python scripts/check_wheel.py dist/*.whl",
         'python -m venv "$RUNNER_TEMP/editor"',
-        '"$RUNNER_TEMP/editor/bin/python" -m pip install "azathoth-ai>=1.4.0b1,==1.4.*" dist/*.whl',
+        '"$RUNNER_TEMP/editor/bin/python" -m pip install dist/*.whl',
         '\'"$RUNNER_TEMP/editor/bin/python" "$GITHUB_WORKSPACE/scripts/smoke.py"\'',
     ]
     assert "working-directory: ${{ runner.temp }}" in wheel

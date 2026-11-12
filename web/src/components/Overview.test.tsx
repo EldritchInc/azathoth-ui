@@ -11,7 +11,6 @@ const POSTGRES_INSTANCE: InstanceDescription = {
   ...SQLITE_INSTANCE,
   database: "postgresql://db.example.com:5432/azathoth",
   backend: "postgres",
-  api_stability: "stable",
 };
 
 function detail(name: string): HTMLElement {
@@ -55,23 +54,34 @@ describe("Overview", () => {
     render(<Overview connection={{ state: "connected", instance: SQLITE_INSTANCE }} />);
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("ui.db");
-    expect(screen.getByText("An SQLite instance, served by Azathoth 1.4.0a1.")).toBeVisible();
+    expect(screen.getByText("An SQLite instance, served by Azathoth 1.4.0.")).toBeVisible();
     expect(detail("Location")).toHaveTextContent(SQLITE_INSTANCE.database);
     expect(detail("Backend")).toHaveTextContent("SQLite");
-    expect(detail("Azathoth")).toHaveTextContent("1.4.0a1");
-    expect(detail("Schema")).toHaveTextContent("Version 2");
+    expect(detail("Azathoth")).toHaveTextContent("1.4.0");
+    expect(detail("Schema")).toHaveTextContent("Version 7");
     expect(detail("Service API")).toHaveTextContent(
-      "ProvisionalIts calls may change in a minor release.",
+      "StableIts calls change only in a major release.",
     );
     expect(within(detail("Location")).getByRole("button", { name: "Copy location" })).toBeEnabled();
   });
 
-  it("describes a stable PostgreSQL instance", () => {
+  it("describes a PostgreSQL instance", () => {
     render(<Overview connection={{ state: "connected", instance: POSTGRES_INSTANCE }} />);
 
-    expect(screen.getByText("A PostgreSQL instance, served by Azathoth 1.4.0a1.")).toBeVisible();
+    expect(screen.getByText("A PostgreSQL instance, served by Azathoth 1.4.0.")).toBeVisible();
+    expect(detail("Backend")).toHaveTextContent("PostgreSQL");
+  });
+
+  it("says when an Azathoth's service API is still provisional", () => {
+    const provisional: InstanceDescription = {
+      ...SQLITE_INSTANCE,
+      azathoth_version: "1.5.0a1",
+      api_stability: "provisional",
+    };
+    render(<Overview connection={{ state: "connected", instance: provisional }} />);
+
     expect(detail("Service API")).toHaveTextContent(
-      "StableIts calls change only in a major release.",
+      "ProvisionalIts calls may change in a minor release.",
     );
   });
 

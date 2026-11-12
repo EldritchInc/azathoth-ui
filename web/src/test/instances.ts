@@ -12,14 +12,14 @@ import type {
 export const SQLITE_INSTANCE: InstanceDescription = {
   database: "/Users/eris/Library/Application Support/Azathoth/ui.db",
   backend: "sqlite",
-  azathoth_version: "1.4.0a1",
-  schema_version: 2,
-  api_stability: "provisional",
+  azathoth_version: "1.4.0",
+  schema_version: 7,
+  api_stability: "stable",
 };
 
 /** The editor, as `GET /api/editor` describes it on macOS. */
 export const EDITOR: EditorDescription = {
-  version: "1.4.0b1",
+  version: "1.4.0",
   shell: "posix",
   command_prefix: "AZATHOTH_DATABASE='/Users/eris/Library/Application Support/Azathoth/ui.db' ",
   providers: ["openrouter", "bedrock"],

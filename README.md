@@ -4,8 +4,19 @@ A local editor for [Azathoth](https://github.com/EldritchInc/azathoth)
 workflows, served on your own computer and opened in your browser.
 
 The editor keeps an Azathoth instance of its own, and drives it only through
-Azathoth's public service API, `azathoth.api`. It is in beta for Azathoth
-1.4, and needs Azathoth 1.4.0b1 or later.
+Azathoth's public service API, `azathoth.api`, and needs Azathoth 1.4.
+
+## Installing it
+
+Install it into a venv of its own, as
+[Installing Azathoth](https://github.com/EldritchInc/azathoth/blob/main/docs/install.md)
+shows for Azathoth, with Python 3.11 or newer:
+
+```bash
+python -m pip install azathoth-ui
+```
+
+pip brings Azathoth 1.4 with it, from PyPI.
 
 ## Running it
 
@@ -28,7 +39,7 @@ the environment: set `OPENROUTER_API_KEY`, or `AZATHOTH_BEDROCK=1` with your
 AWS credentials, before launching it. The Models page then lists what they
 serve, and keeps the editor's local portfolio, the models its workflows may
 use; a shared server keeps its own
-([ADR 0006](docs/adrs/0006-local-models-and-the-portfolio.md)).
+([ADR 0006](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0006-local-models-and-the-portfolio.md)).
 A workflow's Run button runs it on text, JSON or a file, a PDF, an image or
 text, and shows the run as it goes: each step lit on the graph as it starts
 and ends, every event in words, and how it ended. A run goes on if you leave
@@ -37,7 +48,7 @@ is kept and listed on its workflow's page, with what each step did. While
 you edit, the editor asks Azathoth what it would refuse and whether the
 workflow could run here, and a step's details try that one step alone, on
 the values you give its inputs, keeping nothing
-([ADR 0007](docs/adrs/0007-running-and-watching-workflows.md)).
+([ADR 0007](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0007-running-and-watching-workflows.md)).
 The Remotes page names the shared instances your workflows ship to, each
 with the environment variable its token is read from; set it before
 launching the editor, which never sees the token itself. A remote's page
@@ -45,15 +56,15 @@ says where everything stands there, and pulls what it holds that you lack.
 Ship, on every workflow, tool and benchmark, pushes it to a remote after
 saying where it stands, and reports Azathoth's warnings of what would stop
 it running there
-([ADR 0008](docs/adrs/0008-shipping-to-a-remote.md)).
-[ADR 0001](docs/adrs/0001-local-server-security.md) explains how the server
+([ADR 0008](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0008-shipping-to-a-remote.md)).
+[ADR 0001](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0001-local-server-security.md) explains how the server
 keeps other sites and other users out.
 
 ## Development
 
-The editor is built against released Azathoth from PyPI. While 1.4 is in
-pre-release, `make install` takes Azathoth's pre-release, and no other
-package's:
+The editor is built against released Azathoth from PyPI: `make install`
+takes the release `pyproject.toml` requires, and never Azathoth's own
+checkout.
 
 The web app needs Node `^20.19.0 || >=22.12.0`, and npm.
 
@@ -85,4 +96,4 @@ cd web && npm run dev
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](https://github.com/EldritchInc/azathoth-ui/blob/main/LICENSE).
