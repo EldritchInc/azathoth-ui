@@ -21,8 +21,10 @@ import {
   isWorkflowReadiness,
   isModelListing,
   isModelSummary,
+  isNamedRemote,
   isPortfolioEntry,
   isPortfolioRemoval,
+  isRemoteStatus,
   isSummary,
   isToolSummary,
   itemsOf,
@@ -38,8 +40,10 @@ import {
   type WorkflowReadiness,
   type ModelListing,
   type ModelSummary,
+  type NamedRemote,
   type PortfolioEntry,
   type PortfolioRemoval,
+  type RemoteStatus,
   type Summary,
   type ToolSummary,
   type WorkflowSummary,
@@ -492,4 +496,97 @@ export async function matchModels(
   }
 
   return items;
+}
+
+/** Returns every remote the editor's instance names, by name: `GET /api/remotes`. */
+export function fetchRemotes(options: RequestOptions = {}): Promise<NamedRemote[]> {
+  return fetchItems("/api/remotes", isNamedRemote, options);
+}
+
+/** A remote to name: its name, URL, and the variable its token is read from, if not the usual. */
+export interface RemoteToAdd {
+  readonly name: string;
+  readonly url: string;
+  readonly tokenVariable?: string;
+}
+
+/** Names one remote in the editor's instance: `POST /api/remotes`. */
+export async function addRemote(
+  { name, url, tokenVariable }: RemoteToAdd,
+  options: RequestOptions = {},
+): Promise<NamedRemote> {
+  const sent =
+    tokenVariable === undefined || tokenVariable === ""
+      ? { name, url }
+      : { name, url, token_variable: tokenVariable };
+  const body = await requestJson(
+    "/api/remotes",
+    { method: "POST", body: JSON.stringify(sent) },
+    options,
+  );
+
+  if (!isNamedRemote(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 201);
+  }
+
+  return body;
+}
+
+/** Forgets one remote's name: `POST /api/remotes/remove`. Nothing at the remote changes. */
+export async function removeRemote(
+  name: string,
+  options: RequestOptions = {},
+): Promise<NamedRemote> {
+  const body = await requestJson(
+    "/api/remotes/remove",
+    { method: "POST", body: JSON.stringify({ name }) },
+    options,
+  );
+
+  if (!isNamedRemote(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/** One tool version, as a selection names it. */
+export interface ToolVersion {
+  readonly id: string;
+  readonly version: string;
+}
+
+/** What a status, push or pull is about; nothing named means everything, for a status. */
+export interface Selection {
+  readonly workflows?: readonly string[];
+  readonly tools?: readonly ToolVersion[];
+  readonly benchmarks?: readonly string[];
+}
+
+/** Returns where the API serves one action on a named remote. */
+export function remoteApiPath(name: string, action: "status" | "push" | "pull"): string {
+  return `/api/remotes/${encodeURIComponent(name)}/${action}`;
+}
+
+/**
+ * Asks how what is selected relates to a named remote's:
+ * `POST /api/remotes/{name}/status`. A remote that cannot be reached
+ * answers a status whose remote side is unknown.
+ */
+export async function fetchRemoteStatus(
+  name: string,
+  selection: Selection = {},
+  options: RequestOptions = {},
+): Promise<RemoteStatus> {
+  const body = await requestJson(
+    remoteApiPath(name, "status"),
+    { method: "POST", body: JSON.stringify(selection) },
+    options,
+  );
+
+  if (!isRemoteStatus(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
 }

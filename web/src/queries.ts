@@ -30,11 +30,17 @@ import {
   fetchReadiness,
   fetchRun,
   fetchWorkflowRuns,
+  addRemote,
+  fetchRemoteStatus,
+  fetchRemotes,
   matchModels,
   removeFromPortfolio,
+  removeRemote,
   startRun,
   startTrial,
+  type RemoteToAdd,
   type RunGiven,
+  type Selection,
   type TrialStart,
 } from "./api/client";
 import type {
@@ -43,8 +49,10 @@ import type {
   LiveRun,
   ModelListing,
   ModelSummary,
+  NamedRemote,
   PortfolioEntry,
   PortfolioRemoval,
+  RemoteStatus,
   RunDetail,
   RunSummary,
   Summary,
@@ -78,6 +86,10 @@ export const queryKeys = {
   readiness: (document: string) => ["readiness", document] as const,
   live: ["live"] as const,
   liveList: ["live", "list"] as const,
+  remotes: ["remotes"] as const,
+  remoteList: ["remotes", "list"] as const,
+  remoteStatus: (name: string, selection: string) =>
+    ["remotes", "status", name, selection] as const,
   liveRun: (handle: string) => ["live", "run", handle] as const,
   runs: ["runs"] as const,
   workflowRuns: (workflowId: string) => ["runs", "workflow", workflowId] as const,
@@ -89,6 +101,12 @@ export const RUNNING_POLL_MS = 2_000;
 
 /** How often it asks while none is, to find runs started in another tab. */
 export const IDLE_POLL_MS = 15_000;
+
+/** How long a remote's status is fresh: older than this, coming back to the tab asks again. */
+export const REMOTE_STATUS_STALE_MS = 30_000;
+
+/** How often a remote's status is asked again while its tab is visible; never while hidden. */
+export const REMOTE_STATUS_POLL_MS = 60_000;
 
 /** Returns whether a failed request is worth trying again: not when the server refused it. */
 export function retryable(failures: number, error: unknown): boolean {
@@ -364,6 +382,52 @@ export function useReadiness(
     queryKey: queryKeys.readiness(key),
     queryFn: ({ signal }) => fetchReadiness(document, { signal }),
     staleTime: 60_000,
+    enabled,
+  });
+}
+
+/** Returns every remote the editor's instance names, by name. */
+export function useRemotes(): UseQueryResult<NamedRemote[], ApiFailure> {
+  return useQuery<NamedRemote[], ApiFailure>({
+    queryKey: queryKeys.remoteList,
+    queryFn: ({ signal }) => fetchRemotes({ signal }),
+  });
+}
+
+/** One change to the remotes named: one named, or a name forgotten. */
+export type RemoteChange =
+  | { readonly add: true; readonly remote: RemoteToAdd }
+  | { readonly add: false; readonly name: string };
+
+/** Returns a change to the remotes named, after which every view of remotes is fetched again. */
+export function useRemoteChange(): UseMutationResult<NamedRemote, ApiFailure, RemoteChange> {
+  const client = useQueryClient();
+
+  return useMutation<NamedRemote, ApiFailure, RemoteChange>({
+    mutationFn: (change) => (change.add ? addRemote(change.remote) : removeRemote(change.name)),
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.remotes }),
+  });
+}
+
+/**
+ * Returns how what is selected relates to a named remote's, asked again
+ * when the page is opened, when its tab is come back to after half a
+ * minute, every minute while the tab is visible, and after any push or pull
+ * from the editor, which fetches every view of remotes again. A hidden tab
+ * never asks.
+ */
+export function useRemoteStatus(
+  name: string,
+  selection: Selection = {},
+  { enabled = true }: { readonly enabled?: boolean } = {},
+): UseQueryResult<RemoteStatus, ApiFailure> {
+  return useQuery<RemoteStatus, ApiFailure>({
+    queryKey: queryKeys.remoteStatus(name, JSON.stringify(selection)),
+    queryFn: ({ signal }) => fetchRemoteStatus(name, selection, { signal }),
+    staleTime: REMOTE_STATUS_STALE_MS,
+    refetchOnWindowFocus: true,
+    refetchInterval: REMOTE_STATUS_POLL_MS,
+    refetchIntervalInBackground: false,
     enabled,
   });
 }

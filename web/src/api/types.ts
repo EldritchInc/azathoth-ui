@@ -735,3 +735,128 @@ export function isWorkflowReadiness(value: unknown): value is WorkflowReadiness 
     value.steps.every(isStepReadiness)
   );
 }
+
+/** A remote the editor's instance names: its URL, and the variable its token is read from. */
+export interface NamedRemote {
+  readonly name: string;
+  readonly url: string;
+  readonly token_variable: string;
+  readonly added_at: string;
+  /** Whether that variable is set in the editor's environment; its value never leaves it. */
+  readonly token_set: boolean;
+}
+
+/** Returns whether a value is a remote the editor's instance names. */
+export function isNamedRemote(value: unknown): value is NamedRemote {
+  return (
+    isRecord(value) &&
+    typeof value.name === "string" &&
+    typeof value.url === "string" &&
+    typeof value.token_variable === "string" &&
+    typeof value.added_at === "string" &&
+    typeof value.token_set === "boolean"
+  );
+}
+
+/** What kind of document a lineage is. */
+export type LineageKind = "workflow" | "tool" | "benchmark";
+
+/** One workflow, tool version or benchmark, as revisions name it: a tool by its version too. */
+export interface Lineage {
+  readonly kind: LineageKind;
+  readonly id: string;
+  readonly version: string | null;
+}
+
+const LINEAGE_KINDS: readonly unknown[] = ["workflow", "tool", "benchmark"];
+
+/** Returns whether a value is a lineage. */
+export function isLineage(value: unknown): value is Lineage {
+  return (
+    isRecord(value) &&
+    LINEAGE_KINDS.includes(value.kind) &&
+    typeof value.id === "string" &&
+    isTextOrNull(value.version)
+  );
+}
+
+/** How a lineage here relates to the same lineage at a remote (Azathoth's ADR 0125). */
+export type Relation = "in_sync" | "ahead" | "behind" | "diverged" | "local_only" | "remote_only";
+
+export const RELATIONS: readonly Relation[] = [
+  "in_sync",
+  "ahead",
+  "behind",
+  "diverged",
+  "local_only",
+  "remote_only",
+];
+
+const RELATION_VALUES: readonly unknown[] = RELATIONS;
+
+/** One component as each side holds it; `relation` is `null` when the remote was not reached. */
+export interface ComponentStatus {
+  readonly lineage: Lineage;
+  readonly relation: Relation | null;
+  readonly local_digest: string | null;
+  readonly local_number: number | null;
+  readonly remote_digest: string | null;
+  readonly remote_number: number | null;
+  readonly remote_production_digest: string | null;
+}
+
+/** Whether one model is authorized here, and at the remote, `null` when that is not known. */
+export interface ModelStatus {
+  readonly identifier: string;
+  readonly authorized_locally: boolean;
+  readonly authorized_remotely: boolean | null;
+}
+
+/** `POST /api/remotes/{name}/status`: what each side holds, and how each component relates. */
+export interface RemoteStatus {
+  readonly remote: string;
+  readonly reachable: boolean;
+  readonly components: readonly ComponentStatus[];
+  readonly models: readonly ModelStatus[];
+  readonly portfolio_synced_at: string | null;
+}
+
+function isNumberOrNullWhole(value: unknown): value is number | null {
+  return value === null || isWholeNumber(value);
+}
+
+function isComponentStatus(value: unknown): value is ComponentStatus {
+  return (
+    isRecord(value) &&
+    isLineage(value.lineage) &&
+    (value.relation === null || RELATION_VALUES.includes(value.relation)) &&
+    isTextOrNull(value.local_digest) &&
+    isNumberOrNullWhole(value.local_number) &&
+    isTextOrNull(value.remote_digest) &&
+    isNumberOrNullWhole(value.remote_number) &&
+    isTextOrNull(value.remote_production_digest)
+  );
+}
+
+function isModelStatus(value: unknown): value is ModelStatus {
+  return (
+    isRecord(value) &&
+    typeof value.identifier === "string" &&
+    typeof value.authorized_locally === "boolean" &&
+    (value.authorized_remotely === null || typeof value.authorized_remotely === "boolean")
+  );
+}
+
+/** Returns whether a value is a remote's status. */
+export function isRemoteStatus(value: unknown): value is RemoteStatus {
+  return (
+    isRecord(value) &&
+    typeof value.remote === "string" &&
+    typeof value.reachable === "boolean" &&
+    Array.isArray(value.components) &&
+    value.components.every(isComponentStatus) &&
+    Array.isArray(value.models) &&
+    value.models.every(isModelStatus) &&
+    isTextOrNull(value.portfolio_synced_at)
+  );
+}

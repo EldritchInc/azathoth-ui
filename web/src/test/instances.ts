@@ -174,6 +174,7 @@ export const SERVER: Answers = {
   "/api/models": [200, { items: [LARGE_MODEL, SMALL_MODEL, BEDROCK_MODEL], listed_at: LISTED_AT }],
   "/api/local/portfolio": [200, { items: [LARGE_ENTRY] }],
   "/api/live": [200, { items: [] }],
+  "/api/remotes": [200, { items: [] }],
 };
 
 /** Returns the URL one request asks for, on a stand-in for the editor's server. */

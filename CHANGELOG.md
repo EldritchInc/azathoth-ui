@@ -169,3 +169,13 @@
   what is named, answering Azathoth's report with its warnings, and what a
   pull forked or withheld. Only a name the instance gives is reached, with
   the token its variable holds when the request comes.
+- The web app's Remotes page, under Sharing in the rail: the remotes the
+  editor's instance names, each with its URL and whether its token is set,
+  with the line that sets it for this computer's shell when it is not; a
+  form names another, and each can be forgotten. A remote's own page says
+  how everything either side holds relates, grouped by what needs doing
+  (diverged first, in sync folded away last), each side's revision, what is
+  in production there, and where each model is authorized. It asks again
+  when it is opened, when its tab is come back to after half a minute, and
+  every minute while its tab is visible, and says how old what it shows is;
+  a remote that isn't answering says so, with how old its models are.
