@@ -1,10 +1,10 @@
 .PHONY: install install-web check check-server check-web build-web wheel
 
-# Azathoth itself comes from PyPI. While 1.4 is in pre-release, naming its
-# first pre-release lets pip take Azathoth's pre-releases, and no other
-# package's.
+# Azathoth itself comes from PyPI. While 1.4 is in pre-release, naming the
+# pre-release the editor needs, 1.4.0b1, the first with remotes named, lets
+# pip take Azathoth's pre-releases, and no other package's.
 install:
-	python -m pip install "azathoth-ai>=1.4.0a2,==1.4.*" -e ".[dev]"
+	python -m pip install "azathoth-ai>=1.4.0b1,==1.4.*" -e ".[dev]"
 
 # The web app's dependencies, exactly as web/package-lock.json pins them.
 install-web:

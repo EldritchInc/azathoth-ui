@@ -7,8 +7,11 @@ asked, and anything Azathoth refuses answers with its own code and message.
 
 Importing takes one document as `application/json`, at most
 `MAX_DOCUMENT_BYTES`, and makes it its component's next revision: nothing is
-ever changed in place. Checking a workflow document, and asking whether it
-could run here, take one the same way and save nothing (ADR 0003, ADR 0007).
+ever changed in place. It answers with Azathoth's import, whose `created`
+says whether a revision was made: 201 when one was, and 200 when the
+document is the latest revision's, which then is the one returned.
+Checking a workflow document, and asking whether it could run here, take
+one the same way and save nothing (ADR 0003, ADR 0007).
 """
 
 import re
@@ -153,13 +156,28 @@ async def judged_by(
     return one(await run_in_threadpool(judge, document), status=status)
 
 
+Imported = api.WorkflowImport | api.ToolImport | api.BenchmarkImport
+"""What importing one document did, as Azathoth says."""
+
+
 async def import_with(
     request: Request,
-    importer: Callable[[str], api.ApiModel],
+    importer: Callable[[str], Imported],
 ) -> Response:
-    """Import the request's document with one importer, as its component's next revision."""
+    """Import the request's document with one importer, as its component's next revision.
 
-    return await judged_by(request, importer, status=201)
+    It answers 201 when a revision was made, and 200 when the document is
+    the latest revision's, so nothing was (ADR 0122).
+    """
+
+    document = await document_of(request)
+
+    if isinstance(document, Response):
+        return document
+
+    imported = await run_in_threadpool(importer, document)
+
+    return one(imported, status=201 if imported.created else 200)
 
 
 def list_workflows(

@@ -133,8 +133,7 @@ export function DetailPage({
       )}
       {revision.identical_to !== null && (
         <p className={styles.identical}>
-          Same content as revision {revision.identical_to}: importing it again made a new revision
-          and changed nothing.
+          Same content as revision {revision.identical_to}: this revision returned to it.
         </p>
       )}
       <Command command={shown.command} />

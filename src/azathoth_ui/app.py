@@ -9,6 +9,7 @@ installation without a web app answers every page with one that says how to
 build it.
 """
 
+from collections.abc import Mapping
 from pathlib import Path, PurePosixPath
 from typing import Final
 
@@ -33,6 +34,7 @@ from azathoth_ui.catalog import (
 from azathoth_ui.commands import Shell, command_prefix, local_shell
 from azathoth_ui.live import LiveRuns, live_routes
 from azathoth_ui.pages import ASSETS_PATH, not_built_page
+from azathoth_ui.remotes import remote_routes
 from azathoth_ui.security import API_PREFIX, LocalOnly
 
 PACKAGE_DIRECTORY: Final = Path(__file__).parent
@@ -50,6 +52,9 @@ ERROR_STATUSES: Final[tuple[tuple[type[api.ApiError], int], ...]] = (
     (api.RunCancelledError, 409),
     (api.RunNotStartedError, 409),
     (api.ProviderUnavailableError, 502),
+    (api.RemoteUnreachableError, 502),
+    (api.RemoteProtocolError, 502),
+    (api.RemoteRefusedError, 403),
     (api.InstanceClosedError, 503),
     (api.InstanceUnavailableError, 503),
 )
@@ -209,6 +214,7 @@ def build_app(
     models: ModelSource | None = None,
     portfolio: PortfolioSource | None = None,
     live: LiveRuns | None = None,
+    environ: Mapping[str, str] | None = None,
 ) -> LocalOnly:
     """Return the editor's server for one open instance, one launch key and one port.
 
@@ -218,7 +224,8 @@ def build_app(
     `providers` names the providers the instance was opened with. `models`
     and `portfolio` are where models are listed and authorized, the
     instance's own by default. `live` keeps the runs started from the
-    editor, a new keeper by default.
+    editor, a new keeper by default. `environ` is where remotes' tokens are
+    read from, the server's own environment by default.
     """
 
     web = STATIC_DIRECTORY if static_dir is None else static_dir
@@ -228,6 +235,7 @@ def build_app(
         *browsing_routes(),
         *catalog_routes(),
         *live_routes(),
+        *remote_routes(),
         Route("/api/{rest:path}", no_endpoint),
         Mount(ASSETS_PATH.rstrip("/"), StaticFiles(directory=ASSETS_DIRECTORY)),
     ]
@@ -251,6 +259,7 @@ def build_app(
     app.state.catalog = Catalog(instance.models if models is None else models)
     app.state.portfolio = instance.portfolio if portfolio is None else portfolio
     app.state.live = LiveRuns() if live is None else live
+    app.state.environ = environ
 
     return LocalOnly(app, token=token, port=port)
 

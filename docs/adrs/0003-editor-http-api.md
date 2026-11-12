@@ -71,8 +71,11 @@ answers in JSON, and is never cached.
   `application/json` (otherwise 415, `unsupported_media_type`), at most 10 MB
   (otherwise 413, `document_too_large`, checked from its declared length and
   again as it arrives), in UTF-8 (otherwise `invalid_document`). It becomes
-  its component's next revision, even when identical to the last; the
-  revision says which it is identical to.
+  its component's next revision, and the answer is Azathoth's import,
+  `{"created", "<kind>"}`: 201 when a revision was made. A document
+  identical to the latest revision makes none, as Azathoth 1.4.0b1 decides
+  (its ADR 0122): 200, `created` false, and that revision. A revision that
+  returns to an earlier one says which, as `identical_to`.
 - **Tool versions live under `/versions/`,** so that no version name, such as
   `history`, can be mistaken for another endpoint.
 - **Commands name the editor's database.** `GET /api/editor` gives the

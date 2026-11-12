@@ -259,8 +259,10 @@ def get_model(
 
 async def body_of(
     request: Request,
+    *,
+    message: str = BODY_MESSAGE,
 ) -> dict[str, object]:
-    """Return a change's JSON object, or refuse it as an invalid argument."""
+    """Return a change's JSON object, or refuse it as an invalid argument, saying `message`."""
 
     media_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
     body = bytearray()
@@ -269,18 +271,18 @@ async def body_of(
         body.extend(chunk)
 
         if len(body) > MAX_BODY_BYTES:
-            raise api.InvalidArgumentError(BODY_MESSAGE)
+            raise api.InvalidArgumentError(message)
 
     if media_type != "application/json":
-        raise api.InvalidArgumentError(BODY_MESSAGE)
+        raise api.InvalidArgumentError(message)
 
     try:
         value: object = json.loads(body.decode("utf-8"))
     except ValueError:
-        raise api.InvalidArgumentError(BODY_MESSAGE) from None
+        raise api.InvalidArgumentError(message) from None
 
     if not isinstance(value, dict):
-        raise api.InvalidArgumentError(BODY_MESSAGE)
+        raise api.InvalidArgumentError(message)
 
     return {str(key): item for key, item in value.items()}
 
@@ -401,6 +403,7 @@ __all__ = [
     "Catalog",
     "ModelSource",
     "PortfolioSource",
+    "body_of",
     "catalog_routes",
     "model_in_use",
     "provider_names",

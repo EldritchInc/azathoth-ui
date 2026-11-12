@@ -190,7 +190,9 @@ describe("WorkflowEditor", () => {
   });
 
   it("saves the document as the workflow's next revision", async () => {
-    const sent = open(`/workflows/${ID}/edit`, { "/api/workflows/import": [201, SAVED] });
+    const sent = open(`/workflows/${ID}/edit`, {
+      "/api/workflows/import": [201, { created: true, workflow: SAVED }],
+    });
 
     fireEvent.change(await screen.findByDisplayValue("summarize ticket"), {
       target: { value: "summarize tickets" },
@@ -243,7 +245,9 @@ describe("WorkflowEditor", () => {
   });
 
   it("saves with ⌘S, undoes with ⌘Z and redoes with ⇧⌘Z", async () => {
-    const sent = open(`/workflows/${ID}/edit`, { "/api/workflows/import": [201, SAVED] });
+    const sent = open(`/workflows/${ID}/edit`, {
+      "/api/workflows/import": [201, { created: true, workflow: SAVED }],
+    });
 
     fireEvent.change(await screen.findByDisplayValue("summarize ticket"), {
       target: { value: "x" },

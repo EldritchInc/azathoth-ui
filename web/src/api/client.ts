@@ -9,6 +9,7 @@
 
 import {
   isBenchmarkSummary,
+  importOf,
   isComponentDetail,
   isEditorDescription,
   isErrorBody,
@@ -27,6 +28,7 @@ import {
   itemsOf,
   type BenchmarkSummary,
   type ComponentDetail,
+  type ComponentImport,
   type EditorDescription,
   type InstanceDescription,
   type LiveRun,
@@ -208,24 +210,26 @@ export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 
 /**
  * Imports one document into the local instance as its component's next
- * revision: `POST /api/{kind}/import`. Returns the revision it made.
+ * revision: `POST /api/{kind}/import`. Returns whether it made one, and the
+ * revision it is: a document identical to the latest revision makes none.
  */
 export async function importDocument(
   kind: "workflows" | "tools" | "benchmarks",
   document: string,
   options: RequestOptions = {},
-): Promise<ComponentDetail> {
+): Promise<ComponentImport> {
   const body = await requestJson(
     `/api/${kind}/import`,
     { method: "POST", body: document },
     options,
   );
+  const imported = importOf(body, kind);
 
-  if (!isComponentDetail(body)) {
+  if (imported === null) {
     throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 201);
   }
 
-  return body;
+  return imported;
 }
 
 /** Returns the path of one model in the API: its identifier's parts, each encoded. */

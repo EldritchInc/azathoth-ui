@@ -150,3 +150,14 @@
   holds it.
 - ADR 0006 records how the editor keeps its local portfolio apart from a
   shared server's, and says which models a step could run on.
+- The editor needs Azathoth 1.4.0b1. Importing a document identical to the
+  latest revision makes no revision, as Azathoth now decides: the import
+  answers `{"created", "<kind>"}`, 201 when a revision was made and 200
+  when none was, and the editor says the component is unchanged. A revision
+  that returns to an earlier one says so.
+- The remotes API: `GET /api/remotes` lists the remotes the editor's
+  instance names, each with its URL, the variable its token is read from,
+  and whether that variable is set in the editor's environment, never its
+  value; `POST /api/remotes` names one, and `POST /api/remotes/remove`
+  forgets one. A remote that cannot be reached, or speaks another protocol,
+  answers 502, and one that refuses 403.

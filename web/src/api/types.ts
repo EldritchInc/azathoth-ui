@@ -69,6 +69,16 @@ export interface ComponentDetail extends Summary {
   readonly document: Readonly<Record<string, unknown>>;
 }
 
+/**
+ * What importing one document did, as the editor reads Azathoth's import:
+ * whether a revision was made, and the revision it is. A document identical
+ * to the latest revision makes none, and is that revision.
+ */
+export interface ComponentImport {
+  readonly created: boolean;
+  readonly detail: ComponentDetail;
+}
+
 /** One model a provider serves now, as `azathoth.api` describes it. */
 export interface ModelSummary {
   readonly identifier: string;
@@ -401,6 +411,26 @@ export function isComponentDetail(value: unknown): value is ComponentDetail {
     isWholeNumber(value.latest_number) &&
     isRecord(value.document)
   );
+}
+
+/** The key Azathoth's import holds its component under, for each kind. */
+export const IMPORTED_KEYS = {
+  workflows: "workflow",
+  tools: "tool",
+  benchmarks: "benchmark",
+} as const;
+
+/**
+ * Returns what one import answer says, `{"created", "<kind>"}` as Azathoth
+ * answers it, or `null` when it is not one.
+ */
+export function importOf(value: unknown, kind: keyof typeof IMPORTED_KEYS): ComponentImport | null {
+  if (!isRecord(value) || typeof value.created !== "boolean") {
+    return null;
+  }
+  const detail = value[IMPORTED_KEYS[kind]];
+
+  return isComponentDetail(detail) ? { created: value.created, detail } : null;
 }
 
 /** Returns the items of a list the server answered with, when each is what `guard` expects. */

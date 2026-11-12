@@ -139,13 +139,18 @@ function outcomeText(outcome: Outcome, singular: string): ReactNode {
     case "failed":
       return outcome.message;
     case "imported": {
-      const { detail } = outcome;
+      const { created, detail } = outcome;
       const revision = detail.revision;
+      const named = `${detail.name} ${detail.version}`;
+
+      if (!created) {
+        return `${named} is unchanged at revision ${String(revision.number)}: it is the latest ${singular}'s document.`;
+      }
 
       return revision.identical_to === null
-        ? `Imported ${detail.name} ${detail.version} as revision ${String(revision.number)}.`
-        : `Imported ${detail.name} ${detail.version} as revision ${String(revision.number)}, ` +
-            `identical to revision ${String(revision.identical_to)}: the ${singular} is unchanged.`;
+        ? `Imported ${named} as revision ${String(revision.number)}.`
+        : `Imported ${named} as revision ${String(revision.number)}, ` +
+            `a return to revision ${String(revision.identical_to)}.`;
     }
   }
 }

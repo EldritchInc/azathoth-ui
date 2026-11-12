@@ -313,12 +313,13 @@ describe("importDocument", () => {
     const seen: [string, RequestInit | undefined][] = [];
     const fetcher: typeof fetch = (input, init) => {
       seen.push([input instanceof Request ? input.url : input.toString(), init]);
-      return answering(201, WORKFLOW_DETAIL)(input, init);
+      return answering(201, { created: true, workflow: WORKFLOW_DETAIL })(input, init);
     };
 
-    expect(await importDocument("workflows", '{"steps": []}', { fetcher })).toEqual(
-      WORKFLOW_DETAIL,
-    );
+    expect(await importDocument("workflows", '{"steps": []}', { fetcher })).toEqual({
+      created: true,
+      detail: WORKFLOW_DETAIL,
+    });
     expect(seen).toHaveLength(1);
     expect(seen[0]?.[0]).toBe("/api/workflows/import");
     expect(seen[0]?.[1]?.method).toBe("POST");
@@ -339,9 +340,24 @@ describe("importDocument", () => {
     expect(error.message).toBe("Workflow document is not valid.");
   });
 
-  it("refuses an answer that is not a revision", async () => {
+  it("reads an import that made no revision, under its kind's key", async () => {
+    const fetcher = answering(200, { created: false, tool: WORKFLOW_DETAIL });
+
+    expect(await importDocument("tools", "{}", { fetcher })).toEqual({
+      created: false,
+      detail: WORKFLOW_DETAIL,
+    });
+  });
+
+  it.each([
+    ["nothing", {}],
+    ["a bare revision", WORKFLOW_DETAIL],
+    ["another kind's key", { created: true, workflow: WORKFLOW_DETAIL }],
+    ["no created", { benchmark: WORKFLOW_DETAIL }],
+    ["a broken revision", { created: true, benchmark: { ...WORKFLOW_DETAIL, document: null } }],
+  ])("refuses an answer that is %s", async (_, body) => {
     const error = await failure(
-      importDocument("benchmarks", "{}", { fetcher: answering(201, {}) }),
+      importDocument("benchmarks", "{}", { fetcher: answering(201, body) }),
     );
 
     expect(error.code).toBe("invalid_response");
