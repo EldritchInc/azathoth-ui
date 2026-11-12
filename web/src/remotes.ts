@@ -115,3 +115,21 @@ export function lineageLabel(lineage: Lineage, name: string | null): string {
 export function firstRemote(remotes: readonly NamedRemote[]): NamedRemote | undefined {
   return remotes.find((remote) => remote.token_set) ?? remotes[0];
 }
+
+/** The relations a pull changes something for: the remote holds revisions this instance lacks. */
+export const PULLABLE: ReadonlySet<Relation> = new Set(["behind", "remote_only", "diverged"]);
+
+/** Returns what a pull of some lineages names: workflows and benchmarks by id, tools with versions. */
+export function selectionFor(lineages: readonly Lineage[]): Selection {
+  const workflows = lineages.filter((each) => each.kind === "workflow").map((each) => each.id);
+  const benchmarks = lineages.filter((each) => each.kind === "benchmark").map((each) => each.id);
+  const tools = lineages
+    .filter((each) => each.kind === "tool")
+    .map((each) => ({ id: each.id, version: each.version ?? "" }));
+
+  return {
+    ...(workflows.length > 0 && { workflows }),
+    ...(tools.length > 0 && { tools }),
+    ...(benchmarks.length > 0 && { benchmarks }),
+  };
+}

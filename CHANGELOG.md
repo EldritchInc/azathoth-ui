@@ -187,3 +187,9 @@
   each of Azathoth's warnings of what would stop it running there. A push
   that has diverged, or a status that says so, offers a pull instead, whose
   report says what it saved and forked here.
+- A remote's page pulls: each component the remote holds revisions of that
+  this instance lacks (behind, only there, or diverged) has a Pull, and each
+  such group pulls all of its components at once. The report says what was
+  saved and forked here, and what was withheld as restricted, which can then
+  be pulled too, after confirming that restricted data will be kept in the
+  editor's own database.
