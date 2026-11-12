@@ -161,3 +161,11 @@
   value; `POST /api/remotes` names one, and `POST /api/remotes/remove`
   forgets one. A remote that cannot be reached, or speaks another protocol,
   answers 502, and one that refuses 403.
+- `POST /api/remotes/{name}/status` says how the workflows, tool versions
+  and benchmarks named, or everything either side holds, relate to the
+  remote's, which revision is in production there, and where each model is
+  authorized; a remote that cannot be reached is a status whose remote side
+  is unknown. `POST /api/remotes/{name}/push` and `.../pull` push and pull
+  what is named, answering Azathoth's report with its warnings, and what a
+  pull forked or withheld. Only a name the instance gives is reached, with
+  the token its variable holds when the request comes.

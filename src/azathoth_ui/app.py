@@ -9,9 +9,9 @@ installation without a web app answers every page with one that says how to
 build it.
 """
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path, PurePosixPath
-from typing import Final
+from typing import Any, Final
 
 from azathoth import api
 from starlette.applications import Starlette
@@ -215,6 +215,7 @@ def build_app(
     portfolio: PortfolioSource | None = None,
     live: LiveRuns | None = None,
     environ: Mapping[str, str] | None = None,
+    remote_http: Callable[[], Any] | None = None,
 ) -> LocalOnly:
     """Return the editor's server for one open instance, one launch key and one port.
 
@@ -225,7 +226,9 @@ def build_app(
     and `portfolio` are where models are listed and authorized, the
     instance's own by default. `live` keeps the runs started from the
     editor, a new keeper by default. `environ` is where remotes' tokens are
-    read from, the server's own environment by default.
+    read from, the server's own environment by default. `remote_http` makes
+    the HTTP client remotes are reached over, httpx's by default, as tests
+    replace it.
     """
 
     web = STATIC_DIRECTORY if static_dir is None else static_dir
@@ -260,6 +263,7 @@ def build_app(
     app.state.portfolio = instance.portfolio if portfolio is None else portfolio
     app.state.live = LiveRuns() if live is None else live
     app.state.environ = environ
+    app.state.remote_http = remote_http
 
     return LocalOnly(app, token=token, port=port)
 
