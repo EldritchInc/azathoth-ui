@@ -12,6 +12,7 @@ import { CopyButton } from "./CopyButton";
 import detail from "./DetailPage.module.css";
 import { InstanceLink } from "./InstanceLink";
 import styles from "./ModelPage.module.css";
+import { ModelPolicy } from "./ModelPolicy";
 import { Notice } from "./Notice";
 import { PortfolioOutcome, type Change } from "./Portfolio";
 
@@ -204,7 +205,7 @@ function Facts({ model }: { readonly model: ModelSummary }) {
 /**
  * One model the providers serve: everything known of it, whether the local
  * portfolio holds it, and the steps of local workflows that could run on
- * it. A model the providers no longer serve still shows, while the local
+ * it, and its declared data policy (ADR 0011). A model the providers no longer serve still shows, while the local
  * portfolio holds it, so it can be removed.
  */
 export function ModelPage() {
@@ -254,6 +255,7 @@ export function ModelPage() {
             </header>
             <PortfolioOutcome change={change} models={[]} />
             <PortfolioPanel identifier={identifier} held change={change} />
+            <ModelPolicy identifier={identifier} entry={entry} />
           </>
         )}
       </div>
@@ -287,6 +289,7 @@ export function ModelPage() {
       </header>
       <PortfolioOutcome change={change} models={[model]} />
       <Facts model={model} />
+      <ModelPolicy identifier={model.identifier} entry={entry} />
       <Command command={model.command} />
       <Uses
         uses={uses}

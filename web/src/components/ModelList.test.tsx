@@ -16,6 +16,7 @@ import {
   serving,
 } from "../test/instances";
 import { renderAt } from "../test/render";
+import { DECLARED_ENTRY } from "../test/sensitivity";
 import { ModelList } from "./ModelList";
 
 const MODELS: readonly ModelSummary[] = [LARGE_MODEL, SMALL_MODEL, BEDROCK_MODEL];
@@ -154,6 +155,31 @@ describe("ModelList", () => {
     expect(toggle("Acme Small (free)")).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByText("3 models · 1 in your local portfolio")).toBeInTheDocument();
     expect(screen.getByText(/^Asked/)).toBeInTheDocument();
+  });
+
+  it("marks each model declared to neither retain nor train on data", async () => {
+    const server = portfolioServer();
+    const fetcher: typeof fetch = (input, init) =>
+      new URL(input instanceof Request ? input.url : input.toString(), "http://x").pathname ===
+        "/api/local/portfolio" && (init?.method ?? "GET") === "GET"
+        ? answering(200, { items: [DECLARED_ENTRY] })(input, init)
+        : server.fetcher(input, init);
+
+    open("/models", { ...server, fetcher });
+    await screen.findByRole("link", { name: "Acme Large" });
+
+    const mark = await within(rowOf("Acme Large")).findByText("Takes restricted input");
+
+    expect(mark).toHaveAttribute("title", "Declared to neither retain nor train on data");
+    expect(within(rowOf("Acme Small (free)")).queryByText("Takes restricted input")).toBeNull();
+  });
+
+  it("marks no model before its policy is declared", async () => {
+    open();
+
+    await screen.findByRole("link", { name: "Acme Large" });
+
+    expect(screen.queryByText("Takes restricted input")).toBeNull();
   });
 
   it("filters by what is typed, keeping the filter in the address", async () => {
