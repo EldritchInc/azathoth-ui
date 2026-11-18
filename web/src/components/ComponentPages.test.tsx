@@ -9,7 +9,7 @@ import {
   WORKFLOW_DETAIL,
   WORKFLOW_HISTORY,
 } from "../test/documents";
-import { EDITOR, SERVER, type Answers } from "../test/instances";
+import { COMMANDS, SERVER, type Answers } from "../test/instances";
 import { renderAt } from "../test/render";
 import { RUN_SUMMARY } from "../test/runs";
 
@@ -146,7 +146,7 @@ describe("a workflow's page", () => {
     workflowPage();
     await screen.findByRole("heading", { level: 1, name: "summarize" });
 
-    expect(await screen.findByText(EDITOR.command_prefix.trim())).toBeVisible();
+    expect(await screen.findByText(COMMANDS.prefix.trim())).toBeVisible();
     expect(screen.getByText(WORKFLOW_DETAIL.command)).toBeVisible();
   });
 

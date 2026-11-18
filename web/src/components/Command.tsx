@@ -1,16 +1,17 @@
-import { useEditor } from "../queries";
+import { useCommands } from "../queries";
 import styles from "./Command.module.css";
 import { CopyButton } from "./CopyButton";
 
 /**
- * One `azathoth` command, as it runs against the editor's own database.
+ * One `azathoth` command, as it runs against the instance the page acts on.
  *
- * The prefix that names the database comes from the server, quoted for this
- * computer's shell; it is shown dimmed, and copied with the command.
+ * What goes before it comes from the server, written for that instance and
+ * quoted for this computer's shell (ADR 0009): the database for the
+ * editor's own instance. It is shown dimmed, and copied with the command.
  */
 export function Command({ command }: { readonly command: string }) {
-  const editor = useEditor();
-  const prefix = editor.data?.command_prefix ?? "";
+  const commands = useCommands();
+  const prefix = commands.data?.prefix ?? "";
 
   return (
     <div className={styles.command}>

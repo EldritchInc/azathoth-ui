@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted
+Accepted; amended by [ADR 0009](0009-one-editor-any-instance.md), which builds
+every instance endpoint once, for an instance.
 
 ## Context
 
@@ -25,10 +26,18 @@ editor's own database, which the command line takes only from
 Every endpoint is behind the guard of [ADR 0001](0001-local-server-security.md),
 answers in JSON, and is never cached.
 
+The endpoints are of two kinds ([ADR 0009](0009-one-editor-any-instance.md)).
+The editor's own describe it and its remotes, and are always at `/api`:
+`/api/editor` and `/api/remotes...`. Every other endpoint acts on an
+instance, and is built once, for one instance, below a prefix: `/api` for
+the editor's own, and from Azathoth 1.6 `/api/remotes/{name}` for a remote.
+The table names each at the editor's own instance.
+
 | Endpoint | Answer |
 | --- | --- |
 | `GET /api/instance` | The instance, as `describe()` |
-| `GET /api/editor` | The editor's version, its shell, the prefix that names its database in a command, and the providers it was opened with, by name |
+| `GET /api/commands` | The instance's name, and what goes before an `azathoth` command so that it acts on that instance, quoted for this computer's shell: `{"instance", "prefix"}` ([ADR 0009](0009-one-editor-any-instance.md)) |
+| `GET /api/editor` | The editor's version, its shell, and the providers it was opened with, by name |
 | `GET /api/workflows` | Every workflow at its latest revision |
 | `GET /api/workflows/{id}?revision=` | One revision with its document, the latest by default |
 | `GET /api/workflows/{id}/history?limit=` | Its revisions, newest first |
@@ -84,7 +93,7 @@ answers in JSON, and is never cached.
   returns to an earlier one says which, as `identical_to`.
 - **Tool versions live under `/versions/`,** so that no version name, such as
   `history`, can be mistaken for another endpoint.
-- **Commands name the editor's database.** `GET /api/editor` gives the
+- **Commands name the editor's database.** `GET /api/commands` gives the
   prefix the web app puts before every command it shows, quoted for this
   computer's shell: `AZATHOTH_DATABASE='/path/ui.db' ` in POSIX shells,
   `$env:AZATHOTH_DATABASE='C:\path\ui.db'; ` in PowerShell on Windows. The

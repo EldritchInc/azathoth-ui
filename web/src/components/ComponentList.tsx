@@ -1,5 +1,4 @@
 import { useId, useState, type ReactNode } from "react";
-import { Link } from "react-router";
 
 import { isBenchmarkSummary, isToolSummary, type Revision, type Summary } from "../api/types";
 import { DESCRIPTIONS, detailPath, matches, type Kind } from "../kinds";
@@ -9,6 +8,7 @@ import buttons from "./Buttons.module.css";
 import { Command } from "./Command";
 import styles from "./ComponentList.module.css";
 import { DropZone, ImportButton, ImportOutcomes } from "./Importing";
+import { InstanceLink } from "./InstanceLink";
 import { Notice } from "./Notice";
 import { RelativeTime } from "./RelativeTime";
 import { DraftList } from "./WorkflowEditor";
@@ -133,9 +133,9 @@ export function ComponentList({ kind }: { readonly kind: Kind }) {
               <tr key={`${summary.id}@${summary.version}`}>
                 <td className={styles.name}>
                   <div className={styles.nameStack}>
-                    <Link className={styles.link} to={detailPath(kind, summary)}>
+                    <InstanceLink className={styles.link} to={detailPath(kind, summary)}>
                       {summary.name}
-                    </Link>
+                    </InstanceLink>
                     <span className={styles.description}>{summary.description}</span>
                   </div>
                 </td>
@@ -182,7 +182,7 @@ export function ComponentList({ kind }: { readonly kind: Kind }) {
               />
             )}
             {kind === "workflows" && (
-              <Link className={buttons.primary} to="/workflows/new">
+              <InstanceLink className={buttons.primary} to="/workflows/new">
                 <svg
                   viewBox="0 0 24 24"
                   aria-hidden="true"
@@ -195,7 +195,7 @@ export function ComponentList({ kind }: { readonly kind: Kind }) {
                   <path d="M12 5v14M5 12h14" />
                 </svg>
                 New workflow
-              </Link>
+              </InstanceLink>
             )}
           </div>
         </header>

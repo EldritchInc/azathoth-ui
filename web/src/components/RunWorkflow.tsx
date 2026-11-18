@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 
 import type { WorkflowReadiness } from "../api/types";
 import type { JsonObject } from "../editing";
 import { givenOf, NEW_DRAFT, type InputDraft } from "../runInput";
 import { useDetail, useReadiness, useStartRun } from "../queries";
+import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
+import { usePage } from "../scope";
+import { InstanceLink } from "./InstanceLink";
 import { Notice } from "./Notice";
 import { ReadinessList } from "./Readiness";
 import { RunInput } from "./RunInput";
@@ -51,6 +54,7 @@ function Readiness({
 export function RunWorkflow() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
+  const page = usePage();
   const detail = useDetail("workflows", { id }, null);
   const start = useStartRun();
   const [draft, setDraft] = useState<InputDraft>(NEW_DRAFT);
@@ -64,9 +68,9 @@ export function RunWorkflow() {
   return (
     <div className={styles.page}>
       <nav className={styles.crumbs} aria-label="Breadcrumb">
-        <Link to="/workflows">Workflows</Link>
+        <InstanceLink to="/workflows">Workflows</InstanceLink>
         <span aria-hidden="true">/</span>
-        <Link to={`/workflows/${id}`}>{name}</Link>
+        <InstanceLink to={`/workflows/${id}`}>{name}</InstanceLink>
         <span aria-hidden="true">/</span>
         <span aria-current="page">Run</span>
       </nav>
@@ -92,7 +96,7 @@ export function RunWorkflow() {
               { workflowId: id, given },
               {
                 onSuccess: (run) => {
-                  void navigate(`/live/${run.handle}`);
+                  void navigate(page(`/live/${run.handle}`));
                 },
               },
             );
@@ -119,17 +123,20 @@ export function RunWorkflow() {
           </Notice>
         )}
         <div className={styles.actions}>
-          <button
+          <ActionButton
+            action="run_workflow"
+            subject={id}
+
             type="submit"
             className={buttons.primary}
             disabled={given === null || start.isPending || detail.isError || checking || blocked}
           >
             <PlayIcon />
             {start.isPending ? "Starting…" : "Run"}
-          </button>
-          <Link className={buttons.quiet} to={`/workflows/${id}`}>
+          </ActionButton>
+          <InstanceLink className={buttons.quiet} to={`/workflows/${id}`}>
             Cancel
-          </Link>
+          </InstanceLink>
         </div>
       </form>
     </div>

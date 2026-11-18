@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router";
 
 import { isStepTrial } from "../api/types";
 import type { JsonObject } from "../editing";
@@ -15,7 +14,9 @@ import {
   type TrialInput,
 } from "../trying";
 import { useLiveEvents } from "../useLiveEvents";
+import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
+import { InstanceLink } from "./InstanceLink";
 import { Notice } from "./Notice";
 import { RunInput, type InputLabels } from "./RunInput";
 import { StepRunPanel } from "./StepRunPanel";
@@ -54,9 +55,9 @@ function Trial({
   const progress = useMemo(() => progressOf(stream.events), [stream.events]);
   const end = stream.end;
   const page = (
-    <Link className={styles.page} to={`/live/${handle}`}>
+    <InstanceLink className={styles.page} to={`/live/${handle}`}>
       Open its page
-    </Link>
+    </InstanceLink>
   );
 
   if (end === null) {
@@ -74,7 +75,8 @@ function Trial({
           </Notice>
         ) : (
           <div className={styles.actions}>
-            <button
+            <ActionButton
+              action="run_workflow"
               type="button"
               className={buttons.danger}
               disabled={cancel.isPending}
@@ -83,7 +85,7 @@ function Trial({
               }}
             >
               {cancel.isPending ? "Cancelling…" : "Cancel"}
-            </button>
+            </ActionButton>
             {page}
           </div>
         )}
@@ -185,7 +187,9 @@ export function TryStep({
         />
       )}
       <div className={styles.actions}>
-        <button
+        <ActionButton
+          action="run_workflow"
+
           type="button"
           className={buttons.primary}
           disabled={blocked || !ready.ok || start.isPending}
@@ -200,7 +204,7 @@ export function TryStep({
           }}
         >
           {start.isPending ? "Starting…" : "Try it"}
-        </button>
+        </ActionButton>
         <p className={styles.hint} data-problem={!blocked && !ready.ok ? "true" : undefined}>
           {hint}
         </p>

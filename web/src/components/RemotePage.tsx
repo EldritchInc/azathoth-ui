@@ -23,6 +23,7 @@ import {
   type RelationGroup,
 } from "../remotes";
 import { classNames } from "../classNames";
+import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import list from "./ComponentList.module.css";
 import { Skeleton } from "./ComponentList";
@@ -91,8 +92,9 @@ function Production({
   );
 }
 
-/** What a group's rows can do: pull, while no other pull is under way. */
+/** What a group's rows can do: pull from the remote, while no other pull is under way. */
 interface Pulling {
+  readonly remote: string;
   readonly onPull: (lineages: readonly Lineage[]) => void;
   readonly busy: boolean;
 }
@@ -142,7 +144,10 @@ function ComponentRow({
       </td>
       {pulling !== null && (
         <td>
-          <button
+          <ActionButton
+            action="pull"
+            instance={pulling.remote}
+
             type="button"
             className={buttons.quiet}
             disabled={pulling.busy}
@@ -151,7 +156,7 @@ function ComponentRow({
             }}
           >
             Pull <span className="visually-hidden">{lineageLabel(lineage, name)}</span>
-          </button>
+          </ActionButton>
         </td>
       )}
     </tr>
@@ -248,7 +253,10 @@ function Group({
           {text.label} {count}
         </h2>
         {pullable && group.components.length > 1 && (
-          <button
+          <ActionButton
+            action="pull"
+            instance={pulling.remote}
+
             type="button"
             className={buttons.quiet}
             disabled={pulling.busy}
@@ -257,7 +265,7 @@ function Group({
             }}
           >
             Pull all {String(group.components.length)}
-          </button>
+          </ActionButton>
         )}
       </div>
       <p className={styles.meaning}>{text.meaning}</p>
@@ -382,7 +390,10 @@ function PullOutcome({
             be kept.
           </p>
           <div className={styles.buttons}>
-            <button
+            <ActionButton
+              action="pull"
+              instance={name}
+
               type="button"
               className={buttons.danger}
               onClick={() => {
@@ -391,7 +402,7 @@ function PullOutcome({
               }}
             >
               Pull restricted data
-            </button>
+            </ActionButton>
             <button
               type="button"
               className={buttons.quiet}
@@ -436,6 +447,7 @@ export function RemotePage() {
     pull.mutate({ name, selection, includeRestricted });
   };
   const pulling: Pulling = {
+    remote: name,
     onPull: (lineages) => {
       pullThese(selectionFor(lineages), false);
     },

@@ -1,7 +1,9 @@
 """The editor's server: its JSON API and the web app, behind the guard of ADR 0001.
 
 The API (ADR 0003) answers from one open Azathoth instance, through
-`azathoth.api` only. An `ApiError` answers with its stable code and exact
+`azathoth.api` only. The endpoints that act on an instance are built once,
+for that instance, and mounted at `/api` (ADR 0009); the editor's own, its
+description and its remotes, stay beside them. An `ApiError` answers with its stable code and exact
 message, and a status that says which kind of failure it is. Everything under
 `/` that is not the API is the built web app: a file it built, or, for any
 other address without a file extension, its page, which routes itself. An
@@ -23,18 +25,18 @@ from starlette.staticfiles import StaticFiles
 from starlette.types import Scope
 
 from azathoth_ui import __version__
-from azathoth_ui.browsing import browsing_routes
 from azathoth_ui.catalog import (
     Catalog,
     ModelSource,
     PortfolioSource,
-    catalog_routes,
     model_in_use,
 )
 from azathoth_ui.commands import Shell, command_prefix, local_shell
-from azathoth_ui.live import LiveRuns, live_routes
+from azathoth_ui.instances import instance_routes
+from azathoth_ui.live import LiveRuns
 from azathoth_ui.pages import ASSETS_PATH, not_built_page
 from azathoth_ui.remotes import remote_routes
+from azathoth_ui.scoping import LOCAL_INSTANCE, InstanceContext
 from azathoth_ui.security import API_PREFIX, LocalOnly
 
 PACKAGE_DIRECTORY: Final = Path(__file__).parent
@@ -113,34 +115,22 @@ def http_error(
     return PlainTextResponse(error.detail, status_code=error.status_code, headers=error.headers)
 
 
-def describe_instance(
-    request: Request,
-) -> Response:
-    """`GET /api/instance`: describe the instance the editor serves."""
-
-    instance: api.Azathoth = request.app.state.instance
-
-    return JSONResponse(instance.describe().model_dump(mode="json"))
-
-
 def describe_editor(
     request: Request,
 ) -> Response:
-    """`GET /api/editor`: the editor's version, how its commands name its database, its providers.
+    """`GET /api/editor`: the editor's version, the shell it writes commands for, its providers.
 
-    The providers are named, never their keys.
+    The providers are named, never their keys. What goes before a command
+    belongs to each instance, at its own `/commands` (ADR 0009).
     """
 
-    instance: api.Azathoth = request.app.state.instance
     shell: Shell = request.app.state.shell
     providers: tuple[str, ...] = request.app.state.providers
-    database = instance.describe().database
 
     return JSONResponse(
         {
             "version": __version__,
             "shell": shell,
-            "command_prefix": command_prefix(database, shell),
             "providers": list(providers),
         }
     )
@@ -232,13 +222,19 @@ def build_app(
     """
 
     web = STATIC_DIRECTORY if static_dir is None else static_dir
+    chosen_shell = local_shell() if shell is None else shell
+    local = InstanceContext(
+        name=LOCAL_INSTANCE,
+        instance=instance,
+        catalog=Catalog(instance.models if models is None else models),
+        portfolio=instance.portfolio if portfolio is None else portfolio,
+        live=LiveRuns() if live is None else live,
+        command_prefix=command_prefix(instance.describe().database, chosen_shell),
+    )
     routes: list[BaseRoute] = [
-        Route("/api/instance", describe_instance, methods=["GET"]),
         Route("/api/editor", describe_editor, methods=["GET"]),
-        *browsing_routes(),
-        *catalog_routes(),
-        *live_routes(),
         *remote_routes(),
+        *instance_routes(local, prefix=API_PREFIX.rstrip("/")),
         Route("/api/{rest:path}", no_endpoint),
         Mount(ASSETS_PATH.rstrip("/"), StaticFiles(directory=ASSETS_DIRECTORY)),
     ]
@@ -257,11 +253,9 @@ def build_app(
         },
     )
     app.state.instance = instance
-    app.state.shell = local_shell() if shell is None else shell
+    app.state.local = local
+    app.state.shell = chosen_shell
     app.state.providers = providers
-    app.state.catalog = Catalog(instance.models if models is None else models)
-    app.state.portfolio = instance.portfolio if portfolio is None else portfolio
-    app.state.live = LiveRuns() if live is None else live
     app.state.environ = environ
     app.state.remote_http = remote_http
 

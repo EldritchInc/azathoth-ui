@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.5.0a1
+
+The first pre-release of the editor for Azathoth 1.5, which brings the
+editor to everything the command line does, on its own instance.
+
+- The editor needs Azathoth 1.5, and builds on its first pre-release,
+  1.5.0a1: `make install` and CI name it, so pip takes Azathoth's
+  pre-releases and no other package's.
+- ADR 0009 records how the editor works on any instance. Every endpoint
+  that acts on an instance is built once, for one instance, and mounted at
+  `/api` for the editor's own; every call, query and link in the web app
+  takes its instance from one scope; and from Azathoth 1.6 a remote is
+  served the same way, under its name, with no page built again.
+- `GET /api/commands` gives an instance's name and what goes before an
+  `azathoth` command for it; `/api/editor` no longer carries the prefix.
+- The rail names the instance a page acts on, in its colour, and its
+  switcher lists the local instance and every remote named, each in a
+  colour drawn from its name.
+- Every button that imports, runs, saves, changes the portfolio, pushes or
+  pulls names the action it takes, from Azathoth's ADR 0127 catalog, and
+  disables itself, saying why, wherever that action is refused. On the
+  editor's own instance, every action is allowed.
+
 ## 1.4.0
 
 The first release of the editor, for Azathoth 1.4. It keeps an Azathoth

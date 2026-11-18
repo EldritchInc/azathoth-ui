@@ -1,5 +1,4 @@
 import type { UseMutationResult } from "@tanstack/react-query";
-import { Link } from "react-router";
 
 import type { ApiFailure } from "../api/client";
 import {
@@ -11,7 +10,9 @@ import {
 } from "../api/types";
 import { nameOf } from "../models";
 import type { PortfolioChange } from "../queries";
+import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
+import { InstanceLink } from "./InstanceLink";
 import { Notice } from "./Notice";
 import styles from "./Portfolio.module.css";
 
@@ -42,7 +43,10 @@ export function PortfolioToggle({
   const changing = change.isPending && change.variables.identifier === model.identifier;
 
   return (
-    <button
+    <ActionButton
+      action="authorize_model"
+      subject={model.identifier}
+
       type="button"
       className={styles.toggle}
       aria-pressed={model.authorized}
@@ -61,7 +65,7 @@ export function PortfolioToggle({
         <span className={styles.thumb} />
       </span>
       <span className="visually-hidden">{nameOf(model)} in your local portfolio</span>
-    </button>
+    </ActionButton>
   );
 }
 
@@ -97,7 +101,9 @@ export function PortfolioOutcome({
         <ul className={styles.dependents}>
           {dependents.map((dependent) => (
             <li key={dependent.workflow_id}>
-              <Link to={`/workflows/${dependent.workflow_id}`}>{dependent.workflow_name}</Link>
+              <InstanceLink to={`/workflows/${dependent.workflow_id}`}>
+                {dependent.workflow_name}
+              </InstanceLink>
               <span className={styles.steps}>
                 {dependent.steps.length === 1
                   ? "1 step"
@@ -107,7 +113,10 @@ export function PortfolioOutcome({
           ))}
         </ul>
         <div className={styles.actions}>
-          <button
+          <ActionButton
+            action="authorize_model"
+            subject={variables.identifier}
+
             type="button"
             className={buttons.danger}
             onClick={() => {
@@ -115,7 +124,7 @@ export function PortfolioOutcome({
             }}
           >
             Remove anyway
-          </button>
+          </ActionButton>
           <button
             type="button"
             className={buttons.quiet}

@@ -12,6 +12,7 @@ import { useCallback, useRef, useState } from "react";
 import { MAX_DOCUMENT_BYTES, importDocument } from "./api/client";
 import type { ComponentDetail } from "./api/types";
 import type { Kind } from "./kinds";
+import { scoped, useScope } from "./scope";
 
 /** What became of one file. */
 export type Outcome =
@@ -69,6 +70,7 @@ export function useImporter(kind: Kind): {
   readonly dismiss: (id: number) => void;
 } {
   const client = useQueryClient();
+  const scope = useScope();
   const [outcomes, setOutcomes] = useState<readonly Outcome[]>([]);
   const [busy, setBusy] = useState(false);
   const next = useRef(0);
@@ -107,7 +109,7 @@ export function useImporter(kind: Kind): {
         }
 
         try {
-          const { created, detail } = await importDocument(kind, text);
+          const { created, detail } = await importDocument(kind, text, { base: scope.api });
           settle({ id, fileName, state: "imported", created, detail });
         } catch (error) {
           const message = error instanceof Error ? error.message : FAILED_MESSAGE;
@@ -116,9 +118,9 @@ export function useImporter(kind: Kind): {
       }
 
       setBusy(false);
-      await client.invalidateQueries({ queryKey: [kind] });
+      await client.invalidateQueries({ queryKey: scoped(scope, [kind]) });
     },
-    [client, kind, settle],
+    [client, kind, scope, settle],
   );
 
   const dismiss = useCallback((id: number) => {

@@ -1,9 +1,8 @@
-import { Link } from "react-router";
-
 import { RUNS_LISTED } from "../api/client";
 import type { RunSummary } from "../api/types";
 import { useWorkflowRuns } from "../queries";
 import { duration } from "../running";
+import { InstanceLink } from "./InstanceLink";
 import { RelativeTime } from "./RelativeTime";
 import styles from "./RunHistory.module.css";
 
@@ -43,7 +42,7 @@ export function RunHistory({ workflowId }: { readonly workflowId: string }) {
         <ol className={styles.list}>
           {runs.data.map((run) => (
             <li key={run.run_id}>
-              <Link className={styles.run} to={`/runs/${run.run_id}`}>
+              <InstanceLink className={styles.run} to={`/runs/${run.run_id}`}>
                 <span className={styles.state} data-state={outcome(run).toLowerCase()}>
                   {outcome(run)}
                 </span>
@@ -56,7 +55,7 @@ export function RunHistory({ workflowId }: { readonly workflowId: string }) {
                 </span>
                 {run.invocation_id !== null && <span className={styles.badge}>Production</span>}
                 {run.error !== null && <span className={styles.error}>{run.error.message}</span>}
-              </Link>
+              </InstanceLink>
             </li>
           ))}
         </ol>

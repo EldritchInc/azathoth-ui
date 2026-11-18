@@ -5,6 +5,11 @@
  * `unreachable` when the server does not answer, and `invalid_response` when
  * it answers with something the editor cannot read. An abort is passed on as
  * it is, so a caller that gave up can tell.
+ *
+ * Every call that acts on an instance takes its endpoint from the
+ * `base` its options give, the local instance's `/api` by default (ADR
+ * 0009). The editor's own endpoints, its description and its remotes, are
+ * always at `/api`.
  */
 
 import {
@@ -13,6 +18,7 @@ import {
   isComponentDetail,
   isEditorDescription,
   isErrorBody,
+  isInstanceCommands,
   isInstanceDescription,
   isLiveRun,
   isRunDetail,
@@ -34,6 +40,7 @@ import {
   type ComponentDetail,
   type ComponentImport,
   type EditorDescription,
+  type InstanceCommands,
   type InstanceDescription,
   type LiveRun,
   type RunDetail,
@@ -81,10 +88,22 @@ export class ApiFailure extends Error {
   }
 }
 
-/** How one request is made: the fetch to use, and a signal to give up on it. */
+/** Where the local instance's endpoints are, and the editor's own. */
+export const API_BASE = "/api";
+
+/**
+ * How one request is made: the fetch to use, a signal to give up on it, and,
+ * for a call that acts on an instance, where that instance's endpoints are.
+ */
 export interface RequestOptions {
   readonly fetcher?: typeof fetch;
   readonly signal?: AbortSignal;
+  readonly base?: string;
+}
+
+/** Returns where one instance endpoint is, below the base the options give. */
+function at(options: RequestOptions, path: string): string {
+  return `${options.base ?? API_BASE}${path}`;
 }
 
 function browserFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -143,9 +162,9 @@ export function getJson(path: string, options: RequestOptions = {}): Promise<unk
   return requestJson(path, { method: "GET" }, options);
 }
 
-/** Returns the instance the editor serves: `GET /api/instance`. */
+/** Returns the instance: `GET {base}/instance`. */
 export async function fetchInstance(options: RequestOptions = {}): Promise<InstanceDescription> {
-  const body = await getJson("/api/instance", options);
+  const body = await getJson(at(options, "/instance"), options);
 
   if (!isInstanceDescription(body)) {
     throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
@@ -154,7 +173,21 @@ export async function fetchInstance(options: RequestOptions = {}): Promise<Insta
   return body;
 }
 
-/** Returns the editor and how its commands name its database: `GET /api/editor`. */
+/**
+ * Returns the instance's name, and what goes before an `azathoth` command so
+ * that it acts on that instance, as the server writes it: `GET {base}/commands`.
+ */
+export async function fetchCommands(options: RequestOptions = {}): Promise<InstanceCommands> {
+  const body = await getJson(at(options, "/commands"), options);
+
+  if (!isInstanceCommands(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/** Returns the editor, its shell and its providers: `GET /api/editor`. */
 export async function fetchEditor(options: RequestOptions = {}): Promise<EditorDescription> {
   const body = await getJson("/api/editor", options);
 
@@ -181,17 +214,17 @@ async function fetchItems<T>(
 
 /** Returns every workflow in the editor's instance, at its latest revision. */
 export function fetchWorkflows(options: RequestOptions = {}): Promise<WorkflowSummary[]> {
-  return fetchItems("/api/workflows", isSummary, options);
+  return fetchItems(at(options, "/workflows"), isSummary, options);
 }
 
 /** Returns every tool version in the editor's instance, at its latest revision. */
 export function fetchTools(options: RequestOptions = {}): Promise<ToolSummary[]> {
-  return fetchItems("/api/tools", isToolSummary, options);
+  return fetchItems(at(options, "/tools"), isToolSummary, options);
 }
 
 /** Returns every benchmark in the editor's instance, at its latest revision. */
 export function fetchBenchmarks(options: RequestOptions = {}): Promise<BenchmarkSummary[]> {
-  return fetchItems("/api/benchmarks", isBenchmarkSummary, options);
+  return fetchItems(at(options, "/benchmarks"), isBenchmarkSummary, options);
 }
 
 /** Returns one revision of a component with its document, from its path in the API. */
@@ -227,7 +260,7 @@ export async function importDocument(
   options: RequestOptions = {},
 ): Promise<ComponentImport> {
   const body = await requestJson(
-    `/api/${kind}/import`,
+    at(options, `/${kind}/import`),
     { method: "POST", body: document },
     options,
   );
@@ -241,8 +274,8 @@ export async function importDocument(
 }
 
 /** Returns the path of one model in the API: its identifier's parts, each encoded. */
-export function modelApiPath(identifier: string): string {
-  return `/api/models/${identifier.split("/").map(encodeURIComponent).join("/")}`;
+export function modelApiPath(identifier: string, base: string = API_BASE): string {
+  return `${base}/models/${identifier.split("/").map(encodeURIComponent).join("/")}`;
 }
 
 /**
@@ -254,7 +287,7 @@ export async function fetchModels(
   { refresh = false }: { readonly refresh?: boolean } = {},
   options: RequestOptions = {},
 ): Promise<ModelListing> {
-  const body = await getJson(refresh ? "/api/models?refresh=true" : "/api/models", options);
+  const body = await getJson(at(options, refresh ? "/models?refresh=true" : "/models"), options);
 
   if (!isModelListing(body)) {
     throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
@@ -268,7 +301,7 @@ export async function fetchModel(
   identifier: string,
   options: RequestOptions = {},
 ): Promise<ModelSummary> {
-  const body = await getJson(modelApiPath(identifier), options);
+  const body = await getJson(modelApiPath(identifier, options.base), options);
 
   if (!isModelSummary(body)) {
     throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
@@ -279,7 +312,7 @@ export async function fetchModel(
 
 /** Returns the models the local portfolio authorizes: `GET /api/local/portfolio`. */
 export function fetchPortfolio(options: RequestOptions = {}): Promise<PortfolioEntry[]> {
-  return fetchItems("/api/local/portfolio", isPortfolioEntry, options);
+  return fetchItems(at(options, "/local/portfolio"), isPortfolioEntry, options);
 }
 
 /** Adds one model to the local portfolio: `POST /api/local/portfolio`. */
@@ -288,7 +321,7 @@ export async function addToPortfolio(
   options: RequestOptions = {},
 ): Promise<PortfolioEntry> {
   const body = await requestJson(
-    "/api/local/portfolio",
+    at(options, "/local/portfolio"),
     { method: "POST", body: JSON.stringify({ identifier }) },
     options,
   );
@@ -311,7 +344,7 @@ export async function removeFromPortfolio(
   options: RequestOptions = {},
 ): Promise<PortfolioRemoval> {
   const body = await requestJson(
-    "/api/local/portfolio/remove",
+    at(options, "/local/portfolio/remove"),
     { method: "POST", body: JSON.stringify({ identifier, force }) },
     options,
   );
@@ -370,7 +403,11 @@ export function startRun(
   given: RunGiven,
   options: RequestOptions = {},
 ): Promise<LiveRun> {
-  return liveRunOf("/api/live/runs", JSON.stringify(startBody(workflowId, given)), options);
+  return liveRunOf(
+    at(options, "/live/runs"),
+    JSON.stringify(startBody(workflowId, given)),
+    options,
+  );
 }
 
 /**
@@ -389,27 +426,27 @@ export interface TrialStart {
 
 /** Starts trying one step alone: `POST /api/live/steps`. Returns its live run, running. */
 export function startTrial(start: TrialStart, options: RequestOptions = {}): Promise<LiveRun> {
-  return liveRunOf("/api/live/steps", JSON.stringify(start), options);
+  return liveRunOf(at(options, "/live/steps"), JSON.stringify(start), options);
 }
 
 /** Returns one live run: `GET /api/live/{handle}`. */
 export function fetchLiveRun(handle: string, options: RequestOptions = {}): Promise<LiveRun> {
-  return liveRunOf(`/api/live/${encodeURIComponent(handle)}`, undefined, options);
+  return liveRunOf(at(options, `/live/${encodeURIComponent(handle)}`), undefined, options);
 }
 
 /** Returns every live run the editor remembers, newest first: `GET /api/live`. */
 export function fetchLiveRuns(options: RequestOptions = {}): Promise<LiveRun[]> {
-  return fetchItems("/api/live", isLiveRun, options);
+  return fetchItems(at(options, "/live"), isLiveRun, options);
 }
 
 /** Asks a live run to stop: `POST /api/live/{handle}/cancel`. Returns it as it stands. */
 export function cancelLiveRun(handle: string, options: RequestOptions = {}): Promise<LiveRun> {
-  return liveRunOf(`/api/live/${encodeURIComponent(handle)}/cancel`, "{}", options);
+  return liveRunOf(at(options, `/live/${encodeURIComponent(handle)}/cancel`), "{}", options);
 }
 
 /** Returns the path of a live run's event stream. */
-export function liveEventsPath(handle: string): string {
-  return `/api/live/${encodeURIComponent(handle)}/events`;
+export function liveEventsPath(handle: string, base: string = API_BASE): string {
+  return `${base}/live/${encodeURIComponent(handle)}/events`;
 }
 
 /** How many of a workflow's runs the editor lists at once. */
@@ -421,7 +458,7 @@ export function fetchWorkflowRuns(
   options: RequestOptions = {},
 ): Promise<RunSummary[]> {
   return fetchItems(
-    `/api/workflows/${encodeURIComponent(workflowId)}/runs?limit=${String(RUNS_LISTED)}`,
+    at(options, `/workflows/${encodeURIComponent(workflowId)}/runs?limit=${String(RUNS_LISTED)}`),
     isRunSummary,
     options,
   );
@@ -429,7 +466,7 @@ export function fetchWorkflowRuns(
 
 /** Returns one kept run with its steps: `GET /api/runs/{run_id}`. */
 export async function fetchRun(runId: string, options: RequestOptions = {}): Promise<RunDetail> {
-  const body = await getJson(`/api/runs/${encodeURIComponent(runId)}`, options);
+  const body = await getJson(at(options, `/runs/${encodeURIComponent(runId)}`), options);
 
   if (!isRunDetail(body)) {
     throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
@@ -447,7 +484,7 @@ export async function checkWorkflow(
   options: RequestOptions = {},
 ): Promise<WorkflowCheck> {
   const body = await requestJson(
-    "/api/workflows/check",
+    at(options, "/workflows/check"),
     { method: "POST", body: JSON.stringify(document) },
     options,
   );
@@ -468,7 +505,7 @@ export async function fetchReadiness(
   options: RequestOptions = {},
 ): Promise<WorkflowReadiness> {
   const body = await requestJson(
-    "/api/workflows/readiness",
+    at(options, "/workflows/readiness"),
     { method: "POST", body: JSON.stringify(document) },
     options,
   );
@@ -489,7 +526,7 @@ export async function matchModels(
   options: RequestOptions = {},
 ): Promise<ModelSummary[]> {
   const body = await requestJson(
-    "/api/models/matching",
+    at(options, "/models/matching"),
     { method: "POST", body: JSON.stringify({ requirements }) },
     options,
   );

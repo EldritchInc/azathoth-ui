@@ -2,7 +2,13 @@
  * The three kinds of component the editor browses, and what it calls each.
  */
 
-import { fetchBenchmarks, fetchTools, fetchWorkflows, type RequestOptions } from "./api/client";
+import {
+  API_BASE,
+  fetchBenchmarks,
+  fetchTools,
+  fetchWorkflows,
+  type RequestOptions,
+} from "./api/client";
 import type { BenchmarkSummary, ToolSummary, WorkflowSummary } from "./api/types";
 
 export type Kind = "workflows" | "tools" | "benchmarks";
@@ -74,16 +80,24 @@ export interface ComponentRef {
   readonly version?: string;
 }
 
-function apiBase(kind: Kind, ref: ComponentRef): string {
-  return `/api/${kind}/${encodeURIComponent(ref.id)}`;
+function apiBase(kind: Kind, ref: ComponentRef, base: string): string {
+  return `${base}/${kind}/${encodeURIComponent(ref.id)}`;
 }
 
-/** Returns where the API serves one revision of a component, the latest when none is named. */
-export function detailApiPath(kind: Kind, ref: ComponentRef, revision: number | null): string {
+/**
+ * Returns where an instance's endpoints, at `base`, serve one revision of a
+ * component, the latest when none is named.
+ */
+export function detailApiPath(
+  kind: Kind,
+  ref: ComponentRef,
+  revision: number | null,
+  base: string = API_BASE,
+): string {
   const path =
     kind === "tools"
-      ? `${apiBase(kind, ref)}/versions/${encodeURIComponent(ref.version ?? "")}`
-      : apiBase(kind, ref);
+      ? `${apiBase(kind, ref, base)}/versions/${encodeURIComponent(ref.version ?? "")}`
+      : apiBase(kind, ref, base);
 
   return revision === null ? path : `${path}?revision=${String(revision)}`;
 }
@@ -91,15 +105,15 @@ export function detailApiPath(kind: Kind, ref: ComponentRef, revision: number | 
 /** The most revisions a component's page lists. */
 export const HISTORY_LIMIT = 100;
 
-/** Returns where the API serves a component's history: for a tool, of its one version. */
-export function historyApiPath(kind: Kind, ref: ComponentRef): string {
+/** Returns where an instance's endpoints serve a component's history: of one version, for a tool. */
+export function historyApiPath(kind: Kind, ref: ComponentRef, base: string = API_BASE): string {
   const query = new URLSearchParams({ limit: String(HISTORY_LIMIT) });
 
   if (kind === "tools") {
     query.set("version", ref.version ?? "");
   }
 
-  return `${apiBase(kind, ref)}/history?${query.toString()}`;
+  return `${apiBase(kind, ref, base)}/history?${query.toString()}`;
 }
 
 /** Returns the revision a page's `?revision=` names, or `null` for the latest or anything else. */

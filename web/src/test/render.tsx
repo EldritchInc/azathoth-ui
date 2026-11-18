@@ -4,12 +4,15 @@ import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
 
+import { EVERYTHING, PermissionsContext, type Permissions } from "../permissions";
+import { LOCAL_SCOPE, ScopeContext, type InstanceScope } from "../scope";
 import { SERVER, serving, type Answers } from "./instances";
 
 /**
  * Renders one piece of the editor at one address, with a fresh query client
  * and a fake server answering each API path as `answers` says, or `fetcher`
- * answering every request.
+ * answering every request, acting on `scope`, the local instance by default,
+ * where `permissions` says what may be done, everything by default.
  */
 export function renderAt(
   ui: ReactNode,
@@ -17,10 +20,14 @@ export function renderAt(
     path = "/",
     answers = SERVER,
     fetcher,
+    scope = LOCAL_SCOPE,
+    permissions = EVERYTHING,
   }: {
     readonly path?: string;
     readonly answers?: Answers;
     readonly fetcher?: typeof fetch;
+    readonly scope?: InstanceScope;
+    readonly permissions?: Permissions;
   } = {},
 ): RenderResult {
   vi.stubGlobal("fetch", fetcher ?? serving(answers));
@@ -28,7 +35,11 @@ export function renderAt(
 
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>
+      <ScopeContext.Provider value={scope}>
+        <PermissionsContext.Provider value={permissions}>
+          <MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>
+        </PermissionsContext.Provider>
+      </ScopeContext.Provider>
     </QueryClientProvider>,
   );
 }

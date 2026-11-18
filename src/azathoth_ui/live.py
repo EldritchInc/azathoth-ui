@@ -35,9 +35,10 @@ from azathoth import api
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
-from starlette.routing import BaseRoute, Route
+from starlette.routing import Route
 
 from azathoth_ui.browsing import WHOLE_NUMBER, instance_of, refusal
+from azathoth_ui.scoping import context_of
 
 MAX_RUNNING: Final = 4
 """How many live runs the editor runs at once."""
@@ -294,11 +295,9 @@ class LiveRuns:
 def live_of(
     request: Request,
 ) -> LiveRuns:
-    """Return the editor's live runs."""
+    """Return the live runs the editor keeps for the instance one request acts on."""
 
-    live: LiveRuns = request.app.state.live
-
-    return live
+    return context_of(request).live
 
 
 async def start_body(
@@ -661,16 +660,16 @@ def stream_live(
     return StreamingResponse(messages(run, position(request)), media_type="text/event-stream")
 
 
-def live_routes() -> list[BaseRoute]:
-    """Return the live runs API's routes."""
+def live_routes() -> list[Route]:
+    """Return the live runs endpoints, at their paths below an instance's prefix (ADR 0009)."""
 
     return [
-        Route("/api/live", list_live, methods=["GET"]),
-        Route("/api/live/runs", start_run, methods=["POST"]),
-        Route("/api/live/steps", start_step, methods=["POST"]),
-        Route("/api/live/{handle}", get_live, methods=["GET"]),
-        Route("/api/live/{handle}/events", stream_live, methods=["GET"]),
-        Route("/api/live/{handle}/cancel", cancel_live, methods=["POST"]),
+        Route("/live", list_live, methods=["GET"]),
+        Route("/live/runs", start_run, methods=["POST"]),
+        Route("/live/steps", start_step, methods=["POST"]),
+        Route("/live/{handle}", get_live, methods=["GET"]),
+        Route("/live/{handle}/events", stream_live, methods=["GET"]),
+        Route("/live/{handle}/cancel", cancel_live, methods=["POST"]),
     ]
 
 

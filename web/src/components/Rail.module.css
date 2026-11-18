@@ -9,6 +9,7 @@
   padding: 1.5rem 1rem 1.25rem;
   background: var(--surface);
   border-right: 1px solid var(--line);
+  border-top: 3px solid var(--instance);
 }
 
 .brand {

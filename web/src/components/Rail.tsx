@@ -1,11 +1,15 @@
 import type { ReactNode } from "react";
-import { Link, NavLink } from "react-router";
+import { NavLink } from "react-router";
 
+import { instanceStyle } from "../instanceColour";
 import { DESCRIPTIONS, KINDS, type Kind } from "../kinds";
 import { useList, useLiveRuns, usePortfolio, useRemotes } from "../queries";
+import { LOCAL_SCOPE, useScope } from "../scope";
 import type { ThemeChoice } from "../theme";
 import type { Connection } from "../useInstance";
 import { ConnectionStatus } from "./ConnectionStatus";
+import { InstanceLink, InstanceNavLink } from "./InstanceLink";
+import { InstanceSwitcher } from "./InstanceSwitcher";
 import { Mark } from "./Mark";
 import styles from "./Rail.module.css";
 import { ThemeSwitch } from "./ThemeSwitch";
@@ -74,7 +78,7 @@ function KindLink({ kind }: { readonly kind: Kind }) {
   const description = DESCRIPTIONS[kind];
 
   return (
-    <NavLink className={styles.item} to={description.path}>
+    <InstanceNavLink className={styles.item} to={description.path}>
       <Icon name={kind} />
       <span className={styles.label}>{description.title}</span>
       {list.data !== undefined && (
@@ -82,16 +86,16 @@ function KindLink({ kind }: { readonly kind: Kind }) {
           {list.data.length}
         </span>
       )}
-    </NavLink>
+    </InstanceNavLink>
   );
 }
 
-/** The models link, counting the models the local portfolio holds. */
+/** The models link, counting the models the instance's portfolio holds. */
 function ModelsLink() {
   const portfolio = usePortfolio();
 
   return (
-    <NavLink className={styles.item} to="/models">
+    <InstanceNavLink className={styles.item} to="/models">
       <Icon name="models" />
       <span className={styles.label}>Models</span>
       {portfolio.data !== undefined && (
@@ -99,7 +103,7 @@ function ModelsLink() {
           {portfolio.data.length}
         </span>
       )}
-    </NavLink>
+    </InstanceNavLink>
   );
 }
 
@@ -134,12 +138,12 @@ function RunningLink() {
   }
 
   return (
-    <NavLink className={styles.running} to={`/live/${newest.handle}`}>
+    <InstanceNavLink className={styles.running} to={`/live/${newest.handle}`}>
       <span className={styles.pulse} aria-hidden="true" />
       <span className={styles.label}>
         {running.length === 1 ? "1 run running" : `${String(running.length)} runs running`}
       </span>
-    </NavLink>
+    </InstanceNavLink>
   );
 }
 
@@ -153,18 +157,23 @@ export function Rail({
   readonly theme: ThemeChoice;
   readonly onChooseTheme: (choice: ThemeChoice) => void;
 }) {
+  const scope = useScope();
+
   return (
-    <header className={styles.rail}>
-      <Link className={styles.brand} to="/">
+    <header className={styles.rail} style={instanceStyle(scope.name)}>
+      <InstanceLink className={styles.brand} to="/">
         <Mark className={styles.mark} />
         <span>Azathoth</span>
-      </Link>
+      </InstanceLink>
+      <InstanceSwitcher />
       <nav className={styles.nav} aria-label="Editor">
-        <NavLink className={styles.item} to="/" end>
+        <InstanceNavLink className={styles.item} to="/" end>
           <Icon name="overview" />
           <span className={styles.label}>Overview</span>
-        </NavLink>
-        <p className={styles.section}>Local instance</p>
+        </InstanceNavLink>
+        <p className={styles.section}>
+          {scope.name === LOCAL_SCOPE.name ? "Local instance" : scope.name}
+        </p>
         {KINDS.map((kind) => (
           <KindLink key={kind} kind={kind} />
         ))}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { liveEventsPath } from "./api/client";
 import { isLiveRun, isRunEvent, type LiveRun, type RunEvent } from "./api/types";
 import { queryKeys } from "./queries";
+import { scoped, useScope } from "./scope";
 
 /** A live run's events so far, how it ended once it has, and whether its stream was lost. */
 export interface LiveEvents {
@@ -32,13 +33,14 @@ function parsed(data: unknown): unknown {
  */
 export function useLiveEvents(handle: string): LiveEvents {
   const client = useQueryClient();
+  const scope = useScope();
   const [shown, setShown] = useState<{ readonly handle: string; readonly live: LiveEvents }>({
     handle,
     live: NOTHING_YET,
   });
 
   useEffect(() => {
-    const source = new EventSource(liveEventsPath(handle));
+    const source = new EventSource(liveEventsPath(handle, scope.api));
     let seen = 0;
 
     setShown({ handle, live: NOTHING_YET });
@@ -64,13 +66,13 @@ export function useLiveEvents(handle: string): LiveEvents {
       source.close();
 
       if (isLiveRun(end)) {
-        client.setQueryData(queryKeys.liveRun(handle), end);
+        client.setQueryData(scoped(scope, queryKeys.liveRun(handle)), end);
         setShown((last) =>
           last.handle === handle ? { handle, live: { ...last.live, end } } : last,
         );
       }
-      void client.invalidateQueries({ queryKey: queryKeys.liveList });
-      void client.invalidateQueries({ queryKey: queryKeys.runs });
+      void client.invalidateQueries({ queryKey: scoped(scope, queryKeys.liveList) });
+      void client.invalidateQueries({ queryKey: scoped(scope, queryKeys.runs) });
     });
 
     source.addEventListener("error", () => {
@@ -86,7 +88,7 @@ export function useLiveEvents(handle: string): LiveEvents {
     return () => {
       source.close();
     };
-  }, [handle, client]);
+  }, [handle, client, scope]);
 
   return shown.handle === handle ? shown.live : NOTHING_YET;
 }
