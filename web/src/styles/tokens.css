@@ -35,11 +35,20 @@
   --radius: 10px;
   --rail-width: 15.5rem;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Each instance's colour (ADR 0009): a remote's hue comes from its name. */
+  --instance-local: #6a7194;
+  --instance-lightness: 0.52;
+  --instance-chroma: 0.14;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
+
+    --instance-local: #9aa0bd;
+    --instance-lightness: 0.78;
+    --instance-chroma: 0.12;
 
     --paper: #121731;
     --surface: #161c3a;
@@ -60,6 +69,10 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
+
+  --instance-local: #9aa0bd;
+  --instance-lightness: 0.78;
+  --instance-chroma: 0.12;
 
   --paper: #121731;
   --surface: #161c3a;

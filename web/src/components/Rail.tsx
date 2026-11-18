@@ -1,12 +1,15 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router";
 
+import { instanceStyle } from "../instanceColour";
 import { DESCRIPTIONS, KINDS, type Kind } from "../kinds";
 import { useList, useLiveRuns, usePortfolio, useRemotes } from "../queries";
+import { LOCAL_SCOPE, useScope } from "../scope";
 import type { ThemeChoice } from "../theme";
 import type { Connection } from "../useInstance";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { InstanceLink, InstanceNavLink } from "./InstanceLink";
+import { InstanceSwitcher } from "./InstanceSwitcher";
 import { Mark } from "./Mark";
 import styles from "./Rail.module.css";
 import { ThemeSwitch } from "./ThemeSwitch";
@@ -154,18 +157,23 @@ export function Rail({
   readonly theme: ThemeChoice;
   readonly onChooseTheme: (choice: ThemeChoice) => void;
 }) {
+  const scope = useScope();
+
   return (
-    <header className={styles.rail}>
+    <header className={styles.rail} style={instanceStyle(scope.name)}>
       <InstanceLink className={styles.brand} to="/">
         <Mark className={styles.mark} />
         <span>Azathoth</span>
       </InstanceLink>
+      <InstanceSwitcher />
       <nav className={styles.nav} aria-label="Editor">
         <InstanceNavLink className={styles.item} to="/" end>
           <Icon name="overview" />
           <span className={styles.label}>Overview</span>
         </InstanceNavLink>
-        <p className={styles.section}>Local instance</p>
+        <p className={styles.section}>
+          {scope.name === LOCAL_SCOPE.name ? "Local instance" : scope.name}
+        </p>
         {KINDS.map((kind) => (
           <KindLink key={kind} kind={kind} />
         ))}
