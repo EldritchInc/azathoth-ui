@@ -1,0 +1,20 @@
+/* A label of data: public, internal or restricted, the last standing out. */
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.05rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.label[data-sensitivity="restricted"] {
+  border-color: color-mix(in srgb, var(--rose) 45%, var(--line));
+  background: var(--rose-wash);
+  color: var(--rose);
+}

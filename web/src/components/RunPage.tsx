@@ -14,6 +14,7 @@ import styles from "./LiveRun.module.css";
 import { Notice } from "./Notice";
 import { RelativeTime } from "./RelativeTime";
 import { RunningContext } from "./runningContext";
+import { SensitivityLabel } from "./SensitivityLabel";
 import { WorkflowSteps } from "./WorkflowSteps";
 
 const MISSING_CODES = new Set(["not_found", "invalid_argument"]);
@@ -61,6 +62,7 @@ function KeptRun({ run }: { readonly run: RunDetail }) {
             <span className={styles.pill} data-state={outcome.toLowerCase()}>
               {outcome}
             </span>
+            <SensitivityLabel sensitivity={run.sensitivity} />
             <span className={styles.facts}>
               <RelativeTime iso={run.started_at} /> · {duration(run.started_at, run.completed_at)}
               {run.workflow_revision !== null && ` · revision ${String(run.workflow_revision)}`}

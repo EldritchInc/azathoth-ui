@@ -47,6 +47,15 @@ describe("RunPage", () => {
     ).toHaveAttribute("href", `/workflows/${WORKFLOW.id}`);
   });
 
+  it("says how the run's input was labelled", async () => {
+    open({
+      ...ANSWERS,
+      [`/api/runs/${RUN_DETAIL.run_id}`]: [200, { ...RUN_DETAIL, sensitivity: "public" }],
+    });
+
+    expect(await screen.findByText("Public")).toHaveAttribute("data-sensitivity", "public");
+  });
+
   it("draws the revision it ran, with where each step got to", async () => {
     open();
 

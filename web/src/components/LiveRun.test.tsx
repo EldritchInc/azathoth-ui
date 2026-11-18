@@ -91,6 +91,21 @@ describe("LiveRunPage", () => {
     expect(lastStream().readyState).toBe(2);
   });
 
+  it("shows the label a run was given", async () => {
+    open({ ...ANSWERS, "/api/live/h4ndle": [200, { ...LIVE_RUN, sensitivity: "restricted" }] });
+
+    expect(await screen.findByText("Restricted")).toHaveAttribute("data-sensitivity", "restricted");
+  });
+
+  it("shows no label for a run given none", async () => {
+    open();
+
+    await screen.findByRole("heading", { level: 1, name: "summarize" });
+
+    expect(screen.queryByText("Internal")).toBeNull();
+    expect(screen.queryByText("Restricted")).toBeNull();
+  });
+
   it("shows each event once, however often the stream sends it", async () => {
     open();
     await screen.findByRole("heading", { level: 1, name: "summarize" });

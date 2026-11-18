@@ -6,7 +6,7 @@ import type {
   ProductionRevisionSummary,
   ProductionStepModels,
 } from "../api/types";
-import { callerName, INVOCATION_STATUS_NAMES, SENSITIVITY_NAMES } from "../invocations";
+import { callerName, INVOCATION_STATUS_NAMES } from "../invocations";
 import { modelPath } from "../models";
 import {
   useProduction,
@@ -21,6 +21,7 @@ import { InstanceLink } from "./InstanceLink";
 import { Notice } from "./Notice";
 import styles from "./ProductionTab.module.css";
 import { RelativeTime } from "./RelativeTime";
+import { SensitivityLabel } from "./SensitivityLabel";
 
 /** What a confirm is about: promoting the latest revision, or rolling back to one. */
 type Confirming =
@@ -95,9 +96,7 @@ function Invocation({ invocation }: { readonly invocation: InvocationSummary }) 
           {INVOCATION_STATUS_NAMES[invocation.status]}
         </InstanceLink>
         <span className={styles.caller}>{callerName(invocation.caller_metadata)}</span>
-        <span className={styles.label} data-sensitivity={invocation.sensitivity}>
-          {SENSITIVITY_NAMES[invocation.sensitivity]}
-        </span>
+        <SensitivityLabel sensitivity={invocation.sensitivity} />
       </div>
       <span className={styles.quiet}>
         <RelativeTime iso={invocation.created_at} />

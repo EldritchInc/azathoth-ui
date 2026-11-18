@@ -24,11 +24,6 @@
   font-size: 0.875rem;
 }
 
-.label[data-sensitivity="restricted"] {
-  color: var(--rose);
-  font-weight: 600;
-}
-
 .run {
   display: grid;
   gap: 0.4rem;

@@ -333,6 +333,7 @@ export const BENCHMARK_DOCUMENT = {
       input: { text: "strange aeons" },
       expected: { value: { count: 2 }, comparison: "semantic" },
       metadata: {},
+      sensitivity: "public",
     },
   ],
 };

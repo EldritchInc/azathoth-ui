@@ -8,6 +8,8 @@
  * shown beside the view.
  */
 
+import { isSensitivity, type Sensitivity } from "./api/types";
+
 type Record_ = Readonly<Record<string, unknown>>;
 
 function record(value: unknown): Record_ | null {
@@ -454,6 +456,8 @@ export interface CaseView {
   readonly expected: string;
   readonly comparison: string | null;
   readonly description: string | null;
+  /** Its label, an unlabelled case counting as internal, as Azathoth counts it. */
+  readonly sensitivity: Sensitivity;
 }
 
 /** A benchmark, as a person reads it. */
@@ -474,6 +478,7 @@ export function describeBenchmark(document: Record_): BenchmarkView {
         expected: preview(expected.value),
         comparison: text(expected.comparison),
         description: text(expected.description),
+        sensitivity: isSensitivity(fields.sensitivity) ? fields.sensitivity : "internal",
       };
     }),
   };

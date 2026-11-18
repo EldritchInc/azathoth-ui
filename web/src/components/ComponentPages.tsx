@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router";
 
+import { isBenchmarkSummary } from "../api/types";
 import { readDraft } from "../drafts";
 import { browserStorage } from "../theme";
 import buttons from "./Buttons.module.css";
@@ -93,7 +94,12 @@ export function BenchmarkPage() {
 
   return (
     <DetailPage kind="benchmarks" component={{ id }}>
-      {(detail) => <BenchmarkCases document={detail.document} />}
+      {(detail) => (
+        <BenchmarkCases
+          document={detail.document}
+          sensitivity={isBenchmarkSummary(detail) ? detail.sensitivity : null}
+        />
+      )}
     </DetailPage>
   );
 }

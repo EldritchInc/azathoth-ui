@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "react-router";
 
 import type { InvocationDetail, InvocationRun } from "../api/types";
-import { callerName, INVOCATION_STATUS_NAMES, SENSITIVITY_NAMES } from "../invocations";
+import { callerName, INVOCATION_STATUS_NAMES } from "../invocations";
 import { useDetail, useInvocation, useResumeInvocation } from "../queries";
 import { duration } from "../running";
 import { usePage } from "../scope";
@@ -14,6 +14,7 @@ import { JsonBlock } from "./JsonBlock";
 import page from "./LiveRun.module.css";
 import { Notice } from "./Notice";
 import { RelativeTime } from "./RelativeTime";
+import { SensitivityLabel } from "./SensitivityLabel";
 
 const MISSING_CODES = new Set(["not_found", "invalid_argument"]);
 
@@ -166,8 +167,8 @@ function Invocation({ invocation }: { readonly invocation: InvocationDetail }) {
         </li>
         <li>
           <span className={styles.name}>Label</span>
-          <span className={styles.label} data-sensitivity={invocation.sensitivity}>
-            {SENSITIVITY_NAMES[invocation.sensitivity]}
+          <span className={styles.value}>
+            <SensitivityLabel sensitivity={invocation.sensitivity} />
           </span>
         </li>
         <li>

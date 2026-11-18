@@ -11,6 +11,7 @@ import { DropZone, ImportButton, ImportOutcomes } from "./Importing";
 import { InstanceLink } from "./InstanceLink";
 import { Notice } from "./Notice";
 import { RelativeTime } from "./RelativeTime";
+import { SensitivityLabel } from "./SensitivityLabel";
 import { DraftList } from "./WorkflowEditor";
 
 interface Column {
@@ -31,6 +32,13 @@ const COUNT_COLUMNS: Readonly<Record<Kind, readonly Column[]>> = {
     {
       header: "Cases",
       cell: (benchmark) => (isBenchmarkSummary(benchmark) ? benchmark.case_count : null),
+    },
+    {
+      header: "Label",
+      cell: (benchmark) =>
+        isBenchmarkSummary(benchmark) ? (
+          <SensitivityLabel sensitivity={benchmark.sensitivity} />
+        ) : null,
     },
   ],
 };

@@ -1,13 +1,22 @@
 import { useMemo } from "react";
 
+import type { Sensitivity } from "../api/types";
 import { describeBenchmark } from "../documents";
+import { SensitivityLabel } from "./SensitivityLabel";
 import styles from "./Structure.module.css";
 
-/** A benchmark's cases: each input, what is expected of it, and how that is compared. */
+/**
+ * A benchmark's cases: each input, what is expected of it, how that is
+ * compared, and its label; and the benchmark's own label, its most
+ * sensitive case's (ADR 0011).
+ */
 export function BenchmarkCases({
   document,
+  sensitivity,
 }: {
   readonly document: Readonly<Record<string, unknown>>;
+  /** The benchmark's label, as Azathoth gives it. */
+  readonly sensitivity: Sensitivity | null;
 }) {
   const view = useMemo(() => describeBenchmark(document), [document]);
   const count = view.cases.length;
@@ -18,6 +27,12 @@ export function BenchmarkCases({
         <h2 className={styles.title}>Cases</h2>
         <p className={styles.quiet}>{count === 1 ? "1 case" : `${String(count)} cases`}</p>
       </div>
+      {sensitivity !== null && (
+        <p className={styles.quiet}>
+          The benchmark is labelled <SensitivityLabel sensitivity={sensitivity} />, as its most
+          sensitive case is.
+        </p>
+      )}
       {count === 0 ? (
         <p className={styles.quiet}>This benchmark has no cases the editor can read.</p>
       ) : (
@@ -27,6 +42,7 @@ export function BenchmarkCases({
               <th scope="col">Input</th>
               <th scope="col">Expected</th>
               <th scope="col">Compared</th>
+              <th scope="col">Label</th>
             </tr>
           </thead>
           <tbody>
@@ -45,6 +61,9 @@ export function BenchmarkCases({
                   {benchmarkCase.comparison !== null && (
                     <span className={styles.comparison}>{benchmarkCase.comparison}</span>
                   )}
+                </td>
+                <td>
+                  <SensitivityLabel sensitivity={benchmarkCase.sensitivity} />
                 </td>
               </tr>
             ))}
