@@ -4,7 +4,7 @@ A local editor for [Azathoth](https://github.com/EldritchInc/azathoth)
 workflows, served on your own computer and opened in your browser.
 
 The editor keeps an Azathoth instance of its own, and drives it only through
-Azathoth's public service API, `azathoth.api`, and needs Azathoth 1.4.
+Azathoth's public service API, `azathoth.api`, and needs Azathoth 1.5.
 
 ## Installing it
 
@@ -16,7 +16,7 @@ shows for Azathoth, with Python 3.11 or newer:
 python -m pip install azathoth-ui
 ```
 
-pip brings Azathoth 1.4 with it, from PyPI.
+pip brings Azathoth 1.5 with it, from PyPI.
 
 ## Running it
 
@@ -63,6 +63,16 @@ on every computer. Its switcher lists your instance and every remote you
 name, and every button that changes something names what it would do, so a
 remote that may refuse it can disable it and say why
 ([ADR 0009](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0009-one-editor-any-instance.md)).
+A workflow's page has three tabs: its revisions, its runs, and its
+production. The Production tab says what production runs now, on which
+models, and who put it there; lists every production revision, with "Roll
+back to this" on each earlier one; and lists the workflow's invocations,
+each with its outcome, its caller and its label. Promoting and rolling back
+each ask first, naming the instance they change. Invoke runs the workflow
+through production as a live run, with an idempotency key if you name one,
+and every invocation has a page of its own, where one left incomplete can
+be resumed
+([ADR 0010](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0010-production-in-the-editor.md)).
 [ADR 0001](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0001-local-server-security.md) explains how the server
 keeps other sites and other users out.
 

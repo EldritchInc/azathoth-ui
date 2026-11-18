@@ -31,9 +31,10 @@ other. Production is a third view of the same workflow, and the longest.
 
 - **A workflow's page has tabs, each its own route.** Revisions at
   `/workflows/:id`, so every existing link still lands where it did; Runs
-  at `/workflows/:id/runs`; Production at `/workflows/:id/production`. One
-  layout route holds the workflow's header and the tab bar, and each tab
-  renders below it. The tabs are instance links, so each is marked current
+  at `/workflows/:id/runs`; Production at `/workflows/:id/production`. The
+  three routes render the same workflow page, each naming its tab, so the
+  page draws the header and the tab bar once and only what is below them
+  changes. The tabs are instance links, so each is marked current
   by its address, and under a remote's pages each is that remote's.
   `?revision=` belongs to the Revisions tab alone. Editing, running and
   invoking stay full pages of their own: `/edit`, `/run` and `/invoke`.

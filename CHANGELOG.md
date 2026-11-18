@@ -22,6 +22,31 @@ editor to everything the command line does, on its own instance.
   pulls names the action it takes, from Azathoth's ADR 0127 catalog, and
   disables itself, saying why, wherever that action is refused. On the
   editor's own instance, every action is allowed.
+- ADR 0010 records how the editor shows and changes production.
+- A workflow's page has tabs, each its own address: Revisions at
+  `/workflows/:id`, Runs at `/workflows/:id/runs`, and Production at
+  `/workflows/:id/production`.
+- The Production tab shows what production runs now, its revision, who
+  promoted or rolled it back and when, and each prompt step's models; every
+  production revision, newest first, the active one marked; and the
+  workflow's invocations, each with its outcome, its caller, its
+  sensitivity label and when it was made.
+- Promote and Roll back ask first, naming the instance they change and
+  the models a rollback restores. A rollback refused because a model is no
+  longer authorized links to that model's page.
+- `/workflows/:id/invoke` invokes a workflow in production as a live run,
+  on text, JSON or a file, with an idempotency key if one is named, as the
+  editor's caller, `{"client": "azathoth-ui"}`. The live-run page shows an
+  invocation's outcome: its result or production's code, whether it was
+  replayed under its key, and where it is kept.
+- `/invocations/:id` shows one invocation: its caller, label, key, input
+  and result, any error with its code, and its run; an incomplete one can
+  be resumed there, as a live run.
+- The server serves production and invocations at the instance's
+  endpoints: `/workflows/{id}/production`, `.../production/revisions`,
+  `.../promote`, `.../rollback`, `.../invocations`, `/invocations/{id}`,
+  `/live/invocations` and `/live/invocations/{id}/resume` (ADR 0003).
+  `workflow_result_missing` answers 422, and `candidate_unavailable` 409.
 
 ## 1.4.0
 
