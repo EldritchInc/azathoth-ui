@@ -6,6 +6,7 @@ import type { ModelSummary } from "../api/types";
 import {
   BEDROCK_MODEL,
   EDITOR,
+  LARGE_ENTRY,
   LARGE_MODEL,
   LISTED_AT,
   SERVER,
@@ -74,7 +75,7 @@ function portfolioServer({
     }
     if (url.pathname === "/api/local/portfolio" && method === "POST") {
       portfolio.add(identifier);
-      return answering(201, { identifier, provider: "p", model: "m", command: "c" })(input, init);
+      return answering(201, { ...LARGE_ENTRY, identifier })(input, init);
     }
     if (url.pathname === "/api/local/portfolio/remove") {
       if (inUse.includes(identifier) && force !== true) {

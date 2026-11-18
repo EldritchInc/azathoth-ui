@@ -85,6 +85,7 @@ export const BENCHMARK: BenchmarkSummary = {
   version: "1.0.0",
   description: "Count the words in a text.",
   case_count: 1,
+  sensitivity: "internal",
   revision: {
     number: 1,
     content_digest: "0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0",
@@ -153,6 +154,10 @@ export const LARGE_ENTRY: PortfolioEntry = {
   identifier: LARGE_MODEL.identifier,
   provider: LARGE_MODEL.provider,
   model: LARGE_MODEL.model,
+  data_policy: { retains_data: "unknown", trains_on_data: "unknown" },
+  receives_restricted: false,
+  policy_declared_by: null,
+  policy_declared_at: null,
   command: LARGE_MODEL.command,
 };
 
