@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
+import type { Sensitivity } from "../api/types";
 import { givenOf, NEW_DRAFT, type InputDraft } from "../runInput";
 import { useDetail, useInvoke, useProduction } from "../queries";
 import { instanceLabel, usePage, useScope } from "../scope";
@@ -11,6 +12,7 @@ import styles from "./InvokeWorkflow.module.css";
 import { Notice } from "./Notice";
 import { RunInput } from "./RunInput";
 import page from "./RunWorkflow.module.css";
+import { SensitivityPicker } from "./SensitivityPicker";
 
 /**
  * `/workflows/:id/invoke`: invoke a workflow in production, as the editor
@@ -28,6 +30,8 @@ export function InvokeWorkflow() {
   const invoke = useInvoke();
   const [draft, setDraft] = useState<InputDraft>(NEW_DRAFT);
   const [key, setKey] = useState("");
+  const [chosen, setChosen] = useState<Sensitivity | null>(null);
+  const sensitivity = draft.mode === "none" ? null : chosen;
   const keyId = useId();
   const hintId = useId();
   const { given } = givenOf(draft);
@@ -94,8 +98,8 @@ export function InvokeWorkflow() {
 
           invoke.mutate(
             named === ""
-              ? { workflowId: id, given }
-              : { workflowId: id, given, idempotencyKey: named },
+              ? { workflowId: id, given, sensitivity }
+              : { workflowId: id, given, sensitivity, idempotencyKey: named },
             {
               onSuccess: (run) => {
                 void navigate(pageOf(`/live/${run.handle}`));
@@ -105,6 +109,11 @@ export function InvokeWorkflow() {
         }}
       >
         <RunInput draft={draft} onChange={setDraft} />
+        <SensitivityPicker
+          value={sensitivity}
+          onChange={setChosen}
+          disabled={draft.mode === "none"}
+        />
         <div className={styles.field}>
           <label className={styles.label} htmlFor={keyId}>
             Idempotency key

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { isStepTrial } from "../api/types";
+import { isStepTrial, type Sensitivity } from "../api/types";
 import type { JsonObject } from "../editing";
 import { useCancelRun, useTryStep } from "../queries";
 import { keptStepRun, liveStepRun, progressOf, type InputMode } from "../running";
@@ -19,6 +19,7 @@ import buttons from "./Buttons.module.css";
 import { InstanceLink } from "./InstanceLink";
 import { Notice } from "./Notice";
 import { RunInput, type InputLabels } from "./RunInput";
+import { SensitivityPicker } from "./SensitivityPicker";
 import { StepRunPanel } from "./StepRunPanel";
 import styles from "./TryStep.module.css";
 
@@ -150,6 +151,7 @@ export function TryStep({
   const inputs = useMemo(() => trialInputs(document, id), [document, id]);
   const [draft, setDraft] = useState<TrialDraft>(NEW_TRIAL);
   const [handle, setHandle] = useState<string | null>(null);
+  const [sensitivity, setSensitivity] = useState<Sensitivity | null>(null);
   const start = useTryStep();
   const ready = trialStart(document, id, inputs, draft);
   const hint = blocked
@@ -186,6 +188,7 @@ export function TryStep({
           }}
         />
       )}
+      <SensitivityPicker value={sensitivity} onChange={setSensitivity} compact />
       <div className={styles.actions}>
         <ActionButton
           action="run_workflow"
@@ -195,7 +198,7 @@ export function TryStep({
           disabled={blocked || !ready.ok || start.isPending}
           onClick={() => {
             if (ready.ok) {
-              start.mutate(ready.start, {
+              start.mutate(sensitivity === null ? ready.start : { ...ready.start, sensitivity }, {
                 onSuccess: (run) => {
                   setHandle(run.handle);
                 },

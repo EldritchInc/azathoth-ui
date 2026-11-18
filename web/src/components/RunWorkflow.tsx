@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
-import type { WorkflowReadiness } from "../api/types";
+import type { Sensitivity, WorkflowReadiness } from "../api/types";
 import type { JsonObject } from "../editing";
 import { givenOf, NEW_DRAFT, type InputDraft } from "../runInput";
 import { useDetail, useReadiness, useStartRun } from "../queries";
@@ -13,6 +13,7 @@ import { Notice } from "./Notice";
 import { ReadinessList } from "./Readiness";
 import { RunInput } from "./RunInput";
 import styles from "./RunWorkflow.module.css";
+import { SensitivityPicker } from "./SensitivityPicker";
 
 function PlayIcon() {
   return (
@@ -26,9 +27,11 @@ function PlayIcon() {
 function Readiness({
   readiness,
   document,
+  couldUse,
 }: {
   readonly readiness: WorkflowReadiness;
   readonly document: JsonObject;
+  readonly couldUse: ReadonlyMap<string, readonly string[]>;
 }) {
   return (
     <section
@@ -39,7 +42,7 @@ function Readiness({
       <h2 id="readiness-heading" className={styles.readinessTitle}>
         {readiness.ready ? "Ready to run here" : "It can’t run here now"}
       </h2>
-      <ReadinessList readiness={readiness} document={document} />
+      <ReadinessList readiness={readiness} document={document} couldUse={couldUse} />
     </section>
   );
 }
@@ -49,7 +52,10 @@ function Readiness({
  * live run of the editor's server (ADR 0007), shown on its own page as it
  * runs; leaving that page never stops it. Azathoth is asked first whether
  * each step could run here now, and the run waits until it could; when it
- * can't be asked, the run is left to try.
+ * can't be asked, the run is left to try. Its input is labelled as chosen,
+ * and readiness is asked for that label; a restricted run that can't run
+ * names the models its steps could use once their policy is declared
+ * (ADR 0011).
  */
 export function RunWorkflow() {
   const { id = "" } = useParams();
@@ -58,10 +64,24 @@ export function RunWorkflow() {
   const detail = useDetail("workflows", { id }, null);
   const start = useStartRun();
   const [draft, setDraft] = useState<InputDraft>(NEW_DRAFT);
+  const [chosen, setChosen] = useState<Sensitivity | null>(null);
   const { given } = givenOf(draft);
+  const sensitivity = draft.mode === "none" ? null : chosen;
   const name = detail.data?.name ?? id;
   const document = (detail.data?.document ?? null) as JsonObject | null;
-  const readiness = useReadiness(document, { enabled: document !== null });
+  const readiness = useReadiness(document, { enabled: document !== null, sensitivity });
+  const unrestricted = useReadiness(document, {
+    enabled: document !== null && sensitivity === "restricted",
+  });
+  const couldUse = useMemo(
+    () =>
+      new Map(
+        sensitivity === "restricted"
+          ? (unrestricted.data?.steps ?? []).map((step) => [step.step_id, step.models] as const)
+          : [],
+      ),
+    [sensitivity, unrestricted.data],
+  );
   const checking = document !== null && readiness.isPending;
   const blocked = readiness.data?.ready === false;
 
@@ -93,7 +113,7 @@ export function RunWorkflow() {
 
           if (given !== null && !start.isPending) {
             start.mutate(
-              { workflowId: id, given },
+              { workflowId: id, given, sensitivity },
               {
                 onSuccess: (run) => {
                   void navigate(page(`/live/${run.handle}`));
@@ -104,13 +124,18 @@ export function RunWorkflow() {
         }}
       >
         <RunInput draft={draft} onChange={setDraft} />
+        <SensitivityPicker
+          value={sensitivity}
+          onChange={setChosen}
+          disabled={draft.mode === "none"}
+        />
         {checking && (
           <p className={styles.checking} role="status">
             Asking Azathoth whether each step could run here…
           </p>
         )}
         {readiness.data !== undefined && document !== null && (
-          <Readiness readiness={readiness.data} document={document} />
+          <Readiness readiness={readiness.data} document={document} couldUse={couldUse} />
         )}
         {readiness.isError && (
           <Notice title="Couldn't ask whether it could run here" tone="note">

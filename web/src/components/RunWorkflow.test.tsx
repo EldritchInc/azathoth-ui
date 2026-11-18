@@ -1,10 +1,11 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { Route, Routes } from "react-router";
 import { describe, expect, it } from "vitest";
 
 import { SERVER, WORKFLOW, urlOf, type Answers } from "../test/instances";
 import { renderAt } from "../test/render";
 import { LIVE_RUN, NOT_READY, READY, RUN_WORKFLOW } from "../test/runs";
+import { RESTRICTED_NOT_READY } from "../test/sensitivity";
 import { RunWorkflow } from "./RunWorkflow";
 
 const ANSWERS: Answers = {
@@ -43,6 +44,54 @@ function open(answers: Answers = ANSWERS) {
   );
 
   return sent;
+}
+
+/**
+ * Opens the run page with a server that answers readiness for restricted
+ * input with `restricted`, and otherwise as ready; returns what each start sent.
+ */
+function openLabelled(restricted: unknown = RESTRICTED_NOT_READY) {
+  const sent: unknown[] = [];
+  const fetcher: typeof fetch = (input, init) => {
+    const url = urlOf(input);
+
+    if (url.pathname === "/api/live/runs" && typeof init?.body === "string") {
+      sent.push(JSON.parse(init.body));
+    }
+
+    const [status, body] =
+      url.pathname === "/api/live/runs"
+        ? [201, LIVE_RUN]
+        : url.pathname === "/api/workflows/readiness" && url.search === "?sensitivity=restricted"
+          ? [200, restricted]
+          : (ANSWERS[url.pathname] ?? [404, {}]);
+
+    return Promise.resolve(
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+  };
+
+  renderAt(
+    <Routes>
+      <Route path="/workflows/:id/run" element={<RunWorkflow />} />
+      <Route path="/live/:handle" element={<p>The live run</p>} />
+    </Routes>,
+    { path: `/workflows/${WORKFLOW.id}/run`, fetcher },
+  );
+
+  return sent;
+}
+
+/** Chooses one label for the run's input. */
+function label(name: string) {
+  fireEvent.click(
+    within(screen.getByRole("radiogroup", { name: "The input's label" })).getByRole("radio", {
+      name,
+    }),
+  );
 }
 
 /** Runs it, once Azathoth has said it could run here. */
@@ -157,6 +206,68 @@ describe("RunWorkflow", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Remove" }));
 
     expect(screen.getByText("Drop a file here, or choose one")).toBeVisible();
+  });
+
+  it("labels the run's input with the label chosen", async () => {
+    const sent = openLabelled(READY);
+    await screen.findByRole("heading", { level: 1, name: "Run summarize" });
+
+    fireEvent.change(screen.getByLabelText("The run's input, as text"), {
+      target: { value: "A chart." },
+    });
+    label("Restricted");
+    await run();
+
+    await screen.findByText("The live run");
+
+    expect(sent).toEqual([
+      { workflow_id: WORKFLOW.id, input: "A chart.", sensitivity: "restricted" },
+    ]);
+  });
+
+  it("won't label a run that is given nothing", async () => {
+    const sent = open();
+    await screen.findByRole("heading", { level: 1, name: "Run summarize" });
+
+    label("Public");
+    fireEvent.click(screen.getByRole("radio", { name: "Nothing" }));
+
+    expect(
+      within(screen.getByRole("radiogroup", { name: "The input's label" })).getByRole("radio", {
+        name: "Public",
+      }),
+    ).toBeDisabled();
+
+    await run();
+    await screen.findByText("The live run");
+
+    expect(sent).toEqual([{ workflow_id: WORKFLOW.id }]);
+  });
+
+  it("asks again for restricted input, and names the models whose policy would let it run", async () => {
+    openLabelled();
+    await screen.findByRole("heading", { name: "Ready to run here" });
+
+    label("Restricted");
+
+    expect(await screen.findByRole("heading", { name: "It can’t run here now" })).toBeVisible();
+    expect(screen.getByText(/cannot receive restricted input/)).toBeVisible();
+
+    const declare = await screen.findByText(/could run on restricted input/);
+
+    expect(within(declare).getByRole("link", { name: "openai/gpt-large" })).toHaveAttribute(
+      "href",
+      "/models/openai/gpt-large",
+    );
+    expect(within(declare).getByRole("link", { name: "openai/gpt-small" })).toHaveAttribute(
+      "href",
+      "/models/openai/gpt-small",
+    );
+    expect(screen.getByRole("button", { name: "Run" })).toBeDisabled();
+
+    label("Internal");
+
+    expect(await screen.findByRole("heading", { name: "Ready to run here" })).toBeVisible();
   });
 
   it("says on what each step would run, once Azathoth has said it could", async () => {

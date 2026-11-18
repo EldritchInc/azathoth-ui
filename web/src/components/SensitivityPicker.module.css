@@ -1,0 +1,22 @@
+/* Choosing the label of what a run, an invocation or a tried step is given. */
+
+.hint {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.hint[data-label="restricted"] {
+  color: var(--rose);
+}
+
+.mode[data-label="restricted"][aria-checked="true"] {
+  border-color: color-mix(in srgb, var(--rose) 50%, var(--line));
+  background: var(--rose-wash);
+  color: var(--rose);
+}
+
+.mode:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}

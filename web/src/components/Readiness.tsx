@@ -1,7 +1,30 @@
+import { Fragment } from "react";
+
 import type { WorkflowReadiness } from "../api/types";
 import { idOf, stepsOf, type JsonObject } from "../editing";
+import { modelPath } from "../models";
 import { titleOf } from "../problems";
+import { InstanceLink } from "./InstanceLink";
 import styles from "./Readiness.module.css";
+
+/**
+ * The models a step that can't run on restricted input could otherwise run
+ * on, each linked to its page, where its policy can be declared (ADR 0011).
+ */
+function Declare({ models }: { readonly models: readonly string[] }) {
+  return (
+    <span className={styles.declare}>
+      Declare that{" "}
+      {models.map((model, index) => (
+        <Fragment key={model}>
+          {index > 0 && (index === models.length - 1 ? " or " : ", ")}
+          <InstanceLink to={modelPath(model)}>{model}</InstanceLink>
+        </Fragment>
+      ))}{" "}
+      neither retains nor trains on data, and it could run on restricted input.
+    </span>
+  );
+}
 
 /** Says what one ready step would run on: its first model and how many more, or its tool. */
 function runsOn(models: readonly string[], kind: string): string {
@@ -23,9 +46,12 @@ function runsOn(models: readonly string[], kind: string): string {
 export function ReadinessList({
   readiness,
   document,
+  couldUse,
 }: {
   readonly readiness: WorkflowReadiness;
   readonly document: JsonObject;
+  /** For restricted input: the models each step could run on, were its input not restricted. */
+  readonly couldUse?: ReadonlyMap<string, readonly string[]>;
 }) {
   const titles = new Map(stepsOf(document).map((step) => [idOf(step), titleOf(step)]));
 
@@ -40,6 +66,9 @@ export function ReadinessList({
           <span className={styles.detail}>
             {step.ready ? runsOn(step.models, step.kind) : (step.problem ?? "It can't run here.")}
           </span>
+          {!step.ready && (couldUse?.get(step.step_id)?.length ?? 0) > 0 && (
+            <Declare models={couldUse?.get(step.step_id) ?? []} />
+          )}
         </li>
       ))}
     </ul>

@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { lastStream, stubEventSource } from "../test/eventSource";
@@ -120,6 +120,34 @@ describe("TryStep", () => {
       "href",
       `/live/${TRYING.handle}`,
     );
+  });
+
+  it("labels everything the step is given with the label chosen", async () => {
+    const sent = open(SELECT);
+
+    fireEvent.change(screen.getByLabelText("The run's input, as text"), {
+      target: { value: "A chart." },
+    });
+    fireEvent.click(
+      within(screen.getByRole("radiogroup", { name: "The input's label" })).getByRole("radio", {
+        name: "Restricted",
+      }),
+    );
+    tryIt();
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    expect(sent).toEqual([
+      {
+        document: VALID_DOCUMENT,
+        step_id: SELECT,
+        inputs: {},
+        files: {},
+        input: "A chart.",
+        sensitivity: "restricted",
+      },
+    ]);
   });
 
   it("cancels a try that is running", async () => {
