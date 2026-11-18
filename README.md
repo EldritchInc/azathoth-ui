@@ -73,6 +73,14 @@ through production as a live run, with an idempotency key if you name one,
 and every invocation has a page of its own, where one left incomplete can
 be resumed
 ([ADR 0010](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0010-production-in-the-editor.md)).
+Run, Invoke and a step's trial label what they are given public, internal
+or restricted, and every run, invocation, benchmark and case shows its
+label. A restricted run needs models declared to neither retain nor train
+on data; when none of a step's models is, the run page says which ones
+could be, and a model's page declares its policy, saying who declared it
+and when. Restricted data stays hidden until you choose to show it, every
+time a page is opened
+([ADR 0011](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0011-sensitivity-and-model-policy-in-the-editor.md)).
 [ADR 0001](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0001-local-server-security.md) explains how the server
 keeps other sites and other users out.
 

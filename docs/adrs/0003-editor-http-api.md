@@ -55,8 +55,9 @@ The table names each at the editor's own instance.
 | `GET /api/local/portfolio` | The models the local portfolio authorizes, oldest first |
 | `POST /api/local/portfolio` | Authorizes one model locally, from `{"identifier"}`: 201 |
 | `POST /api/local/portfolio/remove` | Stops authorizing one model locally, from `{"identifier", "force"}` |
+| `POST /api/local/portfolio/policy` | Declares what one authorized model's provider does with data, from `{"identifier", "retains_data", "trains_on_data"}`, each `yes`, `no` or `unknown`, and answers with its entry, who declared it and when ([ADR 0011](0011-sensitivity-and-model-policy-in-the-editor.md)) |
 | `POST /api/workflows/check` | Every reason importing a workflow document would refuse it, saving nothing ([ADR 0007](0007-running-and-watching-workflows.md)) |
-| `POST /api/workflows/readiness` | Whether each step of a workflow document could run here now, asking the providers |
+| `POST /api/workflows/readiness?sensitivity=` | Whether each step of a workflow document could run here now, asking the providers; with a label, for input so labelled |
 | `GET /api/workflows/{id}/runs?limit=` | A workflow's kept runs, newest first |
 | `GET /api/runs/{run_id}` | One kept run, with its input, its result and its steps |
 | `GET /api/workflows/{id}/production` | `{"production"}`: what production runs now, or `null` ([ADR 0010](0010-production-in-the-editor.md)) |
@@ -65,10 +66,10 @@ The table names each at the editor's own instance.
 | `POST /api/workflows/{id}/rollback` | Restores an earlier production revision, the previous one or `{"to"}`: 201 |
 | `GET /api/workflows/{id}/invocations?limit=` | Its invocations, newest first |
 | `GET /api/invocations/{id}` | One invocation, with its input, its outcome and its run |
-| `POST /api/models/matching` | The local portfolio's models that meet `{"requirements"}`, in the order a run tries them |
-| `POST /api/live/steps` | Starts trying one step of a document alone, from `{"document", "step_id", "inputs", "files", "input" \| "file"}`: 201 |
-| `POST /api/live/runs` | Starts a live run of a workflow, from `{"workflow_id", "input" \| "file"}`: 201 ([ADR 0007](0007-running-and-watching-workflows.md)) |
-| `POST /api/live/invocations` | Invokes a workflow in production as a live run, from `{"workflow_id", "input" \| "file", "idempotency_key"}`, the key optional: 201 ([ADR 0010](0010-production-in-the-editor.md)) |
+| `POST /api/models/matching` | The local portfolio's models that meet `{"requirements", "sensitivity"}`, in the order a run tries them; with a label, only those that may receive input so labelled |
+| `POST /api/live/steps` | Starts trying one step of a document alone, from `{"document", "step_id", "inputs", "files", "input" \| "file", "sensitivity"}`: 201 |
+| `POST /api/live/runs` | Starts a live run of a workflow, from `{"workflow_id", "input" \| "file", "sensitivity"}`: 201 ([ADR 0007](0007-running-and-watching-workflows.md)) |
+| `POST /api/live/invocations` | Invokes a workflow in production as a live run, from `{"workflow_id", "input" \| "file", "idempotency_key", "sensitivity"}`, the key and the label optional: 201 ([ADR 0010](0010-production-in-the-editor.md)) |
 | `POST /api/live/invocations/{id}/resume` | Resumes an incomplete invocation as a live run: 201, or 409 once it has completed |
 | `GET /api/live` | Every live run the editor remembers, newest first |
 | `GET /api/live/{handle}` | One live run: where it is, and how it ended |
@@ -99,6 +100,12 @@ The table names each at the editor's own instance.
   identical to the latest revision makes none, as Azathoth 1.4.0b1 decides
   (its ADR 0122): 200, `created` false, and that revision. A revision that
   returns to an earlier one says which, as `identical_to`.
+- **A label is optional, and only Azathoth's.** Every start, readiness and
+  match takes a `sensitivity` of `public`, `internal` or `restricted`, or
+  none; any other value is refused as `invalid_argument` (422), before
+  Azathoth is asked, and a run given a label but no input is refused with
+  Azathoth's own message. A live run describes the label it was given, or
+  `null` ([ADR 0011](0011-sensitivity-and-model-policy-in-the-editor.md)).
 - **Tool versions live under `/versions/`,** so that no version name, such as
   `history`, can be mistaken for another endpoint.
 - **Commands name the editor's database.** `GET /api/commands` gives the

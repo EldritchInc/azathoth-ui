@@ -44,9 +44,12 @@ remote.
   refuse any other value as `invalid_argument` (422) before Azathoth is
   asked. A live run describes the label it was given.
 
-- **Readiness and matching follow the label.** `POST /workflows/readiness`
-  and `POST /models/matching` take the same `sensitivity`, and the run
-  page asks again whenever it changes. A restricted run whose step no
+- **Readiness and matching follow the label.** `POST
+  /workflows/readiness?sensitivity=` takes it in its query, since its body
+  is the document alone, and `POST /models/matching` beside the
+  requirements, as `{"requirements", "sensitivity"}`; each refuses any
+  other value as the starts do, and the run page asks again whenever the
+  label changes. A restricted run whose step no
   authorized model may receive cannot be started. Its readiness says so,
   in Azathoth's words, and links to each model that step could otherwise
   use, where its policy can be declared.
