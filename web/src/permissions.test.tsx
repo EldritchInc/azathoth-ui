@@ -82,7 +82,7 @@ describe("ActionButton", () => {
 
     renderAt(
       <>
-        <ActionButton type="button" action="run_workflow" resource="w">
+        <ActionButton type="button" action="run_workflow" subject="w">
           Run
         </ActionButton>
         <ActionButton type="button" action="push" instance="origin">

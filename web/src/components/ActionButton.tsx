@@ -2,10 +2,14 @@ import { useId, type ButtonHTMLAttributes } from "react";
 
 import { useAllowed, type Action } from "../permissions";
 
-/** A button's own attributes, and the action it takes, on what, and on which instance. */
+/**
+ * A button's own attributes, and the action it takes, on what, and on which
+ * instance. What it acts on is its `subject`, since HTML's own attributes
+ * already have a `resource`.
+ */
 export type ActionButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   readonly action: Action;
-  readonly resource?: string | null;
+  readonly subject?: string | null;
   readonly instance?: string;
 };
 
@@ -18,14 +22,14 @@ export type ActionButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
  */
 export function ActionButton({
   action,
-  resource = null,
+  subject = null,
   instance,
   disabled,
   title,
   children,
   ...rest
 }: ActionButtonProps) {
-  const allowance = useAllowed(action, resource, instance);
+  const allowance = useAllowed(action, subject, instance);
   const reason = allowance.allowed ? null : allowance.reason;
   const reasonId = useId();
 

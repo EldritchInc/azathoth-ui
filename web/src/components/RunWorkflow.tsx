@@ -125,7 +125,7 @@ export function RunWorkflow() {
         <div className={styles.actions}>
           <ActionButton
             action="run_workflow"
-            resource={id}
+            subject={id}
 
             type="submit"
             className={buttons.primary}

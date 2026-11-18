@@ -45,7 +45,7 @@ export function PortfolioToggle({
   return (
     <ActionButton
       action="authorize_model"
-      resource={model.identifier}
+      subject={model.identifier}
 
       type="button"
       className={styles.toggle}
@@ -115,7 +115,7 @@ export function PortfolioOutcome({
         <div className={styles.actions}>
           <ActionButton
             action="authorize_model"
-            resource={variables.identifier}
+            subject={variables.identifier}
 
             type="button"
             className={buttons.danger}

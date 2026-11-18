@@ -66,7 +66,7 @@ function PortfolioPanel({
       </p>
       <ActionButton
         action="authorize_model"
-        resource={identifier}
+        subject={identifier}
 
         type="button"
         className={held ? buttons.quiet : buttons.primary}

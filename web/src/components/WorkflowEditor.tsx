@@ -505,7 +505,7 @@ function Editor({
           )}
           <ActionButton
             action="import_workflow"
-            resource={id}
+            subject={id}
 
             type="button"
             className={buttons.primary}
