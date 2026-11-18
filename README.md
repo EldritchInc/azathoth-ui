@@ -57,6 +57,12 @@ Ship, on every workflow, tool and benchmark, pushes it to a remote after
 saying where it stands, and reports Azathoth's warnings of what would stop
 it running there
 ([ADR 0008](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0008-shipping-to-a-remote.md)).
+The rail always says which instance you are acting on, in its colour: your
+own local one, or a remote, each with a colour drawn from its name, the same
+on every computer. Its switcher lists your instance and every remote you
+name, and every button that changes something names what it would do, so a
+remote that may refuse it can disable it and say why
+([ADR 0009](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0009-one-editor-any-instance.md)).
 [ADR 0001](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0001-local-server-security.md) explains how the server
 keeps other sites and other users out.
 
