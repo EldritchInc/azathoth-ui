@@ -1,9 +1,9 @@
 import { useId, useRef, useState, type DragEvent, type ReactNode } from "react";
-import { Link } from "react-router";
 
 import type { Outcome } from "../importing";
 import { DESCRIPTIONS, detailPath, type Kind } from "../kinds";
 import styles from "./Importing.module.css";
+import { InstanceLink } from "./InstanceLink";
 
 function filesOf(list: FileList | null): File[] {
   return list === null ? [] : Array.from(list);
@@ -183,9 +183,9 @@ export function ImportOutcomes({
             <p>{outcomeText(outcome, singular)}</p>
           </div>
           {outcome.state === "imported" && (
-            <Link className={styles.open} to={detailPath(kind, outcome.detail)}>
+            <InstanceLink className={styles.open} to={detailPath(kind, outcome.detail)}>
               Open it
-            </Link>
+            </InstanceLink>
           )}
           {outcome.state !== "importing" && (
             <button

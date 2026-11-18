@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 
 import { isRunResult, type LiveRun, type RunEvent } from "../api/types";
 import { idOf, stepsOf, type JsonObject } from "../editing";
@@ -18,6 +18,7 @@ import {
 } from "../running";
 import { useLiveEvents } from "../useLiveEvents";
 import buttons from "./Buttons.module.css";
+import { InstanceLink } from "./InstanceLink";
 import { JsonBlock } from "./JsonBlock";
 import styles from "./LiveRun.module.css";
 import { Notice } from "./Notice";
@@ -55,12 +56,12 @@ function Crumbs({
 }) {
   return (
     <nav className={styles.crumbs} aria-label="Breadcrumb">
-      <Link to="/workflows">Workflows</Link>
+      <InstanceLink to="/workflows">Workflows</InstanceLink>
       <span aria-hidden="true">/</span>
       {workflowId === null ? (
         <span>{name}</span>
       ) : (
-        <Link to={`/workflows/${workflowId}`}>{name}</Link>
+        <InstanceLink to={`/workflows/${workflowId}`}>{name}</InstanceLink>
       )}
       <span aria-hidden="true">/</span>
       <span aria-current="page">Live run</span>
@@ -153,9 +154,9 @@ function Outcome({
       )}
       <p className={styles.kept}>
         Kept as{" "}
-        <Link className={styles.back} to={`/runs/${result.run_id}`}>
+        <InstanceLink className={styles.back} to={`/runs/${result.run_id}`}>
           run <code>{result.run_id}</code>
-        </Link>
+        </InstanceLink>
         .
       </p>
     </section>
@@ -284,9 +285,9 @@ function LiveRunView({
             </button>
           ) : (
             live.kind === "run" && (
-              <Link className={buttons.primary} to={`/workflows/${live.workflow_id}/run`}>
+              <InstanceLink className={buttons.primary} to={`/workflows/${live.workflow_id}/run`}>
                 Run again
-              </Link>
+              </InstanceLink>
             )
           )}
         </div>
@@ -347,9 +348,9 @@ export function LiveRunPage() {
         >
           <p>{live.error.message}</p>
           <p>
-            <Link className={styles.back} to="/workflows">
+            <InstanceLink className={styles.back} to="/workflows">
               Back to workflows
-            </Link>
+            </InstanceLink>
           </p>
         </Notice>
       </div>

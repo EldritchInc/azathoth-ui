@@ -1,5 +1,4 @@
 import { useId, useState, type InputHTMLAttributes, type ReactNode } from "react";
-import { Link } from "react-router";
 
 import {
   addCondition,
@@ -57,6 +56,7 @@ import { modelPath, nameOf, searchOf } from "../models";
 import { useList, useMatching, useModels } from "../queries";
 import { filterFor, meets, needsOf } from "../selection";
 import { useDebounced } from "../useDebounced";
+import { InstanceLink } from "./InstanceLink";
 import styles from "./StepForm.module.css";
 import type { Composing, Edit } from "./composing";
 import { JsonEditor } from "./JsonEditor";
@@ -592,18 +592,18 @@ function Matches({ requirements }: { readonly requirements: JsonObject }) {
         <ul className={styles.matchList}>
           {local.slice(0, NAMED_MATCHES).map((model) => (
             <li key={model.identifier}>
-              <Link to={modelPath(model.identifier)}>{nameOf(model)}</Link>
+              <InstanceLink to={modelPath(model.identifier)}>{nameOf(model)}</InstanceLink>
             </li>
           ))}
           {more > 0 && <li className={styles.quiet}>and {more} more</li>}
         </ul>
       )}
       {elsewhere > 0 ? (
-        <Link className={styles.catalogLink} to={catalog}>
+        <InstanceLink className={styles.catalogLink} to={catalog}>
           {elsewhere === 1
             ? "1 more your providers serve"
             : `${String(elsewhere)} more your providers serve`}
-        </Link>
+        </InstanceLink>
       ) : (
         local.length === 0 && (
           <span className={styles.hint}>Nor does any model your providers serve now.</span>
@@ -629,7 +629,7 @@ function Fixed({ identifier }: { readonly identifier: string }) {
     </p>
   ) : (
     <p className={styles.matches}>
-      <Link to={modelPath(model.identifier)}>{nameOf(model)}</Link>
+      <InstanceLink to={modelPath(model.identifier)}>{nameOf(model)}</InstanceLink>
       {model.authorized
         ? " is served now, and in your local portfolio."
         : " is served now. It isn't in your local portfolio, which a step that always runs on one model doesn't choose from."}

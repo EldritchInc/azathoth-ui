@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 
 import type { ModelSummary } from "../api/types";
 import { formatPrice, formatTokens, labelOf, nameOf } from "../models";
@@ -9,6 +9,7 @@ import buttons from "./Buttons.module.css";
 import { Command } from "./Command";
 import { CopyButton } from "./CopyButton";
 import detail from "./DetailPage.module.css";
+import { InstanceLink } from "./InstanceLink";
 import styles from "./ModelPage.module.css";
 import { Notice } from "./Notice";
 import { PortfolioOutcome, type Change } from "./Portfolio";
@@ -16,7 +17,7 @@ import { PortfolioOutcome, type Change } from "./Portfolio";
 function Crumbs({ name }: { readonly name: string }) {
   return (
     <nav className={detail.crumbs} aria-label="Breadcrumb">
-      <Link to="/models">Models</Link>
+      <InstanceLink to="/models">Models</InstanceLink>
       <span aria-hidden="true">/</span>
       <span aria-current="page">{name}</span>
     </nav>
@@ -106,17 +107,17 @@ function Uses({
       <ul className={styles.workflows}>
         {workflows.map(([id, workflowName]) => (
           <li key={id}>
-            <Link className={styles.workflow} to={`/workflows/${id}`}>
+            <InstanceLink className={styles.workflow} to={`/workflows/${id}`}>
               {workflowName}
-            </Link>
+            </InstanceLink>
             <ul className={styles.steps}>
               {uses
                 .filter((use) => use.workflowId === id)
                 .map((use) => (
                   <li key={use.stepId}>
-                    <Link to={`/workflows/${id}?step=${encodeURIComponent(use.stepId)}`}>
+                    <InstanceLink to={`/workflows/${id}?step=${encodeURIComponent(use.stepId)}`}>
                       {use.step}
-                    </Link>
+                    </InstanceLink>
                     {use.fixed && <span className={styles.always}>always runs on it</span>}
                   </li>
                 ))}
@@ -232,9 +233,9 @@ export function ModelPage() {
             <Notice title="No model at this address">
               <p>Your providers don&apos;t serve {identifier} now.</p>
               <p>
-                <Link className={detail.back} to="/models">
+                <InstanceLink className={detail.back} to="/models">
                   Back to models
-                </Link>
+                </InstanceLink>
               </p>
             </Notice>
           )

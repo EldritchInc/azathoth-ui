@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router";
 
 import { isStepTrial } from "../api/types";
 import type { JsonObject } from "../editing";
@@ -16,6 +15,7 @@ import {
 } from "../trying";
 import { useLiveEvents } from "../useLiveEvents";
 import buttons from "./Buttons.module.css";
+import { InstanceLink } from "./InstanceLink";
 import { Notice } from "./Notice";
 import { RunInput, type InputLabels } from "./RunInput";
 import { StepRunPanel } from "./StepRunPanel";
@@ -54,9 +54,9 @@ function Trial({
   const progress = useMemo(() => progressOf(stream.events), [stream.events]);
   const end = stream.end;
   const page = (
-    <Link className={styles.page} to={`/live/${handle}`}>
+    <InstanceLink className={styles.page} to={`/live/${handle}`}>
       Open its page
-    </Link>
+    </InstanceLink>
   );
 
   if (end === null) {

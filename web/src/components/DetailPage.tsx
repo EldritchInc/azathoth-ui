@@ -7,6 +7,7 @@ import { useDetail, useHistory } from "../queries";
 import buttons from "./Buttons.module.css";
 import { Command } from "./Command";
 import styles from "./DetailPage.module.css";
+import { InstanceLink } from "./InstanceLink";
 import { DocumentView } from "./DocumentView";
 import { Notice } from "./Notice";
 import { RelativeTime } from "./RelativeTime";
@@ -40,7 +41,7 @@ export function DetailPage({
 
   const crumbs = (
     <nav className={styles.crumbs} aria-label="Breadcrumb">
-      <Link to={description.path}>{description.title}</Link>
+      <InstanceLink to={description.path}>{description.title}</InstanceLink>
       <span aria-hidden="true">/</span>
       <span aria-current="page">
         {detail.data?.name ?? component.id}
@@ -75,9 +76,9 @@ export function DetailPage({
         >
           <p>{detail.error.message}</p>
           <p>
-            <Link className={styles.back} to={description.path}>
+            <InstanceLink className={styles.back} to={description.path}>
               Back to {description.title.toLowerCase()}
-            </Link>
+            </InstanceLink>
           </p>
         </Notice>
       </div>

@@ -10,7 +10,7 @@
  * the editor's own instance.
  */
 
-import { createContext, useContext } from "react";
+import { createContext, useCallback, useContext } from "react";
 
 /** One instance the editor works on, as a page sees it. */
 export interface InstanceScope {
@@ -48,4 +48,11 @@ export function pageOf(scope: InstanceScope, path: string): string {
   }
 
   return `${scope.pages}${path}`;
+}
+
+/** Returns where the instance the page acts on shows one of its pages. */
+export function usePage(): (path: string) => string {
+  const scope = useScope();
+
+  return useCallback((path: string) => pageOf(scope, path), [scope]);
 }

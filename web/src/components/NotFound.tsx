@@ -1,5 +1,6 @@
-import { Link, useLocation } from "react-router";
+import { useLocation } from "react-router";
 
+import { InstanceLink } from "./InstanceLink";
 import styles from "./NotFound.module.css";
 
 /** Any address the editor has no page for. */
@@ -13,9 +14,9 @@ export function NotFound() {
         The editor has no page at <code>{location.pathname}</code>.
       </p>
       <p>
-        <Link className={styles.link} to="/">
+        <InstanceLink className={styles.link} to="/">
           Go to the overview
-        </Link>
+        </InstanceLink>
       </p>
     </div>
   );

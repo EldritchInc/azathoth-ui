@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 
 import { importDocument } from "../api/client";
 import type { ComponentDetail } from "../api/types";
@@ -28,11 +28,12 @@ import {
 import { begin, record, redo, undo, type History } from "../history";
 import { problemsOf, titleOf, type Problem } from "../problems";
 import { useDetail, useReadiness, useWorkflowCheck } from "../queries";
-import { scoped, useScope } from "../scope";
+import { scoped, usePage, useScope } from "../scope";
 import { browserStorage } from "../theme";
 import { useDebounced } from "../useDebounced";
 import buttons from "./Buttons.module.css";
 import { problemsByStep, type Composing } from "./composing";
+import { InstanceLink } from "./InstanceLink";
 import { JsonEditor } from "./JsonEditor";
 import { Notice } from "./Notice";
 import { ReadinessList } from "./Readiness";
@@ -261,6 +262,7 @@ function Editor({
 }) {
   const client = useQueryClient();
   const scope = useScope();
+  const page = usePage();
   const navigate = useNavigate();
   const fieldId = useId();
   const [history, setHistory] = useState<History<JsonObject>>(() => begin(start.document));
@@ -413,7 +415,7 @@ function Editor({
 
   const discard = (): void => {
     discardDraft(browserStorage(), id);
-    void navigate(saved.number === null ? "/workflows" : `/workflows/${id}`);
+    void navigate(page(saved.number === null ? "/workflows" : `/workflows/${id}`));
   };
 
   const status = saving
@@ -429,12 +431,12 @@ function Editor({
   return (
     <div className={styles.page}>
       <nav className={styles.crumbs} aria-label="Breadcrumb">
-        <Link to="/workflows">Workflows</Link>
+        <InstanceLink to="/workflows">Workflows</InstanceLink>
         <span aria-hidden="true">/</span>
         {saved.number === null ? (
           <span>{name === "" ? "New workflow" : name}</span>
         ) : (
-          <Link to={`/workflows/${id}`}>{name === "" ? id : name}</Link>
+          <InstanceLink to={`/workflows/${id}`}>{name === "" ? id : name}</InstanceLink>
         )}
         <span aria-hidden="true">/</span>
         <span aria-current="page">Editing</span>
@@ -518,12 +520,12 @@ function Editor({
         <Notice title={`Saved as revision ${String(outcome.number)}`} tone="note">
           <p>
             Your local instance holds it now.{" "}
-            <Link
+            <InstanceLink
               className={styles.link}
               to={`/workflows/${id}?revision=${String(outcome.number)}`}
             >
               View it
-            </Link>
+            </InstanceLink>
           </p>
         </Notice>
       )}
@@ -675,9 +677,9 @@ export function WorkflowEditor() {
           >
             <p>{detail.error.message}</p>
             <p>
-              <Link className={styles.link} to="/workflows">
+              <InstanceLink className={styles.link} to="/workflows">
                 Back to workflows
-              </Link>
+              </InstanceLink>
             </p>
           </Notice>
         </div>
@@ -710,12 +712,17 @@ export function NewWorkflow({
 }: {
   readonly makeId?: () => string;
 }) {
+  const page = usePage();
   const [document] = useState(() =>
     newWorkflow({ workflow: makeId(), step: makeId(), specification: makeId() }),
   );
 
   return (
-    <Navigate to={`/workflows/${workflowId(document) ?? ""}/edit`} replace state={{ document }} />
+    <Navigate
+      to={page(`/workflows/${workflowId(document) ?? ""}/edit`)}
+      replace
+      state={{ document }}
+    />
   );
 }
 
@@ -739,9 +746,9 @@ export function DraftList({ known }: { readonly known: ReadonlySet<string> }) {
       <ul className={styles.draftList}>
         {drafts.map(([id, draft]) => (
           <li key={id}>
-            <Link className={styles.draftLink} to={`/workflows/${id}/edit`}>
+            <InstanceLink className={styles.draftLink} to={`/workflows/${id}/edit`}>
               {workflowName(draft.document) ?? "Untitled workflow"}
-            </Link>
+            </InstanceLink>
             <span className={styles.draftTag}>
               {draft.base === null || !known.has(id)
                 ? "new"

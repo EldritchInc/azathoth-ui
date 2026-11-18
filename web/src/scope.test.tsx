@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { fetchWorkflows, liveEventsPath, modelApiPath } from "./api/client";
@@ -103,6 +103,37 @@ const SOURCES = import.meta.glob<string>(
   },
 );
 
+describe("links on another instance's pages", () => {
+  it("lead to that instance's pages", async () => {
+    renderAt(<ComponentList kind="workflows" />, {
+      scope: STAGING,
+      answers: { ...SERVER, "/api/remotes/staging/workflows": [200, { items: [WORKFLOW] }] },
+    });
+
+    const table = await screen.findByRole("table");
+
+    expect(within(table).getByRole("link", { name: WORKFLOW.name })).toHaveAttribute(
+      "href",
+      `/remotes/staging/workflows/${WORKFLOW.id}`,
+    );
+    expect(screen.getByRole("link", { name: /new workflow/i })).toHaveAttribute(
+      "href",
+      "/remotes/staging/workflows/new",
+    );
+  });
+
+  it("stay on the local instance's pages there", async () => {
+    renderAt(<ComponentList kind="workflows" />);
+
+    const table = await screen.findByRole("table");
+
+    expect(within(table).getByRole("link", { name: WORKFLOW.name })).toHaveAttribute(
+      "href",
+      `/workflows/${WORKFLOW.id}`,
+    );
+  });
+});
+
 describe("the web app's sources", () => {
   it("are read here", () => {
     expect(Object.keys(SOURCES)).toContain("./queries.ts");
@@ -111,6 +142,16 @@ describe("the web app's sources", () => {
   it("write an API path only in the client, which takes each instance's from its base", () => {
     const writing = Object.entries(SOURCES)
       .filter(([path, text]) => path !== "./api/client.ts" && /["`]\/api\//.test(text))
+      .map(([path]) => path);
+
+    expect(writing).toEqual([]);
+  });
+
+  it("link and navigate to an instance's pages only through the scope", () => {
+    const handWritten = /<(?:Link|NavLink|Navigate)\b[^>]*\bto=\{?["`]\/(?!remotes)/;
+    const navigated = /\bnavigate\(\s*["`]\//;
+    const writing = Object.entries(SOURCES)
+      .filter(([, text]) => handWritten.test(text) || navigated.test(text))
       .map(([path]) => path);
 
     expect(writing).toEqual([]);

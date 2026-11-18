@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 
 import { readDraft } from "../drafts";
 import { browserStorage } from "../theme";
@@ -7,6 +7,7 @@ import buttons from "./Buttons.module.css";
 
 import { BenchmarkCases } from "./BenchmarkCases";
 import { DetailPage } from "./DetailPage";
+import { InstanceLink } from "./InstanceLink";
 import { RunHistory } from "./RunHistory";
 import { ToolStructure } from "./ToolStructure";
 import { WorkflowSteps } from "./WorkflowSteps";
@@ -22,7 +23,7 @@ export function WorkflowPage() {
       component={{ id }}
       actions={
         <>
-          <Link className={buttons.primary} to={`/workflows/${id}/run`}>
+          <InstanceLink className={buttons.primary} to={`/workflows/${id}/run`}>
             <svg
               viewBox="0 0 24 24"
               aria-hidden="true"
@@ -33,8 +34,8 @@ export function WorkflowPage() {
               <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" />
             </svg>
             Run
-          </Link>
-          <Link className={buttons.quiet} to={`/workflows/${id}/edit`}>
+          </InstanceLink>
+          <InstanceLink className={buttons.quiet} to={`/workflows/${id}/edit`}>
             <svg
               viewBox="0 0 24 24"
               aria-hidden="true"
@@ -49,7 +50,7 @@ export function WorkflowPage() {
               <path d="m13.5 6.5 4 4" />
             </svg>
             {drafted ? "Continue editing" : "Edit"}
-          </Link>
+          </InstanceLink>
           {drafted && <span className={buttons.note}>Your unsaved edits are kept.</span>}
         </>
       }

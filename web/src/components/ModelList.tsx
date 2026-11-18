@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from "react";
-import { Link, useSearchParams } from "react-router";
+import { useSearchParams } from "react-router";
 
 import type { ModelSummary } from "../api/types";
 import { classNames } from "../classNames";
@@ -25,6 +25,7 @@ import buttons from "./Buttons.module.css";
 import { Skeleton } from "./ComponentList";
 import list from "./ComponentList.module.css";
 import { CopyButton } from "./CopyButton";
+import { InstanceLink } from "./InstanceLink";
 import styles from "./ModelList.module.css";
 import { Notice } from "./Notice";
 import { PortfolioOutcome, PortfolioToggle, type Change } from "./Portfolio";
@@ -218,9 +219,9 @@ function ModelRow({ model, change }: { readonly model: ModelSummary; readonly ch
     <tr data-authorized={model.authorized}>
       <td className={list.name}>
         <div className={list.nameStack}>
-          <Link className={list.link} to={modelPath(model.identifier)}>
+          <InstanceLink className={list.link} to={modelPath(model.identifier)}>
             {nameOf(model)}
-          </Link>
+          </InstanceLink>
           <code className={styles.identifier}>{model.identifier}</code>
         </div>
       </td>

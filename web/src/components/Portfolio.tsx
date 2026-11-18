@@ -1,5 +1,4 @@
 import type { UseMutationResult } from "@tanstack/react-query";
-import { Link } from "react-router";
 
 import type { ApiFailure } from "../api/client";
 import {
@@ -12,6 +11,7 @@ import {
 import { nameOf } from "../models";
 import type { PortfolioChange } from "../queries";
 import buttons from "./Buttons.module.css";
+import { InstanceLink } from "./InstanceLink";
 import { Notice } from "./Notice";
 import styles from "./Portfolio.module.css";
 
@@ -97,7 +97,9 @@ export function PortfolioOutcome({
         <ul className={styles.dependents}>
           {dependents.map((dependent) => (
             <li key={dependent.workflow_id}>
-              <Link to={`/workflows/${dependent.workflow_id}`}>{dependent.workflow_name}</Link>
+              <InstanceLink to={`/workflows/${dependent.workflow_id}`}>
+                {dependent.workflow_name}
+              </InstanceLink>
               <span className={styles.steps}>
                 {dependent.steps.length === 1
                   ? "1 step"

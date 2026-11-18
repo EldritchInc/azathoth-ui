@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 
 import type { RunDetail } from "../api/types";
 import { idOf, stepsOf, type JsonObject } from "../editing";
@@ -8,6 +8,7 @@ import { useDetail, useRun } from "../queries";
 import { duration, keptStepRun, type StepRun } from "../running";
 import buttons from "./Buttons.module.css";
 import { Command } from "./Command";
+import { InstanceLink } from "./InstanceLink";
 import { JsonBlock } from "./JsonBlock";
 import styles from "./LiveRun.module.css";
 import { Notice } from "./Notice";
@@ -20,12 +21,12 @@ const MISSING_CODES = new Set(["not_found", "invalid_argument"]);
 function Crumbs({ run }: { readonly run: RunDetail | undefined }) {
   return (
     <nav className={styles.crumbs} aria-label="Breadcrumb">
-      <Link to="/workflows">Workflows</Link>
+      <InstanceLink to="/workflows">Workflows</InstanceLink>
       <span aria-hidden="true">/</span>
       {run === undefined ? (
         <span>A workflow</span>
       ) : (
-        <Link to={`/workflows/${run.workflow_id}`}>{run.workflow_name}</Link>
+        <InstanceLink to={`/workflows/${run.workflow_id}`}>{run.workflow_name}</InstanceLink>
       )}
       <span aria-hidden="true">/</span>
       <span aria-current="page">Run</span>
@@ -69,9 +70,9 @@ function KeptRun({ run }: { readonly run: RunDetail }) {
           </p>
         </div>
         <div className={styles.actions}>
-          <Link className={buttons.primary} to={`/workflows/${run.workflow_id}/run`}>
+          <InstanceLink className={buttons.primary} to={`/workflows/${run.workflow_id}/run`}>
             Run again
-          </Link>
+          </InstanceLink>
         </div>
       </header>
       <Command command={run.command} />
@@ -153,9 +154,9 @@ export function RunPage() {
         >
           <p>{run.error.message}</p>
           <p>
-            <Link className={styles.back} to="/workflows">
+            <InstanceLink className={styles.back} to="/workflows">
               Back to workflows
-            </Link>
+            </InstanceLink>
           </p>
         </Notice>
       </div>
