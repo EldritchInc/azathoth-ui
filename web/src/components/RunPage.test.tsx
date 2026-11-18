@@ -1,10 +1,11 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { Route, Routes } from "react-router";
 import { describe, expect, it } from "vitest";
 
 import { SERVER, WORKFLOW, type Answers } from "../test/instances";
 import { renderAt } from "../test/render";
 import { RUN_DETAIL, RUN_WORKFLOW, SUMMARIZE } from "../test/runs";
+import { RESTRICTED_RUN } from "../test/sensitivity";
 import { RunPage } from "./RunPage";
 
 const ANSWERS: Answers = {
@@ -54,6 +55,24 @@ describe("RunPage", () => {
     });
 
     expect(await screen.findByText("Public")).toHaveAttribute("data-sensitivity", "public");
+  });
+
+  it("hides a restricted run's input, result and steps until they are shown", async () => {
+    open({ ...ANSWERS, [`/api/runs/${RUN_DETAIL.run_id}`]: [200, RESTRICTED_RUN] });
+
+    const hidden = await screen.findByRole("group", {
+      name: "Restricted: the run's input, result and steps",
+    });
+
+    expect(screen.queryByLabelText("The run's input, as JSON")).toBeNull();
+    expect(screen.queryByLabelText("The run's result, as JSON")).toBeNull();
+    expect(screen.getByText(RUN_DETAIL.command)).toBeInTheDocument();
+
+    fireEvent.click(within(hidden).getByRole("button", { name: "Show it" }));
+
+    expect(screen.getByLabelText("The run's input, as JSON")).toHaveTextContent(
+      '"text": "My printer is on fire."',
+    );
   });
 
   it("draws the revision it ran, with where each step got to", async () => {

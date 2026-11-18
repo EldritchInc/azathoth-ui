@@ -2,15 +2,29 @@ import { useMemo } from "react";
 
 import type { Sensitivity } from "../api/types";
 import { describeBenchmark } from "../documents";
+import { useRevealing } from "../revealing";
+import { RestrictedNotice, RestrictedScope } from "./Restricted";
 import { SensitivityLabel } from "./SensitivityLabel";
 import styles from "./Structure.module.css";
 
 /**
  * A benchmark's cases: each input, what is expected of it, how that is
  * compared, and its label; and the benchmark's own label, its most
- * sensitive case's (ADR 0011).
+ * sensitive case's. A restricted case's input and expected output are
+ * hidden until shown (ADR 0011).
  */
-export function BenchmarkCases({
+export function BenchmarkCases(props: {
+  readonly document: Readonly<Record<string, unknown>>;
+  readonly sensitivity: Sensitivity | null;
+}) {
+  return (
+    <RestrictedScope>
+      <Cases {...props} />
+    </RestrictedScope>
+  );
+}
+
+function Cases({
   document,
   sensitivity,
 }: {
@@ -19,6 +33,7 @@ export function BenchmarkCases({
   readonly sensitivity: Sensitivity | null;
 }) {
   const view = useMemo(() => describeBenchmark(document), [document]);
+  const { revealed } = useRevealing();
   const count = view.cases.length;
 
   return (
@@ -48,15 +63,27 @@ export function BenchmarkCases({
           <tbody>
             {view.cases.map((benchmarkCase, index) => (
               <tr key={`${String(index)}-${benchmarkCase.id}`}>
-                <td>
-                  <code className={styles.value}>{benchmarkCase.input}</code>
-                </td>
-                <td>
-                  <code className={styles.value}>{benchmarkCase.expected}</code>
-                  {benchmarkCase.description !== null && (
-                    <span className={styles.quiet}>{benchmarkCase.description}</span>
-                  )}
-                </td>
+                {benchmarkCase.sensitivity === "restricted" && !revealed ? (
+                  <td colSpan={2}>
+                    <RestrictedNotice
+                      what={`case ${benchmarkCase.id}`}
+                      subject={benchmarkCase.id}
+                      inline
+                    />
+                  </td>
+                ) : (
+                  <>
+                    <td>
+                      <code className={styles.value}>{benchmarkCase.input}</code>
+                    </td>
+                    <td>
+                      <code className={styles.value}>{benchmarkCase.expected}</code>
+                      {benchmarkCase.description !== null && (
+                        <span className={styles.quiet}>{benchmarkCase.description}</span>
+                      )}
+                    </td>
+                  </>
+                )}
                 <td>
                   {benchmarkCase.comparison !== null && (
                     <span className={styles.comparison}>{benchmarkCase.comparison}</span>

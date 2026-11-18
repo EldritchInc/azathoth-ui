@@ -5,6 +5,7 @@ import { App } from "../App";
 import { saveDraft } from "../drafts";
 import {
   BENCHMARK_DETAIL,
+  BENCHMARK_DOCUMENT,
   TOOL_DETAIL,
   WORKFLOW_DETAIL,
   WORKFLOW_HISTORY,
@@ -283,6 +284,41 @@ describe("a benchmark's page", () => {
     expect(cases).toHaveTextContent("2 cases");
     expect(cases).toHaveTextContent("that is not dead which can eternal lie");
     expect(cases).toHaveTextContent("semantic");
+  });
+
+  it("hides a restricted case's input and expected output until they are shown", async () => {
+    const restricted = {
+      ...BENCHMARK_DETAIL,
+      sensitivity: "restricted",
+      document: {
+        ...BENCHMARK_DETAIL.document,
+        cases: [
+          {
+            id: "case-3",
+            input: "a patient's chart",
+            expected: { value: "a summary", comparison: "exact" },
+            metadata: {},
+            sensitivity: "restricted",
+          },
+          ...BENCHMARK_DOCUMENT.cases,
+        ],
+      },
+    };
+
+    renderAt(<App />, {
+      path: `/benchmarks/${BENCHMARK_DETAIL.id}`,
+      answers: { ...ANSWERS, [`/api/benchmarks/${BENCHMARK_DETAIL.id}`]: [200, restricted] },
+    });
+
+    const cases = within(await screen.findByRole("region", { name: "Cases" }));
+
+    expect(cases.queryByText("a patient's chart")).toBeNull();
+    expect(cases.getByText("that is not dead which can eternal lie")).toBeVisible();
+
+    fireEvent.click(cases.getByRole("button", { name: "Show it" }));
+
+    expect(cases.getByText("a patient's chart")).toBeVisible();
+    expect(cases.getByText("a summary")).toBeVisible();
   });
 
   it("labels the benchmark, and each case, an unlabelled one as internal", async () => {

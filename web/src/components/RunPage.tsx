@@ -13,6 +13,7 @@ import { JsonBlock } from "./JsonBlock";
 import styles from "./LiveRun.module.css";
 import { Notice } from "./Notice";
 import { RelativeTime } from "./RelativeTime";
+import { Restricted } from "./Restricted";
 import { RunningContext } from "./runningContext";
 import { SensitivityLabel } from "./SensitivityLabel";
 import { WorkflowSteps } from "./WorkflowSteps";
@@ -87,40 +88,46 @@ function KeptRun({ run }: { readonly run: RunDetail }) {
           <p>{run.error.message}</p>
         </Notice>
       )}
-      <div className={styles.pair}>
-        <section className={styles.outcome} aria-labelledby="input-heading">
-          <h2 id="input-heading" className={styles.sectionTitle}>
-            Input
-          </h2>
-          {run.has_input ? (
-            <JsonBlock value={run.input} label="The run's input, as JSON" />
-          ) : (
-            <p className={styles.quiet}>It was given no input.</p>
-          )}
-        </section>
-        <section className={styles.outcome} aria-labelledby="result-heading">
-          <h2 id="result-heading" className={styles.sectionTitle}>
-            Result
-          </h2>
-          {run.has_result ? (
-            <JsonBlock value={run.result} label="The run's result, as JSON" />
-          ) : (
-            <p className={styles.quiet}>
-              {run.succeeded ? "The workflow declares no result." : "It produced none."}
-            </p>
-          )}
-        </section>
-      </div>
-      {detail.isError && (
-        <Notice title="Couldn't load the revision it ran" tone="note">
-          <p>{detail.error.message}</p>
-        </Notice>
-      )}
-      {workflow !== undefined && (
-        <RunningContext value={states}>
-          <WorkflowSteps document={workflow} />
-        </RunningContext>
-      )}
+      <Restricted
+        sensitivity={run.sensitivity}
+        what="the run's input, result and steps"
+        subject={run.run_id}
+      >
+        <div className={styles.pair}>
+          <section className={styles.outcome} aria-labelledby="input-heading">
+            <h2 id="input-heading" className={styles.sectionTitle}>
+              Input
+            </h2>
+            {run.has_input ? (
+              <JsonBlock value={run.input} label="The run's input, as JSON" />
+            ) : (
+              <p className={styles.quiet}>It was given no input.</p>
+            )}
+          </section>
+          <section className={styles.outcome} aria-labelledby="result-heading">
+            <h2 id="result-heading" className={styles.sectionTitle}>
+              Result
+            </h2>
+            {run.has_result ? (
+              <JsonBlock value={run.result} label="The run's result, as JSON" />
+            ) : (
+              <p className={styles.quiet}>
+                {run.succeeded ? "The workflow declares no result." : "It produced none."}
+              </p>
+            )}
+          </section>
+        </div>
+        {detail.isError && (
+          <Notice title="Couldn't load the revision it ran" tone="note">
+            <p>{detail.error.message}</p>
+          </Notice>
+        )}
+        {workflow !== undefined && (
+          <RunningContext value={states}>
+            <WorkflowSteps document={workflow} />
+          </RunningContext>
+        )}
+      </Restricted>
     </div>
   );
 }
@@ -128,7 +135,8 @@ function KeptRun({ run }: { readonly run: RunDetail }) {
 /**
  * `/runs/:runId`: one run Azathoth kept, as `run show` shows it: how it
  * ended, its input and result, and each step on the graph of the revision
- * it ran, with what it did (ADR 0007).
+ * it ran, with what it did (ADR 0007). A restricted run's are hidden until
+ * shown (ADR 0011).
  */
 export function RunPage() {
   const { runId = "" } = useParams();
@@ -165,5 +173,5 @@ export function RunPage() {
     );
   }
 
-  return <KeptRun run={run.data} />;
+  return <KeptRun key={run.data.run_id} run={run.data} />;
 }

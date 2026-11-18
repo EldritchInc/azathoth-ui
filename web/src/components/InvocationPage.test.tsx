@@ -121,6 +121,25 @@ describe("InvocationPage", () => {
     expect(sent).toEqual([`/api/live/invocations/${INCOMPLETE_DETAIL.invocation_id}/resume`]);
   });
 
+  it("hides a restricted invocation's input and result until they are shown", async () => {
+    open({ detail: { ...SUCCEEDED_DETAIL, sensitivity: "restricted" } });
+
+    const hidden = await screen.findByRole("group", {
+      name: "Restricted: the invocation's input and result",
+    });
+
+    expect(screen.queryByLabelText("The invocation's input, as JSON")).toBeNull();
+    expect(screen.getByRole("list", { name: "About this invocation" })).toHaveTextContent(
+      "Restricted",
+    );
+
+    fireEvent.click(within(hidden).getByRole("button", { name: "Show it" }));
+
+    expect(screen.getByLabelText("The invocation's input, as JSON")).toHaveTextContent(
+      '"A long ticket."',
+    );
+  });
+
   it("says why it failed, with production's code, and that no key was named", async () => {
     open({
       detail: {
