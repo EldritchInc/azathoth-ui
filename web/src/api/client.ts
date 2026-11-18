@@ -20,6 +20,10 @@ import {
   isErrorBody,
   isInstanceCommands,
   isInstanceDescription,
+  isInvocationDetail,
+  isInvocationSummary,
+  isProductionAnswer,
+  isProductionRevisionSummary,
   isLiveRun,
   isRunDetail,
   isRunSummary,
@@ -42,6 +46,10 @@ import {
   type EditorDescription,
   type InstanceCommands,
   type InstanceDescription,
+  type InvocationDetail,
+  type InvocationSummary,
+  type ProductionRevisionSummary,
+  type ProductionState,
   type LiveRun,
   type RunDetail,
   type RunSummary,
@@ -678,4 +686,157 @@ export async function pullFromRemote(
   }
 
   return body;
+}
+
+/** How many of a workflow's production revisions, and of its invocations, the editor lists. */
+export const PRODUCTION_LISTED = 20;
+
+function workflowPath(workflowId: string, path: string): string {
+  return `/workflows/${encodeURIComponent(workflowId)}${path}`;
+}
+
+/**
+ * Returns what a workflow's production runs now, or `null` when it is not
+ * in production: `GET {base}/workflows/{id}/production`.
+ */
+export async function fetchProduction(
+  workflowId: string,
+  options: RequestOptions = {},
+): Promise<ProductionState | null> {
+  const body = await getJson(at(options, workflowPath(workflowId, "/production")), options);
+
+  if (!isProductionAnswer(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body.production;
+}
+
+/** Returns a workflow's production revisions, newest first, the active one marked. */
+export function fetchProductionRevisions(
+  workflowId: string,
+  options: RequestOptions = {},
+): Promise<ProductionRevisionSummary[]> {
+  return fetchItems(
+    at(
+      options,
+      workflowPath(workflowId, `/production/revisions?limit=${String(PRODUCTION_LISTED)}`),
+    ),
+    isProductionRevisionSummary,
+    options,
+  );
+}
+
+async function productionChange(
+  path: string,
+  sent: Readonly<Record<string, unknown>>,
+  options: RequestOptions,
+): Promise<ProductionRevisionSummary> {
+  const body = await requestJson(
+    at(options, path),
+    { method: "POST", body: JSON.stringify(sent) },
+    options,
+  );
+
+  if (!isProductionRevisionSummary(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 201);
+  }
+
+  return body;
+}
+
+/**
+ * Promotes a workflow's latest revision, or an experiment's winner:
+ * `POST {base}/workflows/{id}/promote`. Returns the revision it saved.
+ */
+export function promoteWorkflow(
+  workflowId: string,
+  { experimentId }: { readonly experimentId?: string } = {},
+  options: RequestOptions = {},
+): Promise<ProductionRevisionSummary> {
+  return productionChange(
+    workflowPath(workflowId, "/promote"),
+    experimentId === undefined ? {} : { experiment_id: experimentId },
+    options,
+  );
+}
+
+/**
+ * Restores an earlier production revision as a new one, the previous one
+ * unless `to` names another: `POST {base}/workflows/{id}/rollback`.
+ */
+export function rollBackWorkflow(
+  workflowId: string,
+  { to }: { readonly to?: string } = {},
+  options: RequestOptions = {},
+): Promise<ProductionRevisionSummary> {
+  return productionChange(
+    workflowPath(workflowId, "/rollback"),
+    to === undefined ? {} : { to },
+    options,
+  );
+}
+
+/** Returns a workflow's invocations, newest first: `GET {base}/workflows/{id}/invocations`. */
+export function fetchWorkflowInvocations(
+  workflowId: string,
+  options: RequestOptions = {},
+): Promise<InvocationSummary[]> {
+  return fetchItems(
+    at(options, workflowPath(workflowId, `/invocations?limit=${String(PRODUCTION_LISTED)}`)),
+    isInvocationSummary,
+    options,
+  );
+}
+
+/** Returns one invocation, with its input, outcome and run: `GET {base}/invocations/{id}`. */
+export async function fetchInvocation(
+  invocationId: string,
+  options: RequestOptions = {},
+): Promise<InvocationDetail> {
+  const body = await getJson(
+    at(options, `/invocations/${encodeURIComponent(invocationId)}`),
+    options,
+  );
+
+  if (!isInvocationDetail(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/** What an invocation is given: its workflow, its input, and its key if one is named. */
+export interface InvocationStart {
+  readonly workflowId: string;
+  readonly given: RunGiven;
+  readonly idempotencyKey?: string;
+}
+
+/**
+ * Invokes a workflow in production, as a live run: `POST {base}/live/invocations`.
+ * Returns it, running; its end carries the invocation's outcome.
+ */
+export function startInvocation(
+  { workflowId, given, idempotencyKey }: InvocationStart,
+  options: RequestOptions = {},
+): Promise<LiveRun> {
+  const sent =
+    idempotencyKey === undefined || idempotencyKey === ""
+      ? startBody(workflowId, given)
+      : { ...startBody(workflowId, given), idempotency_key: idempotencyKey };
+
+  return liveRunOf(at(options, "/live/invocations"), JSON.stringify(sent), options);
+}
+
+/** Resumes an incomplete invocation, as a live run: `POST {base}/live/invocations/{id}/resume`. */
+export function resumeInvocation(
+  invocationId: string,
+  options: RequestOptions = {},
+): Promise<LiveRun> {
+  return liveRunOf(
+    at(options, `/live/invocations/${encodeURIComponent(invocationId)}/resume`),
+    "{}",
+    options,
+  );
 }

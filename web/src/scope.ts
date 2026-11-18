@@ -56,3 +56,8 @@ export function usePage(): (path: string) => string {
 
   return useCallback((path: string) => pageOf(scope, path), [scope]);
 }
+
+/** Returns how a sentence names an instance: the local one as yours, a remote by its name. */
+export function instanceLabel(name: string): string {
+  return name === LOCAL_SCOPE.name ? "your local instance" : name;
+}

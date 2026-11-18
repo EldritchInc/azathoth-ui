@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router";
 
-import { isRunResult, type LiveRun, type RunEvent } from "../api/types";
+import { isRunResult, type InvocationOutcome, type LiveRun, type RunEvent } from "../api/types";
 import { idOf, stepsOf, type JsonObject } from "../editing";
+import { INVOCATION_STATUS_NAMES, invocationOutcomeOf } from "../invocations";
 import { titleOf } from "../problems";
 import { useCancelRun, useDetail, useLiveRun } from "../queries";
 import {
@@ -80,6 +81,78 @@ function trialValues(result: Readonly<Record<string, unknown>> | null): unknown 
   return step.values;
 }
 
+/** What an invocation's outcome is headed, by how it ended. */
+const INVOCATION_HEADINGS: Readonly<Record<InvocationOutcome["status"], string>> = {
+  succeeded: "Result",
+  failed: "Why it failed",
+  incomplete: "It hasn’t finished",
+  rejected: "Why production rejected it",
+};
+
+/**
+ * How an invocation ended under its key: its result, or production's code
+ * and why; that it was answered from an earlier invocation under the same
+ * key; and where production keeps it.
+ */
+function InvocationEnd({ outcome }: { readonly outcome: InvocationOutcome | null }) {
+  if (outcome === null) {
+    return null;
+  }
+
+  return (
+    <section className={styles.outcome} aria-labelledby="outcome-heading">
+      <h2 id="outcome-heading" className={styles.sectionTitle}>
+        {INVOCATION_HEADINGS[outcome.status]}
+      </h2>
+      {outcome.replayed && (
+        <Notice title="Answered from an earlier invocation" tone="note">
+          <p>
+            An invocation under the key <code>{outcome.idempotency_key}</code> had already ended, so
+            production answered as it did then; nothing ran again.
+          </p>
+        </Notice>
+      )}
+      {outcome.status === "succeeded" && (
+        <JsonBlock value={outcome.result} label="The invocation's result, as JSON" />
+      )}
+      {outcome.status === "incomplete" && (
+        <p className={styles.quiet}>
+          Its run stopped before its end. Resume it from its page, and it carries on from where it
+          stopped.
+        </p>
+      )}
+      {outcome.error !== null && (
+        <Notice
+          title={outcome.status === "rejected" ? "Production rejected it" : "The invocation failed"}
+        >
+          <p>{outcome.error.message}</p>
+          <p>
+            <code>{outcome.error.code}</code>
+          </p>
+        </Notice>
+      )}
+      {outcome.warnings.length > 0 && (
+        <Notice title="Beside the invocation" tone="note">
+          <ul className={styles.warnings}>
+            {outcome.warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </Notice>
+      )}
+      {outcome.invocation_id !== null && (
+        <p className={styles.kept}>
+          Kept as{" "}
+          <InstanceLink className={styles.back} to={`/invocations/${outcome.invocation_id}`}>
+            invocation <code>{outcome.invocation_id}</code>
+          </InstanceLink>
+          .
+        </p>
+      )}
+    </section>
+  );
+}
+
 /** How the run ended, said in full: its result, why it failed, or why it never ran. */
 function Outcome({
   live,
@@ -104,6 +177,9 @@ function Outcome({
         <p>{live.error?.message ?? "It gave no reason."}</p>
       </Notice>
     );
+  }
+  if (live.kind === "invocation") {
+    return <InvocationEnd outcome={invocationOutcomeOf(live)} />;
   }
   if (live.kind === "step") {
     return (
@@ -249,16 +325,24 @@ function LiveRunView({
     [steps, progress, ended],
   );
   const name = detail.data?.name ?? "This workflow";
-  const outcome = outcomeName(live, succeededOf(live, progress));
+  const invocation = invocationOutcomeOf(live);
+  const outcome =
+    invocation !== null && live.state === "finished"
+      ? INVOCATION_STATUS_NAMES[invocation.status]
+      : outcomeName(live, succeededOf(live, progress));
+  const eyebrow =
+    live.kind === "step"
+      ? `Trying ${title(live.step_id ?? "")}`
+      : live.kind === "invocation"
+        ? "Invocation in production"
+        : "Live run";
 
   return (
     <div className={styles.page}>
       <Crumbs name={name} workflowId={live.workflow_id} />
       <header className={styles.header}>
         <div className={styles.titles}>
-          <p className={styles.eyebrow}>
-            {live.kind === "step" ? `Trying ${title(live.step_id ?? "")}` : "Live run"}
-          </p>
+          <p className={styles.eyebrow}>{eyebrow}</p>
           <h1 className={styles.title}>{name}</h1>
           <p className={styles.status}>
             <span className={styles.pill} data-state={outcome.toLowerCase()} role="status">
@@ -267,7 +351,7 @@ function LiveRunView({
             <span className={styles.facts}>
               {duration(live.started_at, live.finished_at, now)}
               {steps.length > 0 &&
-                live.kind === "run" &&
+                live.kind !== "step" &&
                 ` · ${counted(progress, [...titles.keys()])}`}
             </span>
           </p>
@@ -275,7 +359,7 @@ function LiveRunView({
         <div className={styles.actions}>
           {running ? (
             <ActionButton
-              action="run_workflow"
+              action={live.kind === "invocation" ? "invoke" : "run_workflow"}
               type="button"
               className={buttons.danger}
               disabled={cancel.isPending}
@@ -285,10 +369,17 @@ function LiveRunView({
             >
               {cancel.isPending ? "Cancelling…" : "Cancel"}
             </ActionButton>
+          ) : live.kind === "run" ? (
+            <InstanceLink className={buttons.primary} to={`/workflows/${live.workflow_id}/run`}>
+              Run again
+            </InstanceLink>
           ) : (
-            live.kind === "run" && (
-              <InstanceLink className={buttons.primary} to={`/workflows/${live.workflow_id}/run`}>
-                Run again
+            live.kind === "invocation" && (
+              <InstanceLink
+                className={buttons.primary}
+                to={`/workflows/${live.workflow_id}/invoke`}
+              >
+                Invoke again
               </InstanceLink>
             )
           )}

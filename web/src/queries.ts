@@ -26,6 +26,10 @@ import {
   checkWorkflow,
   fetchCommands,
   fetchDetail,
+  fetchInvocation,
+  fetchProduction,
+  fetchProductionRevisions,
+  fetchWorkflowInvocations,
   fetchEditor,
   fetchHistory,
   fetchLiveRun,
@@ -39,12 +43,17 @@ import {
   fetchRemoteStatus,
   fetchRemotes,
   matchModels,
+  promoteWorkflow,
   pullFromRemote,
   pushToRemote,
   removeFromPortfolio,
   removeRemote,
+  resumeInvocation,
+  rollBackWorkflow,
+  startInvocation,
   startRun,
   startTrial,
+  type InvocationStart,
   type RemoteToAdd,
   type RunGiven,
   type Selection,
@@ -54,12 +63,16 @@ import type {
   ComponentDetail,
   EditorDescription,
   InstanceCommands,
+  InvocationDetail,
+  InvocationSummary,
   LiveRun,
   ModelListing,
   ModelSummary,
   NamedRemote,
   PortfolioEntry,
   PortfolioRemoval,
+  ProductionRevisionSummary,
+  ProductionState,
   PullReport,
   PushReport,
   RemoteStatus,
@@ -107,6 +120,11 @@ export const queryKeys = {
   runs: ["runs"] as const,
   workflowRuns: (workflowId: string) => ["runs", "workflow", workflowId] as const,
   run: (runId: string) => ["runs", "run", runId] as const,
+  production: (workflowId: string) => ["production", workflowId] as const,
+  productionRevisions: (workflowId: string) => ["production", workflowId, "revisions"] as const,
+  invocations: ["invocations"] as const,
+  workflowInvocations: (workflowId: string) => ["invocations", "workflow", workflowId] as const,
+  invocation: (invocationId: string) => ["invocations", "one", invocationId] as const,
 };
 
 /** How often the editor asks which live runs are running, while any is. */
@@ -525,6 +543,120 @@ export function usePull(): UseMutationResult<PullReport, ApiFailure, Pull> {
           client.invalidateQueries({ queryKey }),
         ),
       );
+    },
+  });
+}
+
+/** Returns what a workflow's production runs now, or `null` when it is not in production. */
+export function useProduction(
+  workflowId: string,
+): UseQueryResult<ProductionState | null, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<ProductionState | null, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.production(workflowId)),
+    queryFn: ({ signal }) => fetchProduction(workflowId, { signal, base: scope.api }),
+  });
+}
+
+/** Returns a workflow's production revisions, newest first, the active one marked. */
+export function useProductionRevisions(
+  workflowId: string,
+): UseQueryResult<ProductionRevisionSummary[], ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<ProductionRevisionSummary[], ApiFailure>({
+    queryKey: scoped(scope, queryKeys.productionRevisions(workflowId)),
+    queryFn: ({ signal }) => fetchProductionRevisions(workflowId, { signal, base: scope.api }),
+  });
+}
+
+/** One change to a workflow's production: a promotion, or a rollback, to one revision or the last. */
+export type ProductionChange =
+  | { readonly promote: true; readonly experimentId?: string }
+  | { readonly promote: false; readonly to?: string };
+
+/**
+ * Returns a change to a workflow's production, after which its production,
+ * its revisions and its invocations are fetched again.
+ */
+export function useProductionChange(
+  workflowId: string,
+): UseMutationResult<ProductionRevisionSummary, ApiFailure, ProductionChange> {
+  const client = useQueryClient();
+  const scope = useScope();
+
+  return useMutation<ProductionRevisionSummary, ApiFailure, ProductionChange>({
+    mutationFn: (change) =>
+      change.promote
+        ? promoteWorkflow(
+            workflowId,
+            change.experimentId === undefined ? {} : { experimentId: change.experimentId },
+            { base: scope.api },
+          )
+        : rollBackWorkflow(workflowId, change.to === undefined ? {} : { to: change.to }, {
+            base: scope.api,
+          }),
+    onSettled: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: scoped(scope, queryKeys.production(workflowId)) }),
+        client.invalidateQueries({ queryKey: scoped(scope, queryKeys.invocations) }),
+      ]);
+    },
+  });
+}
+
+/** Returns a workflow's invocations, newest first. */
+export function useWorkflowInvocations(
+  workflowId: string,
+): UseQueryResult<InvocationSummary[], ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<InvocationSummary[], ApiFailure>({
+    queryKey: scoped(scope, queryKeys.workflowInvocations(workflowId)),
+    queryFn: ({ signal }) => fetchWorkflowInvocations(workflowId, { signal, base: scope.api }),
+  });
+}
+
+/** Returns one invocation, with its input, outcome and run. */
+export function useInvocation(invocationId: string): UseQueryResult<InvocationDetail, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<InvocationDetail, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.invocation(invocationId)),
+    queryFn: ({ signal }) => fetchInvocation(invocationId, { signal, base: scope.api }),
+  });
+}
+
+/** Returns an invocation through production, as a live run, after which the live runs are fetched again. */
+export function useInvoke(): UseMutationResult<LiveRun, ApiFailure, InvocationStart> {
+  const client = useQueryClient();
+  const scope = useScope();
+
+  return useMutation<LiveRun, ApiFailure, InvocationStart>({
+    mutationFn: (start) => startInvocation(start, { base: scope.api }),
+    onSuccess: (run) => {
+      client.setQueryData(scoped(scope, queryKeys.liveRun(run.handle)), run);
+    },
+    onSettled: () => client.invalidateQueries({ queryKey: scoped(scope, queryKeys.liveList) }),
+  });
+}
+
+/** Returns a resume of an incomplete invocation, as a live run. */
+export function useResumeInvocation(): UseMutationResult<LiveRun, ApiFailure, string> {
+  const client = useQueryClient();
+  const scope = useScope();
+
+  return useMutation<LiveRun, ApiFailure, string>({
+    mutationFn: (invocationId) => resumeInvocation(invocationId, { base: scope.api }),
+    onSuccess: (run) => {
+      client.setQueryData(scoped(scope, queryKeys.liveRun(run.handle)), run);
+    },
+    onSettled: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: scoped(scope, queryKeys.liveList) }),
+        client.invalidateQueries({ queryKey: scoped(scope, queryKeys.invocations) }),
+      ]);
     },
   });
 }

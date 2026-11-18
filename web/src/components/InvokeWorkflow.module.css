@@ -1,0 +1,48 @@
+/* Invoking a workflow in production: its idempotency key. The rest is the run page's. */
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+  max-width: 28rem;
+}
+
+.label {
+  font-family: var(--sans);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--raised);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.875rem;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.input:hover {
+  border-color: color-mix(in srgb, var(--tide) 40%, var(--line));
+}
+
+.input:focus {
+  border-color: var(--tide);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--tide-wash);
+}
+
+.input::placeholder {
+  color: var(--faint);
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}

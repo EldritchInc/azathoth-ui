@@ -59,9 +59,17 @@ The table names each at the editor's own instance.
 | `POST /api/workflows/readiness` | Whether each step of a workflow document could run here now, asking the providers |
 | `GET /api/workflows/{id}/runs?limit=` | A workflow's kept runs, newest first |
 | `GET /api/runs/{run_id}` | One kept run, with its input, its result and its steps |
+| `GET /api/workflows/{id}/production` | `{"production"}`: what production runs now, or `null` ([ADR 0010](0010-production-in-the-editor.md)) |
+| `GET /api/workflows/{id}/production/revisions?limit=` | Its production revisions, newest first, the active one marked |
+| `POST /api/workflows/{id}/promote` | Promotes its latest revision, or an experiment's winner from `{"experiment_id"}`: 201 |
+| `POST /api/workflows/{id}/rollback` | Restores an earlier production revision, the previous one or `{"to"}`: 201 |
+| `GET /api/workflows/{id}/invocations?limit=` | Its invocations, newest first |
+| `GET /api/invocations/{id}` | One invocation, with its input, its outcome and its run |
 | `POST /api/models/matching` | The local portfolio's models that meet `{"requirements"}`, in the order a run tries them |
 | `POST /api/live/steps` | Starts trying one step of a document alone, from `{"document", "step_id", "inputs", "files", "input" \| "file"}`: 201 |
 | `POST /api/live/runs` | Starts a live run of a workflow, from `{"workflow_id", "input" \| "file"}`: 201 ([ADR 0007](0007-running-and-watching-workflows.md)) |
+| `POST /api/live/invocations` | Invokes a workflow in production as a live run, from `{"workflow_id", "input" \| "file", "idempotency_key"}`, the key optional: 201 ([ADR 0010](0010-production-in-the-editor.md)) |
+| `POST /api/live/invocations/{id}/resume` | Resumes an incomplete invocation as a live run: 201, or 409 once it has completed |
 | `GET /api/live` | Every live run the editor remembers, newest first |
 | `GET /api/live/{handle}` | One live run: where it is, and how it ended |
 | `GET /api/live/{handle}/events?after=` | Its events as a server-sent event stream, then its end |

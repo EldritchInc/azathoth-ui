@@ -18,6 +18,7 @@ from starlette.routing import BaseRoute, Route
 from azathoth_ui.browsing import browsing_routes
 from azathoth_ui.catalog import catalog_routes
 from azathoth_ui.live import live_routes
+from azathoth_ui.production import production_routes
 from azathoth_ui.scoping import INSTANCE_SCOPE_KEY, InstanceContext, context_of
 
 Endpoint = Callable[[Request], Response | Awaitable[Response]]
@@ -55,6 +56,7 @@ def instance_endpoints() -> list[Route]:
         *browsing_routes(),
         *catalog_routes(),
         *live_routes(),
+        *production_routes(),
     ]
 
 

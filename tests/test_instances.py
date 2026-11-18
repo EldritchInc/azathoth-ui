@@ -138,7 +138,9 @@ def test_a_request_outside_any_instance_has_no_context() -> None:
         context_of(request)
 
 
-@pytest.mark.parametrize("module", ["browsing.py", "catalog.py", "live.py", "instances.py"])
+@pytest.mark.parametrize(
+    "module", ["browsing.py", "catalog.py", "live.py", "production.py", "instances.py"]
+)
 def test_no_instance_endpoint_reads_the_app_for_its_instance(
     module: str,
 ) -> None:

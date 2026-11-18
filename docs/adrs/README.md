@@ -16,3 +16,4 @@ the editor follows them, and the one it rests on is
 | [0007](0007-running-and-watching-workflows.md) | Running and Watching Workflows | Accepted |
 | [0008](0008-shipping-to-a-remote.md) | Shipping to a Remote | Accepted |
 | [0009](0009-one-editor-any-instance.md) | One Editor, Any Instance | Accepted |
+| [0010](0010-production-in-the-editor.md) | Production in the Editor | Accepted |

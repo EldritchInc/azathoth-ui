@@ -24,10 +24,11 @@ def test_every_link_is_absolute_so_it_works_on_pypi() -> None:
 def test_it_says_which_azathoth_it_needs_and_that_it_is_released() -> None:
     readme = " ".join(text().split())
 
-    assert "and needs Azathoth 1.4." in readme
+    assert "and needs Azathoth 1.5." in readme
     assert "beta" not in readme.lower()
     assert "pre-release" not in readme
-    assert "1.4.0b" not in readme
+    assert "1.5.0a" not in readme
+    assert "1.5.0b" not in readme
 
 
 def test_it_installs_from_pypi_with_azathoth_beside_it() -> None:
@@ -35,4 +36,4 @@ def test_it_installs_from_pypi_with_azathoth_beside_it() -> None:
 
     assert "## Installing it\n" in readme
     assert "```bash\npython -m pip install azathoth-ui\n```" in readme
-    assert "pip brings Azathoth 1.4 with it, from PyPI." in readme
+    assert "pip brings Azathoth 1.5 with it, from PyPI." in readme

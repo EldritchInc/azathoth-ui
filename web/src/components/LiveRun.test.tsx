@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { LiveRun } from "../api/types";
 import { lastStream, stubEventSource } from "../test/eventSource";
 import { SERVER, WORKFLOW, urlOf, type Answers } from "../test/instances";
+import { LIVE_INVOCATION, OUTCOME } from "../test/production";
 import { renderAt } from "../test/render";
 import {
   FINISHED_RUN,
@@ -232,5 +233,78 @@ describe("LiveRunPage", () => {
       '"text": "A ticket."',
     );
     expect(screen.queryByRole("link", { name: "Run again" })).not.toBeInTheDocument();
+  });
+
+  describe("an invocation", () => {
+    const LIVE = { ...LIVE_INVOCATION, handle: "h4ndle" };
+
+    /** Opens a live invocation, sends its events, and ends it with `outcome`. */
+    async function invokedTo(outcome: Readonly<Record<string, unknown>>) {
+      open({ ...ANSWERS, "/api/live/h4ndle": [200, LIVE] });
+
+      expect(await screen.findByText("Invocation in production")).toBeVisible();
+
+      send();
+      end({
+        ...LIVE,
+        state: "finished",
+        finished_at: "2026-11-10T10:00:02.500Z",
+        event_count: RUN_EVENTS.length,
+        result: outcome,
+      });
+    }
+
+    it("shows its result, and where production keeps it", async () => {
+      await invokedTo({ ...OUTCOME });
+
+      expect(screen.getByRole("status")).toHaveTextContent("Succeeded");
+      expect(screen.getByLabelText("The invocation's result, as JSON")).toHaveTextContent(
+        '"result": "A ticket, summarized."',
+      );
+      expect(
+        screen.getByRole("link", { name: `invocation ${String(OUTCOME.invocation_id)}` }),
+      ).toHaveAttribute("href", `/invocations/${String(OUTCOME.invocation_id)}`);
+      expect(screen.getByRole("link", { name: "Invoke again" })).toHaveAttribute(
+        "href",
+        `/workflows/${WORKFLOW.id}/invoke`,
+      );
+      expect(screen.queryByRole("link", { name: "Run again" })).not.toBeInTheDocument();
+    });
+
+    it("says when production answered from an earlier invocation under the key", async () => {
+      await invokedTo({ ...OUTCOME, replayed: true });
+
+      expect(screen.getByText(/had already ended, so production answered/)).toHaveTextContent(
+        "api-1",
+      );
+    });
+
+    it("says why it failed, with production's code", async () => {
+      await invokedTo({
+        ...OUTCOME,
+        status: "failed",
+        result: null,
+        error: {
+          code: "workflow_result_missing",
+          message: "The run declared no result.",
+          metadata: {},
+        },
+      });
+
+      expect(screen.getByRole("status")).toHaveTextContent("Failed");
+      expect(screen.getByRole("heading", { name: "Why it failed" })).toBeVisible();
+
+      const alert = screen.getByRole("alert");
+
+      expect(alert).toHaveTextContent("The run declared no result.");
+      expect(alert).toHaveTextContent("workflow_result_missing");
+    });
+
+    it("says one that stopped short is incomplete, and can be resumed", async () => {
+      await invokedTo({ ...OUTCOME, status: "incomplete", result: null });
+
+      expect(screen.getByRole("status")).toHaveTextContent("Incomplete");
+      expect(screen.getByText(/Resume it from its page/)).toBeVisible();
+    });
   });
 });
