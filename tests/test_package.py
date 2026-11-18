@@ -4,6 +4,7 @@ import ast
 import re
 import tomllib
 from pathlib import Path
+from typing import Final
 
 import azathoth
 from azathoth import api
@@ -16,6 +17,35 @@ SOURCE = PROJECT_ROOT / "src" / "azathoth_ui"
 
 PUBLIC_API = "azathoth.api"
 """The only part of Azathoth the editor may import."""
+
+AZATHOTH_PRERELEASE: Final[str | None] = "1.5.0a1"
+"""The Azathoth pre-release this pre-release of the editor needs, or None for a final release.
+
+pip takes a pre-release only when one is named, so while the editor builds
+on one, `make install` and CI name it, and no other package's pre-release.
+"""
+
+
+def is_final(
+    version: str,
+) -> bool:
+    """Return whether one version is a final release, not an alpha, beta or candidate."""
+
+    return re.fullmatch(r"\d+\.\d+\.\d+", version) is not None
+
+
+def azathoth_requirement() -> str:
+    """Return what `make install` and CI put before what they install, to bring Azathoth.
+
+    Nothing for a final release, whose own requirement brings Azathoth's
+    final release; the pre-release it needs, within its minor release,
+    otherwise.
+    """
+
+    if AZATHOTH_PRERELEASE is None:
+        return ""
+
+    return f'"azathoth-ai>={AZATHOTH_PRERELEASE},=={minor_release(__version__)}.*" '
 
 
 def project() -> dict[str, object]:
@@ -86,7 +116,7 @@ def test_it_is_released_as_stable() -> None:
 
 def test_its_server_is_starlette_on_uvicorn() -> None:
     assert project()["dependencies"] == [
-        "azathoth-ai==1.4.*",
+        f"azathoth-ai=={minor_release(__version__)}.*",
         "starlette>=0.40",
         "uvicorn>=0.30",
     ]
@@ -135,19 +165,33 @@ def test_an_import_past_the_public_api_is_found(
     )
 
 
-INSTALL = 'python -m pip install -e ".[dev]"'
-"""How CI and `make install` install the editor: Azathoth as its requirement, from PyPI."""
+def install() -> str:
+    """Return how CI and `make install` install the editor, with Azathoth from PyPI."""
+
+    return f'python -m pip install {azathoth_requirement()}-e ".[dev]"'
+
+
+def test_a_final_release_builds_on_a_final_release_of_azathoth() -> None:
+    prerelease = AZATHOTH_PRERELEASE
+
+    assert is_final(__version__) == (prerelease is None)
+
+    if prerelease is not None:
+        assert not is_final(prerelease)
+        assert minor_release(prerelease) == minor_release(__version__)
 
 
 def test_ci_and_make_install_azathoth_from_pypi_as_the_editor_requires_it() -> None:
     ci = (PROJECT_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     makefile = (PROJECT_ROOT / "Makefile").read_text(encoding="utf-8")
 
-    assert INSTALL in ci
-    assert INSTALL in makefile
+    assert install() in ci
+    assert install() in makefile
 
     for text in (ci, makefile):
         assert "--pre" not in text
-        assert "azathoth-ai>=" not in text
-        assert "azathoth-ai==" not in text
+
+        if AZATHOTH_PRERELEASE is None:
+            assert "azathoth-ai>=" not in text
+            assert "azathoth-ai==" not in text
     assert "github.com/EldritchInc/azathoth" not in ci

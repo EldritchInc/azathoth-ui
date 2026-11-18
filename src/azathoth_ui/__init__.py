@@ -4,7 +4,7 @@ The editor drives an Azathoth instance of its own through the public service
 API, `azathoth.api`, and never through anything else.
 """
 
-__version__ = "1.4.0"
+__version__ = "1.5.0a1"
 
 __all__ = [
     "__version__",

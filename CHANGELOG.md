@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.0a1
+
+The first pre-release of the editor for Azathoth 1.5, which brings the
+editor to everything the command line does, on its own instance.
+
+- The editor needs Azathoth 1.5, and builds on its first pre-release,
+  1.5.0a1: `make install` and CI name it, so pip takes Azathoth's
+  pre-releases and no other package's.
+
 ## 1.4.0
 
 The first release of the editor, for Azathoth 1.4. It keeps an Azathoth

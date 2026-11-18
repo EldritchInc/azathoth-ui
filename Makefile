@@ -1,9 +1,10 @@
 .PHONY: install install-web check check-server check-web build-web wheel
 
 # Azathoth itself comes from PyPI: the release pyproject.toml requires, its
-# own minor release, final releases only.
+# own minor release. While 1.5 is in pre-release, naming the pre-release the
+# editor needs lets pip take Azathoth's pre-releases, and no other package's.
 install:
-	python -m pip install -e ".[dev]"
+	python -m pip install "azathoth-ai>=1.5.0a1,==1.5.*" -e ".[dev]"
 
 # The web app's dependencies, exactly as web/package-lock.json pins them.
 install-web:

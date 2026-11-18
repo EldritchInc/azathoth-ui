@@ -82,7 +82,7 @@ jobs:
       # Azathoth comes from PyPI, never from its repository: the editor is
       # built against released Azathoth, and never runs its test suite.
       - name: Install project
-        run: python -m pip install -e ".[dev]"
+        run: python -m pip install "azathoth-ai>=1.5.0a1,==1.5.*" -e ".[dev]"
 
       - name: Lint
         run: python -m ruff check .
@@ -134,11 +134,12 @@ jobs:
       - name: Check the wheel
         run: python scripts/check_wheel.py dist/*.whl
 
-      # The wheel's own requirement brings Azathoth, as it does for anyone.
+      # The wheel's own requirement brings Azathoth, as it does for anyone;
+      # while it is in pre-release, naming the one it needs lets pip take it.
       - name: Install the wheel alone
         run: |
           python -m venv "$RUNNER_TEMP/editor"
-          "$RUNNER_TEMP/editor/bin/python" -m pip install dist/*.whl
+          "$RUNNER_TEMP/editor/bin/python" -m pip install "azathoth-ai>=1.5.0a1,==1.5.*" dist/*.whl
 
       # Run outside the checkout, so the editor comes from the wheel.
       - name: Start the editor and use it

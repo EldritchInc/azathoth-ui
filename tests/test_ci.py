@@ -3,6 +3,8 @@
 import re
 from pathlib import Path
 
+from tests.test_package import azathoth_requirement
+
 PROJECT_ROOT = Path(__file__).parents[1]
 
 CI = PROJECT_ROOT / ".github" / "workflows" / "ci.yml"
@@ -75,7 +77,7 @@ def test_the_wheel_job_builds_checks_installs_and_starts_the_editor() -> None:
         "python -m build",
         "python scripts/check_wheel.py dist/*.whl",
         'python -m venv "$RUNNER_TEMP/editor"',
-        '"$RUNNER_TEMP/editor/bin/python" -m pip install dist/*.whl',
+        f'"$RUNNER_TEMP/editor/bin/python" -m pip install {azathoth_requirement()}dist/*.whl',
         '\'"$RUNNER_TEMP/editor/bin/python" "$GITHUB_WORKSPACE/scripts/smoke.py"\'',
     ]
     assert "working-directory: ${{ runner.temp }}" in wheel
