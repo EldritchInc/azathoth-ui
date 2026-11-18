@@ -49,10 +49,12 @@ STATIC_DIRECTORY: Final = PACKAGE_DIRECTORY / "static"
 
 ERROR_STATUSES: Final[tuple[tuple[type[api.ApiError], int], ...]] = (
     (api.InvalidArgumentError, 422),
+    (api.WorkflowResultMissingError, 422),
     (api.NotFoundError, 404),
     (api.ConflictError, 409),
     (api.RunCancelledError, 409),
     (api.RunNotStartedError, 409),
+    (api.CandidateUnavailableError, 409),
     (api.ProviderUnavailableError, 502),
     (api.RemoteUnreachableError, 502),
     (api.RemoteProtocolError, 502),
