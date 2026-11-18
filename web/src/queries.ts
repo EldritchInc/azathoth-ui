@@ -2,6 +2,10 @@
  * The editor's data, kept by TanStack Query: fetched once, shared by every
  * component that shows it, refreshed when the window regains focus, and
  * refetched after anything changes it.
+ *
+ * What an instance holds is asked of the instance the page acts on, and
+ * kept under its name (ADR 0009); what belongs to the editor, its
+ * description and its remotes, is kept apart from every instance.
  */
 
 import {
@@ -20,6 +24,7 @@ import {
   addToPortfolio,
   cancelLiveRun,
   checkWorkflow,
+  fetchCommands,
   fetchDetail,
   fetchEditor,
   fetchHistory,
@@ -48,6 +53,7 @@ import {
 import type {
   ComponentDetail,
   EditorDescription,
+  InstanceCommands,
   LiveRun,
   ModelListing,
   ModelSummary,
@@ -74,10 +80,12 @@ import {
   type Kind,
   type SummaryOf,
 } from "./kinds";
+import { LOCAL_SCOPE, scoped, useScope } from "./scope";
 
 /** The keys the editor's data is kept under. */
 export const queryKeys = {
   editor: ["editor"] as const,
+  commands: ["commands"] as const,
   list: (kind: Kind) => [kind, "list"] as const,
   detail: (kind: Kind, ref: ComponentRef, revision: number | null) =>
     [kind, "detail", ref.id, ref.version ?? null, revision] as const,
@@ -129,7 +137,7 @@ export function makeQueryClient(): QueryClient {
   });
 }
 
-/** Returns the editor, and how its commands name its database. */
+/** Returns the editor: its version, the shell it writes commands for, and its providers. */
 export function useEditor(): UseQueryResult<EditorDescription, ApiFailure> {
   return useQuery<EditorDescription, ApiFailure>({
     queryKey: queryKeys.editor,
@@ -138,11 +146,24 @@ export function useEditor(): UseQueryResult<EditorDescription, ApiFailure> {
   });
 }
 
+/** Returns the instance's name, and what goes before a command so that it acts on it. */
+export function useCommands(): UseQueryResult<InstanceCommands, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<InstanceCommands, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.commands),
+    queryFn: ({ signal }) => fetchCommands({ signal, base: scope.api }),
+    staleTime: Infinity,
+  });
+}
+
 /** Returns one kind's list: every component of the kind at its latest revision. */
 export function useList<K extends Kind>(kind: K): UseQueryResult<SummaryOf[K][], ApiFailure> {
+  const scope = useScope();
+
   return useQuery<SummaryOf[K][], ApiFailure>({
-    queryKey: queryKeys.list(kind),
-    queryFn: ({ signal }) => DESCRIPTIONS[kind].fetch({ signal }),
+    queryKey: scoped(scope, queryKeys.list(kind)),
+    queryFn: ({ signal }) => DESCRIPTIONS[kind].fetch({ signal, base: scope.api }),
   });
 }
 
@@ -152,17 +173,21 @@ export function useDetail(
   ref: ComponentRef,
   revision: number | null,
 ): UseQueryResult<ComponentDetail, ApiFailure> {
+  const scope = useScope();
+
   return useQuery<ComponentDetail, ApiFailure>({
-    queryKey: queryKeys.detail(kind, ref, revision),
-    queryFn: ({ signal }) => fetchDetail(detailApiPath(kind, ref, revision), { signal }),
+    queryKey: scoped(scope, queryKeys.detail(kind, ref, revision)),
+    queryFn: ({ signal }) => fetchDetail(detailApiPath(kind, ref, revision, scope.api), { signal }),
   });
 }
 
 /** Returns a component's revisions, newest first; for a tool, those of its one version. */
 export function useHistory(kind: Kind, ref: ComponentRef): UseQueryResult<Summary[], ApiFailure> {
+  const scope = useScope();
+
   return useQuery<Summary[], ApiFailure>({
-    queryKey: queryKeys.history(kind, ref),
-    queryFn: ({ signal }) => fetchHistory(historyApiPath(kind, ref), { signal }),
+    queryKey: scoped(scope, queryKeys.history(kind, ref)),
+    queryFn: ({ signal }) => fetchHistory(historyApiPath(kind, ref, scope.api), { signal }),
   });
 }
 
@@ -172,9 +197,11 @@ export function useHistory(kind: Kind, ref: ComponentRef): UseQueryResult<Summar
  * cheap; `useRefreshModels` makes it ask the providers.
  */
 export function useModels(): UseQueryResult<ModelListing, ApiFailure> {
+  const scope = useScope();
+
   return useQuery<ModelListing, ApiFailure>({
-    queryKey: queryKeys.modelList,
-    queryFn: ({ signal }) => fetchModels({}, { signal }),
+    queryKey: scoped(scope, queryKeys.modelList),
+    queryFn: ({ signal }) => fetchModels({}, { signal, base: scope.api }),
     staleTime: 60_000,
   });
 }
@@ -182,20 +209,23 @@ export function useModels(): UseQueryResult<ModelListing, ApiFailure> {
 /** Returns a refresh of the catalog: the server asks the providers again. */
 export function useRefreshModels(): UseMutationResult<ModelListing, ApiFailure, void> {
   const client = useQueryClient();
+  const scope = useScope();
 
   return useMutation<ModelListing, ApiFailure>({
-    mutationFn: () => fetchModels({ refresh: true }),
+    mutationFn: () => fetchModels({ refresh: true }, { base: scope.api }),
     onSuccess: (listing) => {
-      client.setQueryData(queryKeys.modelList, listing);
+      client.setQueryData(scoped(scope, queryKeys.modelList), listing);
     },
   });
 }
 
 /** Returns the models the local portfolio authorizes. */
 export function usePortfolio(): UseQueryResult<PortfolioEntry[], ApiFailure> {
+  const scope = useScope();
+
   return useQuery<PortfolioEntry[], ApiFailure>({
-    queryKey: queryKeys.portfolio,
-    queryFn: ({ signal }) => fetchPortfolio({ signal }),
+    queryKey: scoped(scope, queryKeys.portfolio),
+    queryFn: ({ signal }) => fetchPortfolio({ signal, base: scope.api }),
   });
 }
 
@@ -213,11 +243,14 @@ export function usePortfolioChange(): UseMutationResult<
   PortfolioChange
 > {
   const client = useQueryClient();
+  const scope = useScope();
 
   return useMutation<PortfolioEntry | PortfolioRemoval, ApiFailure, PortfolioChange>({
     mutationFn: ({ identifier, add, force = false }) =>
-      add ? addToPortfolio(identifier) : removeFromPortfolio(identifier, { force }),
-    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.models }),
+      add
+        ? addToPortfolio(identifier, { base: scope.api })
+        : removeFromPortfolio(identifier, { force }, { base: scope.api }),
+    onSettled: () => client.invalidateQueries({ queryKey: scoped(scope, queryKeys.models) }),
   });
 }
 
@@ -232,12 +265,13 @@ export interface WorkflowDocuments {
 
 /** Returns every workflow in the local instance with its latest document. */
 export function useWorkflowDocuments(): WorkflowDocuments {
+  const scope = useScope();
   const list = useList("workflows");
   const details = useQueries({
     queries: (list.data ?? []).map((summary) => ({
-      queryKey: queryKeys.detail("workflows", { id: summary.id }, null),
+      queryKey: scoped(scope, queryKeys.detail("workflows", { id: summary.id }, null)),
       queryFn: ({ signal }: { readonly signal: AbortSignal }) =>
-        fetchDetail(detailApiPath("workflows", { id: summary.id }, null), { signal }),
+        fetchDetail(detailApiPath("workflows", { id: summary.id }, null, scope.api), { signal }),
     })),
   });
 
@@ -263,9 +297,11 @@ export function useWorkflowDocuments(): WorkflowDocuments {
  * every couple of seconds while any is running and now and then while none is.
  */
 export function useLiveRuns(): UseQueryResult<LiveRun[], ApiFailure> {
+  const scope = useScope();
+
   return useQuery<LiveRun[], ApiFailure>({
-    queryKey: queryKeys.liveList,
-    queryFn: ({ signal }) => fetchLiveRuns({ signal }),
+    queryKey: scoped(scope, queryKeys.liveList),
+    queryFn: ({ signal }) => fetchLiveRuns({ signal, base: scope.api }),
     refetchInterval: (query) =>
       query.state.data?.some((run) => run.state === "running") === true
         ? RUNNING_POLL_MS
@@ -275,9 +311,11 @@ export function useLiveRuns(): UseQueryResult<LiveRun[], ApiFailure> {
 
 /** Returns one live run as the server last described it. */
 export function useLiveRun(handle: string): UseQueryResult<LiveRun, ApiFailure> {
+  const scope = useScope();
+
   return useQuery<LiveRun, ApiFailure>({
-    queryKey: queryKeys.liveRun(handle),
-    queryFn: ({ signal }) => fetchLiveRun(handle, { signal }),
+    queryKey: scoped(scope, queryKeys.liveRun(handle)),
+    queryFn: ({ signal }) => fetchLiveRun(handle, { signal, base: scope.api }),
   });
 }
 
@@ -290,52 +328,59 @@ export interface RunStart {
 /** Returns a start of a live run, after which the live runs are fetched again. */
 export function useStartRun(): UseMutationResult<LiveRun, ApiFailure, RunStart> {
   const client = useQueryClient();
+  const scope = useScope();
 
   return useMutation<LiveRun, ApiFailure, RunStart>({
-    mutationFn: ({ workflowId, given }) => startRun(workflowId, given),
+    mutationFn: ({ workflowId, given }) => startRun(workflowId, given, { base: scope.api }),
     onSuccess: (run) => {
-      client.setQueryData(queryKeys.liveRun(run.handle), run);
+      client.setQueryData(scoped(scope, queryKeys.liveRun(run.handle)), run);
     },
-    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.liveList }),
+    onSettled: () => client.invalidateQueries({ queryKey: scoped(scope, queryKeys.liveList) }),
   });
 }
 
 /** Returns a start of trying one step alone, after which the live runs are fetched again. */
 export function useTryStep(): UseMutationResult<LiveRun, ApiFailure, TrialStart> {
   const client = useQueryClient();
+  const scope = useScope();
 
   return useMutation<LiveRun, ApiFailure, TrialStart>({
-    mutationFn: (start) => startTrial(start),
+    mutationFn: (start) => startTrial(start, { base: scope.api }),
     onSuccess: (run) => {
-      client.setQueryData(queryKeys.liveRun(run.handle), run);
+      client.setQueryData(scoped(scope, queryKeys.liveRun(run.handle)), run);
     },
-    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.liveList }),
+    onSettled: () => client.invalidateQueries({ queryKey: scoped(scope, queryKeys.liveList) }),
   });
 }
 
 /** Returns a way to ask a live run to stop. */
 export function useCancelRun(): UseMutationResult<LiveRun, ApiFailure, string> {
   const client = useQueryClient();
+  const scope = useScope();
 
   return useMutation<LiveRun, ApiFailure, string>({
-    mutationFn: (handle) => cancelLiveRun(handle),
-    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.live }),
+    mutationFn: (handle) => cancelLiveRun(handle, { base: scope.api }),
+    onSettled: () => client.invalidateQueries({ queryKey: scoped(scope, queryKeys.live) }),
   });
 }
 
 /** Returns a workflow's kept runs, newest first: the newest `RUNS_LISTED` of them. */
 export function useWorkflowRuns(workflowId: string): UseQueryResult<RunSummary[], ApiFailure> {
+  const scope = useScope();
+
   return useQuery<RunSummary[], ApiFailure>({
-    queryKey: queryKeys.workflowRuns(workflowId),
-    queryFn: ({ signal }) => fetchWorkflowRuns(workflowId, { signal }),
+    queryKey: scoped(scope, queryKeys.workflowRuns(workflowId)),
+    queryFn: ({ signal }) => fetchWorkflowRuns(workflowId, { signal, base: scope.api }),
   });
 }
 
 /** Returns one kept run with its steps; a kept run never changes. */
 export function useRun(runId: string): UseQueryResult<RunDetail, ApiFailure> {
+  const scope = useScope();
+
   return useQuery<RunDetail, ApiFailure>({
-    queryKey: queryKeys.run(runId),
-    queryFn: ({ signal }) => fetchRun(runId, { signal }),
+    queryKey: scoped(scope, queryKeys.run(runId)),
+    queryFn: ({ signal }) => fetchRun(runId, { signal, base: scope.api }),
     staleTime: Infinity,
   });
 }
@@ -348,11 +393,12 @@ export function useRun(runId: string): UseQueryResult<RunDetail, ApiFailure> {
 export function useMatching(
   requirements: Readonly<Record<string, unknown>>,
 ): UseQueryResult<ModelSummary[], ApiFailure> {
+  const scope = useScope();
   const key = JSON.stringify(requirements);
 
   return useQuery<ModelSummary[], ApiFailure>({
-    queryKey: queryKeys.matching(key),
-    queryFn: ({ signal }) => matchModels(requirements, { signal }),
+    queryKey: scoped(scope, queryKeys.matching(key)),
+    queryFn: ({ signal }) => matchModels(requirements, { signal, base: scope.api }),
     placeholderData: keepPreviousData,
     staleTime: 60_000,
   });
@@ -363,11 +409,12 @@ export function useMatching(
  * a changed document is asked about, the last answer stands.
  */
 export function useWorkflowCheck(document: unknown): UseQueryResult<WorkflowCheck, ApiFailure> {
+  const scope = useScope();
   const key = JSON.stringify(document);
 
   return useQuery<WorkflowCheck, ApiFailure>({
-    queryKey: queryKeys.check(key),
-    queryFn: ({ signal }) => checkWorkflow(document, { signal }),
+    queryKey: scoped(scope, queryKeys.check(key)),
+    queryFn: ({ signal }) => checkWorkflow(document, { signal, base: scope.api }),
     placeholderData: keepPreviousData,
     staleTime: Infinity,
   });
@@ -381,11 +428,12 @@ export function useReadiness(
   document: unknown,
   { enabled = true }: { readonly enabled?: boolean } = {},
 ): UseQueryResult<WorkflowReadiness, ApiFailure> {
+  const scope = useScope();
   const key = JSON.stringify(document);
 
   return useQuery<WorkflowReadiness, ApiFailure>({
-    queryKey: queryKeys.readiness(key),
-    queryFn: ({ signal }) => fetchReadiness(document, { signal }),
+    queryKey: scoped(scope, queryKeys.readiness(key)),
+    queryFn: ({ signal }) => fetchReadiness(document, { signal, base: scope.api }),
     staleTime: 60_000,
     enabled,
   });
@@ -462,8 +510,8 @@ export interface Pull {
 
 /**
  * Returns a pull, after which every remote's status, and every workflow,
- * tool and benchmark here, is fetched again, since the pull may have saved
- * revisions of any of them.
+ * tool and benchmark in the editor's own instance, is fetched again, since
+ * the pull may have saved revisions of any of them.
  */
 export function usePull(): UseMutationResult<PullReport, ApiFailure, Pull> {
   const client = useQueryClient();
@@ -473,7 +521,7 @@ export function usePull(): UseMutationResult<PullReport, ApiFailure, Pull> {
       pullFromRemote(name, selection, { includeRestricted }),
     onSettled: async () => {
       await Promise.all(
-        [queryKeys.remotes, ...KINDS.map((kind) => [kind])].map((queryKey) =>
+        [queryKeys.remotes, ...KINDS.map((kind) => scoped(LOCAL_SCOPE, [kind]))].map((queryKey) =>
           client.invalidateQueries({ queryKey }),
         ),
       );

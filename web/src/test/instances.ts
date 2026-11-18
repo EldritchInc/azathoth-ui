@@ -1,6 +1,7 @@
 import type {
   BenchmarkSummary,
   EditorDescription,
+  InstanceCommands,
   InstanceDescription,
   ModelSummary,
   PortfolioEntry,
@@ -21,8 +22,13 @@ export const SQLITE_INSTANCE: InstanceDescription = {
 export const EDITOR: EditorDescription = {
   version: "1.4.0",
   shell: "posix",
-  command_prefix: "AZATHOTH_DATABASE='/Users/eris/Library/Application Support/Azathoth/ui.db' ",
   providers: ["openrouter", "bedrock"],
+};
+
+/** The local instance's name and command prefix, as `GET /api/commands` gives them on macOS. */
+export const COMMANDS: InstanceCommands = {
+  instance: "local",
+  prefix: "AZATHOTH_DATABASE='/Users/eris/Library/Application Support/Azathoth/ui.db' ",
 };
 
 /** A workflow imported twice, identically. */
@@ -168,6 +174,7 @@ export type Answers = Readonly<Record<string, readonly [number, unknown]>>;
 export const SERVER: Answers = {
   "/api/instance": [200, SQLITE_INSTANCE],
   "/api/editor": [200, EDITOR],
+  "/api/commands": [200, COMMANDS],
   "/api/workflows": [200, { items: [WORKFLOW, REVIEW_WORKFLOW] }],
   "/api/tools": [200, { items: [TOOL] }],
   "/api/benchmarks": [200, { items: [BENCHMARK] }],

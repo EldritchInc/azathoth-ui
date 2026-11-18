@@ -23,12 +23,17 @@ export type Shell = "posix" | "powershell";
 /** The providers an editor can be opened with. */
 export type ProviderName = "openrouter" | "bedrock";
 
-/** `GET /api/editor`: the editor, how its commands name its database, and its providers. */
+/** `GET /api/editor`: the editor, the shell it writes commands for, and its providers. */
 export interface EditorDescription {
   readonly version: string;
   readonly shell: Shell;
-  readonly command_prefix: string;
   readonly providers: readonly ProviderName[];
+}
+
+/** `GET {base}/commands`: an instance's name, and what goes before a command for it (ADR 0009). */
+export interface InstanceCommands {
+  readonly instance: string;
+  readonly prefix: string;
 }
 
 /** One revision of a component: its number, digest and when it was imported. */
@@ -358,10 +363,14 @@ export function isEditorDescription(value: unknown): value is EditorDescription 
     isRecord(value) &&
     typeof value.version === "string" &&
     (value.shell === "posix" || value.shell === "powershell") &&
-    typeof value.command_prefix === "string" &&
     Array.isArray(value.providers) &&
     value.providers.every((provider) => provider === "openrouter" || provider === "bedrock")
   );
+}
+
+/** Returns whether a value is an instance's name and command prefix. */
+export function isInstanceCommands(value: unknown): value is InstanceCommands {
+  return isRecord(value) && typeof value.instance === "string" && typeof value.prefix === "string";
 }
 
 /** Returns whether a value is one revision. */

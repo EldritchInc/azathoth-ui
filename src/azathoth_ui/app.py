@@ -118,21 +118,19 @@ def http_error(
 def describe_editor(
     request: Request,
 ) -> Response:
-    """`GET /api/editor`: the editor's version, how its commands name its database, its providers.
+    """`GET /api/editor`: the editor's version, the shell it writes commands for, its providers.
 
-    The providers are named, never their keys.
+    The providers are named, never their keys. What goes before a command
+    belongs to each instance, at its own `/commands` (ADR 0009).
     """
 
-    instance: api.Azathoth = request.app.state.instance
     shell: Shell = request.app.state.shell
     providers: tuple[str, ...] = request.app.state.providers
-    database = instance.describe().database
 
     return JSONResponse(
         {
             "version": __version__,
             "shell": shell,
-            "command_prefix": command_prefix(database, shell),
             "providers": list(providers),
         }
     )

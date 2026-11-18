@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 
 import { ApiFailure, UNREACHABLE_MESSAGE, fetchInstance, type RequestOptions } from "./api/client";
 import type { InstanceDescription } from "./api/types";
+import { useScope } from "./scope";
 
 export const CHECK_INTERVAL = 10_000;
 
@@ -33,6 +34,7 @@ export function useInstance(
   load: InstanceLoader = fetchInstance,
   interval: number = CHECK_INTERVAL,
 ): Connection {
+  const { api } = useScope();
   const [connection, setConnection] = useState<Connection>({ state: "connecting" });
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export function useInstance(
       pending = current;
 
       try {
-        const instance = await load({ signal: current.signal });
+        const instance = await load({ signal: current.signal, base: api });
 
         if (active && !current.signal.aborted) {
           setConnection({ state: "connected", instance });
@@ -81,7 +83,7 @@ export function useInstance(
       window.clearInterval(timer);
       window.removeEventListener("focus", run);
     };
-  }, [load, interval]);
+  }, [load, interval, api]);
 
   return connection;
 }

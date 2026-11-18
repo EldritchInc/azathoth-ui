@@ -212,7 +212,7 @@ def test_without_a_web_build_any_page_says_how_to_build_one(
     assert "make build-web" in response.text
 
 
-def test_the_editor_says_how_to_name_its_database_in_a_command(
+def test_the_editor_describes_itself_and_its_instance_says_how_to_name_it(
     instance: api.Azathoth,
     tmp_path: Path,
 ) -> None:
@@ -231,8 +231,11 @@ def test_the_editor_says_how_to_name_its_database_in_a_command(
         assert response.json() == {
             "version": __version__,
             "shell": shell,
-            "command_prefix": command_prefix(database, shell),
             "providers": [],
+        }
+        assert client.get("/api/commands").json() == {
+            "instance": "local",
+            "prefix": command_prefix(database, shell),
         }
 
 

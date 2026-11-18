@@ -28,6 +28,7 @@ import {
 import { begin, record, redo, undo, type History } from "../history";
 import { problemsOf, titleOf, type Problem } from "../problems";
 import { useDetail, useReadiness, useWorkflowCheck } from "../queries";
+import { scoped, useScope } from "../scope";
 import { browserStorage } from "../theme";
 import { useDebounced } from "../useDebounced";
 import buttons from "./Buttons.module.css";
@@ -259,6 +260,7 @@ function Editor({
   readonly latest: ComponentDetail | null;
 }) {
   const client = useQueryClient();
+  const scope = useScope();
   const navigate = useNavigate();
   const fieldId = useId();
   const [history, setHistory] = useState<History<JsonObject>>(() => begin(start.document));
@@ -354,11 +356,13 @@ function Editor({
     const sent = present;
 
     try {
-      const { detail } = await importDocument("workflows", JSON.stringify(sent));
+      const { detail } = await importDocument("workflows", JSON.stringify(sent), {
+        base: scope.api,
+      });
 
       setSaved({ document: sent, number: detail.revision.number });
       setOutcome({ kind: "saved", number: detail.revision.number });
-      await client.invalidateQueries({ queryKey: ["workflows"] });
+      await client.invalidateQueries({ queryKey: scoped(scope, ["workflows"]) });
     } catch (error) {
       setOutcome({
         kind: "refused",
