@@ -9,6 +9,11 @@ ID, which exists only once it has finished; its events are the service
 API's own `RunEvent` JSON, so a run watched on another server could be told
 the same way.
 
+An invocation of a promoted workflow is a live run too (ADR 0010): it goes
+through production, under an idempotency key, as the editor's caller, and
+its end carries Azathoth's `InvocationOutcome`; resuming an incomplete one
+is another.
+
 Live runs are kept in memory only. At most `MAX_RUNNING` run at once, and
 the newest `KEEP_FINISHED` finished ones are remembered until the editor
 stops; once a run finishes, the run Azathoth kept is its record.
@@ -65,10 +70,16 @@ START_FIELDS: Final = ("workflow_id", "input", "file")
 STEP_FIELDS: Final = ("document", "step_id", "inputs", "files", "input", "file")
 """What a body that starts trying one step may hold."""
 
+INVOKE_FIELDS: Final = ("workflow_id", "input", "file", "idempotency_key")
+"""What a body that invokes a workflow in production may hold."""
+
+EDITOR_CALLER: Final[dict[str, str]] = {"client": "azathoth-ui"}
+"""The caller metadata of every invocation the editor makes, so production tells it apart."""
+
 DOCUMENT_MESSAGE: Final = "document must be a workflow document, as a JSON object."
 
-LiveKind = Literal["run", "step"]
-"""What a live run runs: a workflow, or one step of a document tried alone."""
+LiveKind = Literal["run", "step", "invocation"]
+"""What a live run runs: a workflow, one step of a document tried alone, or an invocation."""
 
 LiveState = Literal["running", "finished", "cancelled", "refused"]
 """Where a live run is: running, finished with its value, cancelled, or refused by Azathoth."""
@@ -101,6 +112,7 @@ class LiveRun:
     workflow_id: UUID
     step_id: UUID | None
     started_at: datetime
+    invocation_id: UUID | None = None
     token: api.CancellationToken = field(default_factory=api.CancellationToken)
     events: list[dict[str, object]] = field(default_factory=list)
     state: LiveState = "running"
@@ -150,14 +162,22 @@ class LiveRun:
     def describe(
         self,
     ) -> dict[str, object]:
-        """Return what the editor says of the run: where it is, and how it ended."""
+        """Return what the editor says of the run: where it is, and how it ended.
+
+        An invocation names its invocation once it is known: from the start
+        when it resumes one, and from its outcome when it makes one.
+        """
 
         with self.lock:
+            made = self.result.get("invocation_id") if self.result is not None else None
+            invocation = str(self.invocation_id) if self.invocation_id is not None else made
+
             return {
                 "handle": self.handle,
                 "kind": self.kind,
                 "workflow_id": str(self.workflow_id),
                 "step_id": str(self.step_id) if self.step_id is not None else None,
+                "invocation_id": invocation,
                 "state": self.state,
                 "started_at": moment(self.started_at),
                 "finished_at": moment(self.finished_at) if self.finished_at else None,
@@ -198,6 +218,7 @@ class LiveRuns:
         *,
         workflow_id: UUID,
         step_id: UUID | None = None,
+        invocation_id: UUID | None = None,
     ) -> LiveRun:
         """Start one live run of `call` on a thread of its own, and return it.
 
@@ -217,6 +238,7 @@ class LiveRuns:
                 workflow_id=workflow_id,
                 step_id=step_id,
                 started_at=datetime.now(UTC),
+                invocation_id=invocation_id,
             )
             self._runs[run.handle] = run
 
@@ -457,6 +479,114 @@ async def start_run(
     return started(run)
 
 
+def idempotency_key_of(
+    body: dict[str, object],
+) -> str | None:
+    """Return the idempotency key an invocation names, `None` for Azathoth to make one.
+
+    Raises:
+        InvalidArgumentError: It is not text.
+    """
+
+    key = body.get("idempotency_key")
+
+    if key is None:
+        return None
+
+    if not isinstance(key, str):
+        raise api.InvalidArgumentError("idempotency_key must be text.")
+
+    return key
+
+
+async def start_invocation(
+    request: Request,
+) -> Response:
+    """`POST /api/live/invocations` `{"workflow_id", "input" | "file", "idempotency_key"?}`: 201.
+
+    It invokes the workflow in production, as the editor's caller; a
+    workflow neither configured nor in production is refused before it
+    starts. A workflow not in production yet is an invocation that fails,
+    as production says, not a refusal.
+    """
+
+    body = await start_body(request, INVOKE_FIELDS, "invocation")
+
+    if isinstance(body, Response):
+        return body
+
+    workflow_id = uuid_field(body, "workflow_id", "workflow")
+    given = run_input(body)
+    key = idempotency_key_of(body)
+    instance = instance_of(request)
+    await run_in_threadpool(instance.production.get, workflow_id)
+    value = given.payload if isinstance(given, api.RunInput) else given
+
+    def call(
+        on_event: api.EventCallback,
+        cancel: api.CancellationToken,
+    ) -> api.InvocationOutcome:
+        """Invoke the workflow in production, reporting its events, until it ends."""
+
+        return instance.runs.invoke(
+            workflow_id,
+            input=value,
+            idempotency_key=key,
+            caller_metadata=EDITOR_CALLER,
+            on_event=on_event,
+            cancel=cancel,
+        )
+
+    try:
+        run = live_of(request).start("invocation", call, workflow_id=workflow_id)
+    except TooManyRunsError as exc:
+        return refusal(429, "too_many_runs", str(exc))
+
+    return started(run)
+
+
+async def resume_invocation(
+    request: Request,
+) -> Response:
+    """`POST /api/live/invocations/{id}/resume`: resume an incomplete invocation: 201.
+
+    One that has completed is refused before anything runs.
+    """
+
+    text: str = request.path_params["invocation_id"]
+
+    try:
+        invocation_id = UUID(text)
+    except ValueError:
+        raise api.InvalidArgumentError(f"{text!r} is not an invocation id.") from None
+
+    instance = instance_of(request)
+    detail = await run_in_threadpool(instance.invocations.get, invocation_id)
+
+    if detail.status != "incomplete":
+        raise api.ConflictError(f"Invocation {invocation_id} has already completed.")
+
+    def call(
+        on_event: api.EventCallback,
+        cancel: api.CancellationToken,
+    ) -> api.InvocationOutcome:
+        """Resume the invocation from its journal, reporting its events, until it ends."""
+
+        return instance.invocations.resume(invocation_id, on_event=on_event, cancel=cancel)
+
+    try:
+        run = live_of(request).start(
+            "invocation",
+            call,
+            workflow_id=detail.workflow_id,
+            invocation_id=invocation_id,
+        )
+    except TooManyRunsError as exc:
+        return refusal(429, "too_many_runs", str(exc))
+
+    return started(run)
+
+
 def document_field(
     body: dict[str, object],
 ) -> tuple[dict[str, Any], UUID]:
@@ -667,6 +797,12 @@ def live_routes() -> list[Route]:
         Route("/live", list_live, methods=["GET"]),
         Route("/live/runs", start_run, methods=["POST"]),
         Route("/live/steps", start_step, methods=["POST"]),
+        Route("/live/invocations", start_invocation, methods=["POST"]),
+        Route(
+            "/live/invocations/{invocation_id}/resume",
+            resume_invocation,
+            methods=["POST"],
+        ),
         Route("/live/{handle}", get_live, methods=["GET"]),
         Route("/live/{handle}/events", stream_live, methods=["GET"]),
         Route("/live/{handle}/cancel", cancel_live, methods=["POST"]),
@@ -675,6 +811,8 @@ def live_routes() -> list[Route]:
 
 __all__ = [
     "DOCUMENT_MESSAGE",
+    "EDITOR_CALLER",
+    "INVOKE_FIELDS",
     "KEEP_ALIVE_SECONDS",
     "KEEP_FINISHED",
     "MAX_RUNNING",
