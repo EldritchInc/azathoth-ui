@@ -43,6 +43,7 @@ from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
 
 from azathoth_ui.browsing import WHOLE_NUMBER, instance_of, refusal
+from azathoth_ui.labels import sensitivity_of
 from azathoth_ui.scoping import context_of
 
 MAX_RUNNING: Final = 4
@@ -64,13 +65,13 @@ TOO_LARGE_MESSAGE: Final = "A run's input may be at most 10 MB, or 14 MB as it i
 
 BODY_MESSAGE: Final = 'Send a JSON object, such as {"workflow_id": ..., "input": ...}.'
 
-START_FIELDS: Final = ("workflow_id", "input", "file")
+START_FIELDS: Final = ("workflow_id", "input", "file", "sensitivity")
 """What a body that starts a run may hold."""
 
-STEP_FIELDS: Final = ("document", "step_id", "inputs", "files", "input", "file")
+STEP_FIELDS: Final = ("document", "step_id", "inputs", "files", "input", "file", "sensitivity")
 """What a body that starts trying one step may hold."""
 
-INVOKE_FIELDS: Final = ("workflow_id", "input", "file", "idempotency_key")
+INVOKE_FIELDS: Final = ("workflow_id", "input", "file", "idempotency_key", "sensitivity")
 """What a body that invokes a workflow in production may hold."""
 
 EDITOR_CALLER: Final[dict[str, str]] = {"client": "azathoth-ui"}
@@ -113,6 +114,7 @@ class LiveRun:
     step_id: UUID | None
     started_at: datetime
     invocation_id: UUID | None = None
+    sensitivity: api.Sensitivity | None = None
     token: api.CancellationToken = field(default_factory=api.CancellationToken)
     events: list[dict[str, object]] = field(default_factory=list)
     state: LiveState = "running"
@@ -165,7 +167,8 @@ class LiveRun:
         """Return what the editor says of the run: where it is, and how it ended.
 
         An invocation names its invocation once it is known: from the start
-        when it resumes one, and from its outcome when it makes one.
+        when it resumes one, and from its outcome when it makes one. Its
+        `sensitivity` is the label it was given, or `None` (ADR 0011).
         """
 
         with self.lock:
@@ -178,6 +181,7 @@ class LiveRun:
                 "workflow_id": str(self.workflow_id),
                 "step_id": str(self.step_id) if self.step_id is not None else None,
                 "invocation_id": invocation,
+                "sensitivity": self.sensitivity.value if self.sensitivity is not None else None,
                 "state": self.state,
                 "started_at": moment(self.started_at),
                 "finished_at": moment(self.finished_at) if self.finished_at else None,
@@ -219,6 +223,7 @@ class LiveRuns:
         workflow_id: UUID,
         step_id: UUID | None = None,
         invocation_id: UUID | None = None,
+        sensitivity: api.Sensitivity | None = None,
     ) -> LiveRun:
         """Start one live run of `call` on a thread of its own, and return it.
 
@@ -239,6 +244,7 @@ class LiveRuns:
                 step_id=step_id,
                 started_at=datetime.now(UTC),
                 invocation_id=invocation_id,
+                sensitivity=sensitivity,
             )
             self._runs[run.handle] = run
 
@@ -451,7 +457,10 @@ def started(
 async def start_run(
     request: Request,
 ) -> Response:
-    """`POST /api/live/runs` `{"workflow_id", "input" | "file"}`: start a run: 201."""
+    """`POST /api/live/runs` `{"workflow_id", "input" | "file", "sensitivity"?}`: start a run: 201.
+
+    A label is given to input only, so one without input is refused before it starts.
+    """
 
     body = await start_body(request, START_FIELDS, "run")
 
@@ -460,6 +469,11 @@ async def start_run(
 
     workflow_id = uuid_field(body, "workflow_id", "workflow")
     given = run_input(body)
+    sensitivity = sensitivity_of(body.get("sensitivity"))
+
+    if sensitivity is not None and given is None:
+        raise api.InvalidArgumentError(api.SENSITIVITY_WITHOUT_INPUT_MESSAGE)
+
     instance = instance_of(request)
     await run_in_threadpool(instance.workflows.get, workflow_id)
 
@@ -469,10 +483,16 @@ async def start_run(
     ) -> api.RunResult:
         """Run the workflow, reporting its events, until it ends or is cancelled."""
 
-        return instance.runs.run(workflow_id, input=given, on_event=on_event, cancel=cancel)
+        return instance.runs.run(
+            workflow_id,
+            input=given,
+            sensitivity=sensitivity,
+            on_event=on_event,
+            cancel=cancel,
+        )
 
     try:
-        run = live_of(request).start("run", call, workflow_id=workflow_id)
+        run = live_of(request).start("run", call, workflow_id=workflow_id, sensitivity=sensitivity)
     except TooManyRunsError as exc:
         return refusal(429, "too_many_runs", str(exc))
 
@@ -502,7 +522,9 @@ def idempotency_key_of(
 async def start_invocation(
     request: Request,
 ) -> Response:
-    """`POST /api/live/invocations` `{"workflow_id", "input" | "file", "idempotency_key"?}`: 201.
+    """`POST /api/live/invocations` `{"workflow_id", "input" | "file", ...}`: invoke it: 201.
+
+    `idempotency_key` and `sensitivity` may be given too.
 
     It invokes the workflow in production, as the editor's caller; a
     workflow neither configured nor in production is refused before it
@@ -518,6 +540,7 @@ async def start_invocation(
     workflow_id = uuid_field(body, "workflow_id", "workflow")
     given = run_input(body)
     key = idempotency_key_of(body)
+    sensitivity = sensitivity_of(body.get("sensitivity"))
     instance = instance_of(request)
     await run_in_threadpool(instance.production.get, workflow_id)
     value = given.payload if isinstance(given, api.RunInput) else given
@@ -531,6 +554,7 @@ async def start_invocation(
         return instance.runs.invoke(
             workflow_id,
             input=value,
+            sensitivity=sensitivity,
             idempotency_key=key,
             caller_metadata=EDITOR_CALLER,
             on_event=on_event,
@@ -538,7 +562,9 @@ async def start_invocation(
         )
 
     try:
-        run = live_of(request).start("invocation", call, workflow_id=workflow_id)
+        run = live_of(request).start(
+            "invocation", call, workflow_id=workflow_id, sensitivity=sensitivity
+        )
     except TooManyRunsError as exc:
         return refusal(429, "too_many_runs", str(exc))
 
@@ -580,6 +606,7 @@ async def resume_invocation(
             call,
             workflow_id=detail.workflow_id,
             invocation_id=invocation_id,
+            sensitivity=detail.sensitivity,
         )
     except TooManyRunsError as exc:
         return refusal(429, "too_many_runs", str(exc))
@@ -651,6 +678,7 @@ async def start_step(
 
     `inputs` gives the step's inputs values by name, and `files` gives them
     files; `input` or `file` is the run's input, for an input that reads it.
+    `sensitivity` labels everything the step is given.
     """
 
     body = await start_body(request, STEP_FIELDS, "step to try")
@@ -662,6 +690,7 @@ async def start_step(
     step_id = uuid_field(body, "step_id", "step")
     given = step_inputs(body)
     source = run_input(body)
+    sensitivity = sensitivity_of(body.get("sensitivity"))
     instance = instance_of(request)
 
     def call(
@@ -675,12 +704,15 @@ async def start_step(
             step_id,
             inputs=given,
             input=source,
+            sensitivity=sensitivity,
             on_event=on_event,
             cancel=cancel,
         )
 
     try:
-        run = live_of(request).start("step", call, workflow_id=workflow_id, step_id=step_id)
+        run = live_of(request).start(
+            "step", call, workflow_id=workflow_id, step_id=step_id, sensitivity=sensitivity
+        )
     except TooManyRunsError as exc:
         return refusal(429, "too_many_runs", str(exc))
 

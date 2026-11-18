@@ -29,6 +29,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
+from azathoth_ui.labels import sensitivity_of
 from azathoth_ui.scoping import context_of
 
 CATALOG_SECONDS: Final = 600.0
@@ -41,6 +42,9 @@ BODY_MESSAGE: Final = 'Send a JSON object, such as {"identifier": "openrouter/ac
 
 REQUIREMENTS_MESSAGE: Final = 'Send {"requirements": {...}}, a step\'s model requirements.'
 
+POLICY_FIELDS: Final = ("identifier", "retains_data", "trains_on_data")
+"""What a body that declares a model's policy holds."""
+
 
 class ModelSource(Protocol):
     """What the providers serve now, as `azathoth.api.Models` answers."""
@@ -49,8 +53,16 @@ class ModelSource(Protocol):
         """Return every model the configured providers serve now."""
         ...
 
-    def matching(self, requirements: Mapping[str, Any]) -> tuple[api.ModelSummary, ...]:
-        """Return the portfolio's models that meet a step's model requirements."""
+    def matching(
+        self,
+        requirements: Mapping[str, Any],
+        *,
+        sensitivity: api.Sensitivity | None = None,
+    ) -> tuple[api.ModelSummary, ...]:
+        """Return the portfolio's models that meet a step's model requirements.
+
+        With `sensitivity`, only those that may receive input so labelled.
+        """
         ...
 
 
@@ -69,6 +81,10 @@ class PortfolioSource(Protocol):
         """Stop authorizing one model."""
         ...
 
+    def set_data_policy(self, identifier: str, data_policy: api.DataPolicy) -> api.PortfolioEntry:
+        """Declare what one authorized model's provider does with data."""
+        ...
+
 
 class Catalog:
     """What the providers last said they serve, kept for a while.
@@ -77,7 +93,7 @@ class Catalog:
     once. A failed listing is not kept: the next request asks again.
 
     The models each step's requirements match are kept the same while, by
-    the requirements, so a step being edited asks the providers once for
+    the requirements and the label of the input, so a step being edited asks the providers once for
     each set of requirements it has. They are forgotten when the local
     portfolio changes, and when the catalog is refreshed.
     """
@@ -131,8 +147,12 @@ class Catalog:
     def matching(
         self,
         requirements: Mapping[str, object],
+        *,
+        sensitivity: api.Sensitivity | None = None,
     ) -> tuple[api.ModelSummary, ...]:
         """Return the local portfolio's models that meet a step's requirements, in the order tried.
+
+        With `sensitivity`, only those that may receive input so labelled.
 
         Raises:
             InvalidArgumentError: Azathoth refuses the requirements.
@@ -140,13 +160,17 @@ class Catalog:
             ProviderConfigurationError: A provider cannot be used as configured.
         """
 
-        key = json.dumps(requirements, sort_keys=True)
+        label = None if sensitivity is None else sensitivity.value
+        key = json.dumps([requirements, label], sort_keys=True)
 
         with self._lock:
             kept = self._matches.get(key)
 
             if kept is None or self._clock() - kept[0] >= self._seconds:
-                kept = (self._clock(), self._models.matching(requirements))
+                kept = (
+                    self._clock(),
+                    self._models.matching(requirements, sensitivity=sensitivity),
+                )
                 self._matches[key] = kept
 
             return kept[1]
@@ -154,7 +178,10 @@ class Catalog:
     def forget_matches(
         self,
     ) -> None:
-        """Forget the models every set of requirements matched, once the portfolio has changed."""
+        """Forget the models every set of requirements matched, once the portfolio has changed.
+
+        A model's declared policy is part of the portfolio, so declaring one forgets them too.
+        """
 
         with self._lock:
             self._matches.clear()
@@ -341,21 +368,73 @@ async def remove_from_portfolio(
     return JSONResponse(removal.model_dump(mode="json"))
 
 
+def policy_answer(
+    body: dict[str, object],
+    name: str,
+) -> api.PolicyAnswer:
+    """Return one answer of a declared policy, yes, no or unknown, or refuse it by name."""
+
+    value = body.get(name)
+
+    if isinstance(value, str):
+        try:
+            return api.PolicyAnswer(value)
+        except ValueError:
+            pass
+
+    raise api.InvalidArgumentError(f"{name} must be yes, no or unknown, not {value!r}.")
+
+
+async def declare_policy(
+    request: Request,
+) -> Response:
+    """`POST /api/local/portfolio/policy` `{"identifier", "retains_data", "trains_on_data"}`.
+
+    It declares what one authorized model's provider does with data, each
+    answer yes, no or unknown, as `azathoth model policy` does, and answers
+    with the model, saying who declared it and when (ADR 0011).
+    """
+
+    body = await body_of(request)
+    unknown = sorted(name for name in body if name not in POLICY_FIELDS)
+
+    if unknown:
+        raise api.InvalidArgumentError(
+            f"A policy takes identifier, retains_data and trains_on_data, not {', '.join(unknown)}."
+        )
+
+    identifier = text_field(body, "identifier")
+    policy = api.DataPolicy(
+        retains_data=policy_answer(body, "retains_data"),
+        trains_on_data=policy_answer(body, "trains_on_data"),
+    )
+    entry = await run_in_threadpool(portfolio_of(request).set_data_policy, identifier, policy)
+    catalog_of(request).forget_matches()
+
+    return JSONResponse(entry.model_dump(mode="json"))
+
+
 async def match_models(
     request: Request,
 ) -> Response:
-    """`POST /api/models/matching` `{"requirements"}`: the local portfolio's models that meet them.
+    """`POST /api/models/matching` `{"requirements", "sensitivity"?}`: the models that meet them.
 
-    The models are in the order a run tries them, by Azathoth's own rules.
+    The local portfolio's models, in the order a run tries them, by
+    Azathoth's own rules; with `sensitivity`, only those that may receive
+    input so labelled (ADR 0011).
     """
 
     body = await body_of(request)
     requirements = body.get("requirements")
 
-    if set(body) != {"requirements"} or not isinstance(requirements, dict):
+    if set(body) - {"sensitivity"} != {"requirements"} or not isinstance(requirements, dict):
         raise api.InvalidArgumentError(REQUIREMENTS_MESSAGE)
 
-    models = await run_in_threadpool(catalog_of(request).matching, requirements)
+    asked = {str(name): value for name, value in requirements.items()}
+    sensitivity = sensitivity_of(body.get("sensitivity"))
+    models = await run_in_threadpool(
+        lambda: catalog_of(request).matching(asked, sensitivity=sensitivity)
+    )
 
     return JSONResponse({"items": [model.model_dump(mode="json") for model in models]})
 
@@ -390,6 +469,7 @@ def catalog_routes() -> list[Route]:
         Route("/local/portfolio", list_portfolio, methods=["GET"]),
         Route("/local/portfolio", add_to_portfolio, methods=["POST"]),
         Route("/local/portfolio/remove", remove_from_portfolio, methods=["POST"]),
+        Route("/local/portfolio/policy", declare_policy, methods=["POST"]),
     ]
 
 
@@ -398,6 +478,7 @@ __all__ = [
     "CATALOG_SECONDS",
     "REQUIREMENTS_MESSAGE",
     "MAX_BODY_BYTES",
+    "POLICY_FIELDS",
     "Catalog",
     "ModelSource",
     "PortfolioSource",
