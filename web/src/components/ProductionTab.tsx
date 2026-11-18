@@ -1,10 +1,20 @@
 import { useState } from "react";
 
 import type { ApiFailure } from "../api/client";
-import type { ProductionRevisionSummary, ProductionStepModels } from "../api/types";
+import type {
+  InvocationSummary,
+  ProductionRevisionSummary,
+  ProductionStepModels,
+} from "../api/types";
+import { callerName, INVOCATION_STATUS_NAMES, SENSITIVITY_NAMES } from "../invocations";
 import { modelPath } from "../models";
-import { useProduction, useProductionChange, useProductionRevisions } from "../queries";
-import { LOCAL_SCOPE, useScope } from "../scope";
+import {
+  useProduction,
+  useProductionChange,
+  useProductionRevisions,
+  useWorkflowInvocations,
+} from "../queries";
+import { instanceLabel, useScope } from "../scope";
 import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { InstanceLink } from "./InstanceLink";
@@ -22,11 +32,6 @@ type Confirming =
     };
 
 const UNAUTHORIZED_MODEL = /uses (\S+), which the portfolio no longer authorizes/;
-
-/** Returns how a confirm names the instance a change is made on. */
-function instanceLabel(name: string): string {
-  return name === LOCAL_SCOPE.name ? "your local instance" : name;
-}
 
 /** Returns a revision's id as it is shown: its start, the whole on hover. */
 function shortId(id: string): string {
@@ -77,6 +82,30 @@ function deed(revision: ProductionRevisionSummary): string {
   return revision.restores === null ? `Promoted${number}` : `Rolled back to${number}`;
 }
 
+/** One invocation: how it ended, linked to its page; who made it; its label; and when. */
+function Invocation({ invocation }: { readonly invocation: InvocationSummary }) {
+  return (
+    <li className={styles.entry}>
+      <div className={styles.what}>
+        <InstanceLink
+          className={styles.status}
+          data-status={invocation.status}
+          to={`/invocations/${invocation.invocation_id}`}
+        >
+          {INVOCATION_STATUS_NAMES[invocation.status]}
+        </InstanceLink>
+        <span className={styles.caller}>{callerName(invocation.caller_metadata)}</span>
+        <span className={styles.label} data-sensitivity={invocation.sensitivity}>
+          {SENSITIVITY_NAMES[invocation.sensitivity]}
+        </span>
+      </div>
+      <span className={styles.quiet}>
+        <RelativeTime iso={invocation.created_at} />
+      </span>
+    </li>
+  );
+}
+
 /** Why a change was refused, as Azathoth said, with a link to a model it names. */
 function Refused({ failure }: { readonly failure: ApiFailure }) {
   const model =
@@ -113,6 +142,7 @@ export function ProductionTab({
   const production = useProduction(workflowId);
   const revisions = useProductionRevisions(workflowId);
   const change = useProductionChange(workflowId);
+  const invocations = useWorkflowInvocations(workflowId);
   const [confirming, setConfirming] = useState<Confirming | null>(null);
   const where = instanceLabel(scope.name);
   const history = revisions.data ?? [];
@@ -205,6 +235,11 @@ export function ProductionTab({
             In production
           </h2>
           <div className={styles.buttons}>
+            {state !== null && (
+              <InstanceLink className={buttons.quiet} to={`/workflows/${workflowId}/invoke`}>
+                Invoke…
+              </InstanceLink>
+            )}
             <ActionButton
               action="promote"
               subject={workflowId}
@@ -324,6 +359,26 @@ export function ProductionTab({
                   </ActionButton>
                 )}
               </li>
+            ))}
+          </ol>
+        )}
+      </section>
+      <section className={styles.section} aria-labelledby="production-invocations">
+        <h2 id="production-invocations" className={styles.title}>
+          Invocations
+        </h2>
+        {invocations.isError && (
+          <Notice title="Couldn't list its invocations">{invocations.error.message}</Notice>
+        )}
+        {invocations.isSuccess && invocations.data.length === 0 && (
+          <p className={styles.quiet}>
+            Nothing has invoked {name} on {where} yet.
+          </p>
+        )}
+        {invocations.isSuccess && invocations.data.length > 0 && (
+          <ol className={styles.history}>
+            {invocations.data.map((invocation) => (
+              <Invocation key={invocation.invocation_id} invocation={invocation} />
             ))}
           </ol>
         )}

@@ -10,10 +10,13 @@ import { WORKFLOW_DETAIL, WORKFLOW_HISTORY } from "../test/documents";
 import { SERVER, urlOf, type Answers } from "../test/instances";
 import {
   FIRST_PROMOTION,
+  INCOMPLETE,
+  INVOCATIONS,
   PRODUCTION,
   PRODUCTION_REVISIONS,
   ROLLBACK,
   SECOND_PROMOTION,
+  SUCCEEDED,
 } from "../test/production";
 import { renderAt } from "../test/render";
 import { WorkflowPage } from "./ComponentPages";
@@ -295,5 +298,68 @@ describe("the Production tab", () => {
     await waitFor(() => {
       expect(sent).toEqual([{ path: `${STAGING.api}/workflows/${ID}/promote`, body: {} }]);
     });
+  });
+});
+
+describe("the Production tab's invocations", () => {
+  it("lists them, newest first, each with its outcome, caller, label and time", async () => {
+    open({
+      answers: {
+        ...inProduction(),
+        [`/api/workflows/${ID}/invocations?limit=20`]: [200, { items: INVOCATIONS }],
+      },
+    });
+
+    const listed = within(await screen.findByRole("region", { name: "Invocations" }));
+    const entries = await listed.findAllByRole("listitem");
+
+    expect(entries).toHaveLength(2);
+
+    const newest = within(entry(entries, 0));
+
+    expect(newest.getByRole("link", { name: "Incomplete" })).toHaveAttribute(
+      "href",
+      `/invocations/${INCOMPLETE.invocation_id}`,
+    );
+    expect(newest.getByText("user=billing-agent")).toBeVisible();
+    expect(newest.getByText("Restricted")).toBeVisible();
+    expect(entry(entries, 0).querySelector("time")).toHaveAttribute(
+      "datetime",
+      INCOMPLETE.created_at,
+    );
+
+    const oldest = within(entry(entries, 1));
+
+    expect(oldest.getByRole("link", { name: "Succeeded" })).toHaveAttribute(
+      "href",
+      `/invocations/${SUCCEEDED.invocation_id}`,
+    );
+    expect(oldest.getByText("The editor")).toBeVisible();
+    expect(oldest.getByText("Internal")).toBeVisible();
+  });
+
+  it("says when nothing has invoked it yet", async () => {
+    open();
+
+    expect(
+      await screen.findByText("Nothing has invoked summarize on your local instance yet."),
+    ).toBeVisible();
+  });
+
+  it("offers to invoke it once it is in production, and only then", async () => {
+    open();
+
+    expect(await screen.findByRole("link", { name: "Invoke…" })).toHaveAttribute(
+      "href",
+      `/workflows/${ID}/invoke`,
+    );
+  });
+
+  it("offers no invoking while it isn't in production", async () => {
+    open({ answers: inProduction("/api", null) });
+
+    await screen.findByText(/isn't in production on your local instance/);
+
+    expect(screen.queryByRole("link", { name: "Invoke…" })).toBeNull();
   });
 });

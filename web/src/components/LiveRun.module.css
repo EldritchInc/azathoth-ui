@@ -108,7 +108,13 @@
   color: var(--rose);
 }
 
-.pill[data-state="cancelled"] {
+.pill[data-state="rejected"] {
+  background: var(--rose-wash);
+  color: var(--rose);
+}
+
+.pill[data-state="cancelled"],
+.pill[data-state="incomplete"] {
   background: var(--amber-wash);
   color: var(--amber);
 }

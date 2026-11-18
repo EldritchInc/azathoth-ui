@@ -137,3 +137,45 @@
   font-size: 0.8125rem;
   font-weight: 600;
 }
+
+.status {
+  font-weight: 600;
+  text-decoration: none;
+  text-underline-offset: 0.2em;
+}
+
+.status:hover {
+  text-decoration: underline;
+}
+
+.status[data-status="succeeded"] {
+  color: var(--tide-strong);
+}
+
+.status[data-status="failed"] {
+  color: var(--rose);
+}
+
+.status[data-status="incomplete"] {
+  color: var(--amber);
+}
+
+.caller {
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+}
+
+.label {
+  padding: 0.05rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.label[data-sensitivity="restricted"] {
+  border-color: color-mix(in srgb, var(--rose) 45%, var(--line));
+  background: var(--rose-wash);
+  color: var(--rose);
+}
