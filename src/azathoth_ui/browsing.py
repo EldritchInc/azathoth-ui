@@ -23,7 +23,9 @@ from azathoth import api
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
-from starlette.routing import BaseRoute, Route
+from starlette.routing import Route
+
+from azathoth_ui.scoping import context_of
 
 MAX_DOCUMENT_BYTES: Final = 10 * 1024 * 1024
 """The largest document the editor imports."""
@@ -40,11 +42,9 @@ WHOLE_NUMBER: Final = re.compile(r"[0-9]+")
 def instance_of(
     request: Request,
 ) -> api.Azathoth:
-    """Return the instance the editor serves."""
+    """Return the instance one request acts on (ADR 0009)."""
 
-    instance: api.Azathoth = request.app.state.instance
-
-    return instance
+    return context_of(request).instance
 
 
 def items(
@@ -337,26 +337,26 @@ async def import_benchmark(
     return await import_with(request, instance_of(request).benchmarks.import_document)
 
 
-def browsing_routes() -> list[BaseRoute]:
-    """Return the browsing API's routes."""
+def browsing_routes() -> list[Route]:
+    """Return the browsing endpoints, at their paths below an instance's prefix (ADR 0009)."""
 
     return [
-        Route("/api/workflows", list_workflows, methods=["GET"]),
-        Route("/api/workflows/import", import_workflow, methods=["POST"]),
-        Route("/api/workflows/check", check_workflow, methods=["POST"]),
-        Route("/api/workflows/readiness", workflow_readiness, methods=["POST"]),
-        Route("/api/workflows/{workflow_id}", get_workflow, methods=["GET"]),
-        Route("/api/workflows/{workflow_id}/history", workflow_history, methods=["GET"]),
-        Route("/api/workflows/{workflow_id}/runs", workflow_runs, methods=["GET"]),
-        Route("/api/runs/{run_id}", get_run, methods=["GET"]),
-        Route("/api/tools", list_tools, methods=["GET"]),
-        Route("/api/tools/import", import_tool, methods=["POST"]),
-        Route("/api/tools/{tool_id}/history", tool_history, methods=["GET"]),
-        Route("/api/tools/{tool_id}/versions/{version}", get_tool, methods=["GET"]),
-        Route("/api/benchmarks", list_benchmarks, methods=["GET"]),
-        Route("/api/benchmarks/import", import_benchmark, methods=["POST"]),
-        Route("/api/benchmarks/{benchmark_id}", get_benchmark, methods=["GET"]),
-        Route("/api/benchmarks/{benchmark_id}/history", benchmark_history, methods=["GET"]),
+        Route("/workflows", list_workflows, methods=["GET"]),
+        Route("/workflows/import", import_workflow, methods=["POST"]),
+        Route("/workflows/check", check_workflow, methods=["POST"]),
+        Route("/workflows/readiness", workflow_readiness, methods=["POST"]),
+        Route("/workflows/{workflow_id}", get_workflow, methods=["GET"]),
+        Route("/workflows/{workflow_id}/history", workflow_history, methods=["GET"]),
+        Route("/workflows/{workflow_id}/runs", workflow_runs, methods=["GET"]),
+        Route("/runs/{run_id}", get_run, methods=["GET"]),
+        Route("/tools", list_tools, methods=["GET"]),
+        Route("/tools/import", import_tool, methods=["POST"]),
+        Route("/tools/{tool_id}/history", tool_history, methods=["GET"]),
+        Route("/tools/{tool_id}/versions/{version}", get_tool, methods=["GET"]),
+        Route("/benchmarks", list_benchmarks, methods=["GET"]),
+        Route("/benchmarks/import", import_benchmark, methods=["POST"]),
+        Route("/benchmarks/{benchmark_id}", get_benchmark, methods=["GET"]),
+        Route("/benchmarks/{benchmark_id}/history", benchmark_history, methods=["GET"]),
     ]
 
 

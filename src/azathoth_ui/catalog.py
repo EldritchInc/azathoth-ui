@@ -27,7 +27,9 @@ from azathoth import api
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
-from starlette.routing import BaseRoute, Route
+from starlette.routing import Route
+
+from azathoth_ui.scoping import context_of
 
 CATALOG_SECONDS: Final = 600.0
 """How long the editor keeps what the providers last said they serve."""
@@ -172,21 +174,17 @@ def provider_names(
 def catalog_of(
     request: Request,
 ) -> Catalog:
-    """Return the catalog the editor keeps."""
+    """Return the catalog the editor keeps for the instance one request acts on."""
 
-    catalog: Catalog = request.app.state.catalog
-
-    return catalog
+    return context_of(request).catalog
 
 
 def portfolio_of(
     request: Request,
 ) -> PortfolioSource:
-    """Return the editor's local portfolio."""
+    """Return the portfolio of the instance one request acts on."""
 
-    portfolio: PortfolioSource = request.app.state.portfolio
-
-    return portfolio
+    return context_of(request).portfolio
 
 
 def flag(
@@ -382,16 +380,16 @@ def model_in_use(
     )
 
 
-def catalog_routes() -> list[BaseRoute]:
-    """Return the models API's routes."""
+def catalog_routes() -> list[Route]:
+    """Return the models and portfolio endpoints, below an instance's prefix (ADR 0009)."""
 
     return [
-        Route("/api/models", list_models, methods=["GET"]),
-        Route("/api/models/matching", match_models, methods=["POST"]),
-        Route("/api/models/{identifier:path}", get_model, methods=["GET"]),
-        Route("/api/local/portfolio", list_portfolio, methods=["GET"]),
-        Route("/api/local/portfolio", add_to_portfolio, methods=["POST"]),
-        Route("/api/local/portfolio/remove", remove_from_portfolio, methods=["POST"]),
+        Route("/models", list_models, methods=["GET"]),
+        Route("/models/matching", match_models, methods=["POST"]),
+        Route("/models/{identifier:path}", get_model, methods=["GET"]),
+        Route("/local/portfolio", list_portfolio, methods=["GET"]),
+        Route("/local/portfolio", add_to_portfolio, methods=["POST"]),
+        Route("/local/portfolio/remove", remove_from_portfolio, methods=["POST"]),
     ]
 
 
