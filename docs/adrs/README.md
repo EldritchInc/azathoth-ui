@@ -17,3 +17,4 @@ the editor follows them, and the one it rests on is
 | [0008](0008-shipping-to-a-remote.md) | Shipping to a Remote | Accepted |
 | [0009](0009-one-editor-any-instance.md) | One Editor, Any Instance | Accepted |
 | [0010](0010-production-in-the-editor.md) | Production in the Editor | Accepted |
+| [0011](0011-sensitivity-and-model-policy-in-the-editor.md) | Sensitivity and Model Policy in the Editor | Accepted |
