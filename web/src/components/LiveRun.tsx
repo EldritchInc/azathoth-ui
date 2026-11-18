@@ -17,6 +17,7 @@ import {
   type StepState,
 } from "../running";
 import { useLiveEvents } from "../useLiveEvents";
+import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { InstanceLink } from "./InstanceLink";
 import { JsonBlock } from "./JsonBlock";
@@ -273,7 +274,8 @@ function LiveRunView({
         </div>
         <div className={styles.actions}>
           {running ? (
-            <button
+            <ActionButton
+              action="run_workflow"
               type="button"
               className={buttons.danger}
               disabled={cancel.isPending}
@@ -282,7 +284,7 @@ function LiveRunView({
               }}
             >
               {cancel.isPending ? "Cancelling…" : "Cancel"}
-            </button>
+            </ActionButton>
           ) : (
             live.kind === "run" && (
               <InstanceLink className={buttons.primary} to={`/workflows/${live.workflow_id}/run`}>

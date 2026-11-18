@@ -5,6 +5,7 @@ import type { ComponentStatus, Relation } from "../api/types";
 import { DESCRIPTIONS, type ComponentRef, type Kind } from "../kinds";
 import { usePull, usePush, useRemoteStatus, useRemotes } from "../queries";
 import { RELATION_TEXT, firstRemote, selectionOf, shortDigest } from "../remotes";
+import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { Notice } from "./Notice";
 import styles from "./Ship.module.css";
@@ -201,7 +202,10 @@ export function Ship({
             it receives stays there, and nothing runs there until {remote.name} promotes it.
           </p>
           <div className={styles.buttons}>
-            <button
+            <ActionButton
+              action="push"
+              instance={remote.name}
+
               type="button"
               className={buttons.primary}
               disabled={push.isPending}
@@ -218,7 +222,7 @@ export function Ship({
               }}
             >
               {push.isPending ? "Pushing…" : `Push to ${remote.name}`}
-            </button>
+            </ActionButton>
             <button
               type="button"
               className={buttons.quiet}
@@ -234,7 +238,10 @@ export function Ship({
       ) : (
         <div className={styles.buttons}>
           {canPush && !diverged && (
-            <button
+            <ActionButton
+              action="push"
+              instance={remote.name}
+
               type="button"
               className={buttons.primary}
               onClick={() => {
@@ -243,10 +250,13 @@ export function Ship({
               }}
             >
               Push…
-            </button>
+            </ActionButton>
           )}
           {diverged && remote.token_set && (
-            <button
+            <ActionButton
+              action="pull"
+              instance={remote.name}
+
               type="button"
               className={buttons.primary}
               disabled={pull.isPending}
@@ -257,7 +267,7 @@ export function Ship({
               }}
             >
               {pull.isPending ? "Pulling…" : `Pull from ${remote.name}`}
-            </button>
+            </ActionButton>
           )}
         </div>
       )}

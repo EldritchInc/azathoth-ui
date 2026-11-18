@@ -2,6 +2,8 @@ import { useId, useRef, useState, type DragEvent, type ReactNode } from "react";
 
 import type { Outcome } from "../importing";
 import { DESCRIPTIONS, detailPath, type Kind } from "../kinds";
+import type { Action } from "../permissions";
+import { ActionButton } from "./ActionButton";
 import styles from "./Importing.module.css";
 import { InstanceLink } from "./InstanceLink";
 
@@ -12,6 +14,13 @@ function filesOf(list: FileList | null): File[] {
 function carriesFiles(event: DragEvent): boolean {
   return Array.from(event.dataTransfer.types).includes("Files");
 }
+
+/** The action importing each kind of document takes (ADR 0009). */
+const IMPORT_ACTIONS: Readonly<Record<Kind, Action>> = {
+  workflows: "import_workflow",
+  tools: "import_tool",
+  benchmarks: "import_benchmark",
+};
 
 /** A button that chooses documents of one kind to import. */
 export function ImportButton({
@@ -49,7 +58,8 @@ export function ImportButton({
           }
         }}
       />
-      <button
+      <ActionButton
+        action={IMPORT_ACTIONS[kind]}
         type="button"
         className={quiet ? styles.quietButton : styles.button}
         disabled={busy}
@@ -71,7 +81,7 @@ export function ImportButton({
           <path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 15v3.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V15" />
         </svg>
         {busy ? "Importing…" : `Import ${singular}`}
-      </button>
+      </ActionButton>
     </>
   );
 }

@@ -10,6 +10,7 @@ import {
 } from "../api/types";
 import { nameOf } from "../models";
 import type { PortfolioChange } from "../queries";
+import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { InstanceLink } from "./InstanceLink";
 import { Notice } from "./Notice";
@@ -42,7 +43,10 @@ export function PortfolioToggle({
   const changing = change.isPending && change.variables.identifier === model.identifier;
 
   return (
-    <button
+    <ActionButton
+      action="authorize_model"
+      resource={model.identifier}
+
       type="button"
       className={styles.toggle}
       aria-pressed={model.authorized}
@@ -61,7 +65,7 @@ export function PortfolioToggle({
         <span className={styles.thumb} />
       </span>
       <span className="visually-hidden">{nameOf(model)} in your local portfolio</span>
-    </button>
+    </ActionButton>
   );
 }
 
@@ -109,7 +113,10 @@ export function PortfolioOutcome({
           ))}
         </ul>
         <div className={styles.actions}>
-          <button
+          <ActionButton
+            action="authorize_model"
+            resource={variables.identifier}
+
             type="button"
             className={buttons.danger}
             onClick={() => {
@@ -117,7 +124,7 @@ export function PortfolioOutcome({
             }}
           >
             Remove anyway
-          </button>
+          </ActionButton>
           <button
             type="button"
             className={buttons.quiet}

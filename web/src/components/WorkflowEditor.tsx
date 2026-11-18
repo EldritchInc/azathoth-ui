@@ -31,6 +31,7 @@ import { useDetail, useReadiness, useWorkflowCheck } from "../queries";
 import { scoped, usePage, useScope } from "../scope";
 import { browserStorage } from "../theme";
 import { useDebounced } from "../useDebounced";
+import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { problemsByStep, type Composing } from "./composing";
 import { InstanceLink } from "./InstanceLink";
@@ -502,7 +503,10 @@ function Editor({
               Discard
             </button>
           )}
-          <button
+          <ActionButton
+            action="import_workflow"
+            resource={id}
+
             type="button"
             className={buttons.primary}
             title="Save (⌘S)"
@@ -512,7 +516,7 @@ function Editor({
             }}
           >
             {saving ? "Saving…" : "Save"}
-          </button>
+          </ActionButton>
         </div>
       </div>
 

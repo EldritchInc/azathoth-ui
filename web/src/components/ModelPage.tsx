@@ -5,6 +5,7 @@ import type { ModelSummary } from "../api/types";
 import { formatPrice, formatTokens, labelOf, nameOf } from "../models";
 import { useModels, usePortfolio, usePortfolioChange, useWorkflowDocuments } from "../queries";
 import { stepsThatCouldUse, type Use } from "../selection";
+import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { Command } from "./Command";
 import { CopyButton } from "./CopyButton";
@@ -63,7 +64,10 @@ function PortfolioPanel({
           : "Steps here can't run on it until it is added."}{" "}
         Only this editor&apos;s instance changes; a shared server keeps its own.
       </p>
-      <button
+      <ActionButton
+        action="authorize_model"
+        resource={identifier}
+
         type="button"
         className={held ? buttons.quiet : buttons.primary}
         disabled={changing}
@@ -73,7 +77,7 @@ function PortfolioPanel({
         }}
       >
         {held ? "Remove from local portfolio" : "Add to local portfolio"}
-      </button>
+      </ActionButton>
     </section>
   );
 }

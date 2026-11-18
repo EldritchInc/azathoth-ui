@@ -5,6 +5,7 @@ import type { WorkflowReadiness } from "../api/types";
 import type { JsonObject } from "../editing";
 import { givenOf, NEW_DRAFT, type InputDraft } from "../runInput";
 import { useDetail, useReadiness, useStartRun } from "../queries";
+import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { usePage } from "../scope";
 import { InstanceLink } from "./InstanceLink";
@@ -122,14 +123,17 @@ export function RunWorkflow() {
           </Notice>
         )}
         <div className={styles.actions}>
-          <button
+          <ActionButton
+            action="run_workflow"
+            resource={id}
+
             type="submit"
             className={buttons.primary}
             disabled={given === null || start.isPending || detail.isError || checking || blocked}
           >
             <PlayIcon />
             {start.isPending ? "Starting…" : "Run"}
-          </button>
+          </ActionButton>
           <InstanceLink className={buttons.quiet} to={`/workflows/${id}`}>
             Cancel
           </InstanceLink>
