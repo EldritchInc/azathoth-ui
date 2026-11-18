@@ -36,8 +36,8 @@ const ANSWERS: Answers = {
   ],
 };
 
-function workflowPage(search = ""): void {
-  renderAt(<App />, { path: `/workflows/${WORKFLOW_DETAIL.id}${search}`, answers: ANSWERS });
+function workflowPage(rest = ""): void {
+  renderAt(<App />, { path: `/workflows/${WORKFLOW_DETAIL.id}${rest}`, answers: ANSWERS });
 }
 
 describe("a workflow's page", () => {
@@ -50,9 +50,9 @@ describe("a workflow's page", () => {
     );
   });
 
-  it("lists its runs, newest first, each opening the run", async () => {
+  it("lists its runs, newest first, each opening the run, on its Runs tab", async () => {
     renderAt(<App />, {
-      path: `/workflows/${WORKFLOW_DETAIL.id}`,
+      path: `/workflows/${WORKFLOW_DETAIL.id}/runs`,
       answers: {
         ...ANSWERS,
         [`${WORKFLOW_PATH}/runs?limit=20`]: [
@@ -89,8 +89,8 @@ describe("a workflow's page", () => {
     expect(links[1]).toHaveTextContent("The model refused.");
   });
 
-  it("says when it has no runs yet", async () => {
-    workflowPage();
+  it("says on its Runs tab when it has no runs yet", async () => {
+    workflowPage("/runs");
 
     expect(
       await screen.findByText(

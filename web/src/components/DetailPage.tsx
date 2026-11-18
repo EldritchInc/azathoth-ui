@@ -20,17 +20,25 @@ const MISSING_CODES = new Set(["not_found", "revision_not_found", "invalid_argum
  * One component's page: the revision the address names, the latest by
  * default, with its command, a readable view of its document, the document
  * itself, and every revision to move between.
+ *
+ * A page with `tabs` shows them under its header; one given a `section`
+ * shows it there instead of the revision, as a workflow's other tabs do
+ * (ADR 0010).
  */
 export function DetailPage({
   kind,
   component,
   children,
   actions,
+  tabs,
+  section,
 }: {
   readonly kind: Kind;
   readonly component: ComponentRef;
   readonly children: (detail: ComponentDetail) => ReactNode;
   readonly actions?: ReactNode;
+  readonly tabs?: ReactNode;
+  readonly section?: (detail: ComponentDetail) => ReactNode;
 }) {
   const [search] = useSearchParams();
   const asked = parseRevision(search.get("revision"));
@@ -157,6 +165,40 @@ export function DetailPage({
           label={kind === "tools" ? `${shown.name} ${shown.version}` : shown.name}
         />
       )}
+      {tabs}
+      {section === undefined ? (
+        <RevisionBody
+          shown={shown}
+          latest={latest}
+          fileName={fileName}
+          history={history}
+          body={children}
+        />
+      ) : (
+        section(shown)
+      )}
+    </div>
+  );
+}
+
+/** The revision a page shows: whether it is the latest, its command, its document and history. */
+function RevisionBody({
+  shown,
+  latest,
+  fileName,
+  history,
+  body,
+}: {
+  readonly shown: ComponentDetail;
+  readonly latest: boolean;
+  readonly fileName: string;
+  readonly history: ReturnType<typeof useHistory>;
+  readonly body: (detail: ComponentDetail) => ReactNode;
+}) {
+  const revision = shown.revision;
+
+  return (
+    <>
       {!latest && (
         <Notice title={`This is revision ${String(revision.number)}`} tone="note">
           <p>
@@ -175,7 +217,7 @@ export function DetailPage({
       <Command command={shown.command} />
       <div className={styles.body}>
         <div className={styles.main}>
-          {children(shown)}
+          {body(shown)}
           <DocumentView document={shown.document} fileName={fileName} />
         </div>
         <aside className={styles.aside}>
@@ -186,6 +228,6 @@ export function DetailPage({
           />
         </aside>
       </div>
-    </div>
+    </>
   );
 }

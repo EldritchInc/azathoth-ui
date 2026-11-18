@@ -41,6 +41,8 @@ export function App() {
           <Route path="/workflows" element={<ComponentList kind="workflows" />} />
           <Route path="/workflows/new" element={<NewWorkflow />} />
           <Route path="/workflows/:id" element={<WorkflowPage />} />
+          <Route path="/workflows/:id/runs" element={<WorkflowPage tab="runs" />} />
+          <Route path="/workflows/:id/production" element={<WorkflowPage tab="production" />} />
           <Route path="/workflows/:id/edit" element={<WorkflowEditor />} />
           <Route path="/workflows/:id/run" element={<RunWorkflow />} />
           <Route path="/live/:handle" element={<LiveRunPage />} />

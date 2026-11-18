@@ -8,12 +8,18 @@ import buttons from "./Buttons.module.css";
 import { BenchmarkCases } from "./BenchmarkCases";
 import { DetailPage } from "./DetailPage";
 import { InstanceLink } from "./InstanceLink";
+import { ProductionTab } from "./ProductionTab";
 import { RunHistory } from "./RunHistory";
 import { ToolStructure } from "./ToolStructure";
 import { WorkflowSteps } from "./WorkflowSteps";
+import { WorkflowTabs, type WorkflowTab } from "./WorkflowTabs";
 
-/** `/workflows/:id`: one workflow's page, with a way to edit it, or go on editing it. */
-export function WorkflowPage() {
+/**
+ * `/workflows/:id`: one workflow's page, with a way to edit it, or go on
+ * editing it, and its tabs (ADR 0010): its revisions here, its runs at
+ * `/runs`, and its production at `/production`.
+ */
+export function WorkflowPage({ tab = "revisions" }: { readonly tab?: WorkflowTab }) {
   const { id = "" } = useParams();
   const [drafted] = useState(() => readDraft(browserStorage(), id) !== null);
 
@@ -21,6 +27,16 @@ export function WorkflowPage() {
     <DetailPage
       kind="workflows"
       component={{ id }}
+      tabs={<WorkflowTabs workflowId={id} />}
+      section={
+        tab === "runs"
+          ? () => <RunHistory workflowId={id} />
+          : tab === "production"
+            ? (detail) => (
+                <ProductionTab workflowId={id} name={detail.name} latest={detail.latest_number} />
+              )
+            : undefined
+      }
       actions={
         <>
           <InstanceLink className={buttons.primary} to={`/workflows/${id}/run`}>
@@ -55,12 +71,7 @@ export function WorkflowPage() {
         </>
       }
     >
-      {(detail) => (
-        <>
-          <WorkflowSteps document={detail.document} />
-          <RunHistory workflowId={id} />
-        </>
-      )}
+      {(detail) => <WorkflowSteps document={detail.document} />}
     </DetailPage>
   );
 }
