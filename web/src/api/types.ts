@@ -262,8 +262,8 @@ export interface RunFinished {
 /** One event of a run, as the service API reports it. */
 export type RunEvent = RunStarted | StepStarted | StepFinished | ContextChanged | RunFinished;
 
-/** What a live run runs: a workflow, or one step tried alone. */
-export type LiveKind = "run" | "step";
+/** What a live run runs: a workflow, one step tried alone, or an invocation through production. */
+export type LiveKind = "run" | "step" | "invocation";
 
 /** Where a live run is. */
 export type LiveState = "running" | "finished" | "cancelled" | "refused";
@@ -274,11 +274,13 @@ export interface LiveRun {
   readonly kind: LiveKind;
   readonly workflow_id: string;
   readonly step_id: string | null;
+  /** An invocation's id, once it is known: from the start for a resume, from its outcome otherwise. */
+  readonly invocation_id: string | null;
   readonly state: LiveState;
   readonly started_at: string;
   readonly finished_at: string | null;
   readonly event_count: number;
-  /** A run's `RunResult`, or a tried step's trial, once it has finished. */
+  /** A run's `RunResult`, a tried step's trial, or an invocation's outcome, once it has finished. */
   readonly result: Readonly<Record<string, unknown>> | null;
   readonly error: { readonly code: string; readonly message: string } | null;
 }
@@ -596,9 +598,10 @@ export function isLiveRun(value: unknown): value is LiveRun {
   return (
     isRecord(value) &&
     typeof value.handle === "string" &&
-    (value.kind === "run" || value.kind === "step") &&
+    (value.kind === "run" || value.kind === "step" || value.kind === "invocation") &&
     typeof value.workflow_id === "string" &&
     isTextOrNull(value.step_id) &&
+    isTextOrNull(value.invocation_id) &&
     LIVE_STATES.includes(value.state) &&
     typeof value.started_at === "string" &&
     isTextOrNull(value.finished_at) &&
@@ -937,5 +940,254 @@ export function isPullReport(value: unknown): value is PullReport {
     value.forked.every(isLineage) &&
     Array.isArray(value.withheld) &&
     value.withheld.every(isLineage)
+  );
+}
+
+/** How sensitive data is, from public to restricted (Azathoth's ADR 0123). */
+export type Sensitivity = "public" | "internal" | "restricted";
+
+const SENSITIVITIES: readonly unknown[] = ["public", "internal", "restricted"];
+
+/** Who made a revision, or a production revision (Azathoth's ADR 0122). */
+export interface Author {
+  readonly name: string;
+  readonly email: string | null;
+}
+
+function isAuthorOrNull(value: unknown): value is Author | null {
+  return (
+    value === null ||
+    (isRecord(value) && typeof value.name === "string" && isTextOrNull(value.email))
+  );
+}
+
+/** The models production runs one prompt step on, in the order it tries them. */
+export interface ProductionStepModels {
+  readonly step_id: string;
+  readonly primary: string;
+  readonly substitutes: readonly string[];
+}
+
+/** One production revision of a workflow: a promotion, or a rollback (Azathoth's ADR 0128). */
+export interface ProductionRevisionSummary {
+  readonly revision_id: string;
+  readonly workflow_id: string;
+  readonly workflow_revision: number | null;
+  readonly created_at: string;
+  readonly author: Author | null;
+  /** The earlier production revision a rollback restored. */
+  readonly restores: string | null;
+  readonly active: boolean;
+  readonly steps: readonly ProductionStepModels[];
+}
+
+/** What a workflow's production runs now. */
+export interface ProductionState {
+  readonly workflow_id: string;
+  readonly workflow_name: string;
+  readonly workflow_revision: number | null;
+  /** The production revision that made it active, or none when it was set without one. */
+  readonly revision: ProductionRevisionSummary | null;
+  readonly steps: readonly ProductionStepModels[];
+  readonly input_schema: unknown;
+  readonly output_schema: unknown;
+  readonly command: string;
+}
+
+/** How an invocation ended, or that it has not yet. */
+export type InvocationStatus = "succeeded" | "failed" | "incomplete";
+
+const INVOCATION_STATUSES: readonly unknown[] = ["succeeded", "failed", "incomplete"];
+
+/** One invocation, as a workflow's list of them shows it. */
+export interface InvocationSummary {
+  readonly invocation_id: string;
+  readonly workflow_id: string;
+  readonly created_at: string;
+  readonly status: InvocationStatus;
+  readonly caller_metadata: Readonly<Record<string, unknown>>;
+  readonly sensitivity: Sensitivity;
+  readonly run_id: string | null;
+  readonly command: string;
+}
+
+/** Why an invocation did not succeed: a production code, or an envelope's. */
+export interface InvocationError {
+  readonly code: string;
+  readonly message: string;
+  readonly metadata: Readonly<Record<string, unknown>>;
+}
+
+/** One step of an invocation's finished run. */
+export interface InvocationRunStep {
+  readonly step_id: string;
+  readonly status: StepStatus;
+  readonly attempts: number;
+  readonly confidence: number | null;
+}
+
+/** The run behind an invocation: finished with its steps, or only its id and resumes. */
+export interface InvocationRun {
+  readonly run_id: string;
+  readonly finished: boolean;
+  readonly resumes: number;
+  readonly workflow_revision: number | null;
+  readonly started_at: string | null;
+  readonly completed_at: string | null;
+  readonly halted: boolean | null;
+  readonly steps: readonly InvocationRunStep[];
+}
+
+/** `GET /api/invocations/{id}`: one invocation, with its input, outcome and run. */
+export interface InvocationDetail {
+  readonly invocation_id: string;
+  readonly workflow_id: string;
+  readonly created_at: string;
+  readonly status: InvocationStatus;
+  readonly result: unknown;
+  readonly error: InvocationError | null;
+  readonly idempotency_key: string | null;
+  readonly input: unknown;
+  readonly sensitivity: Sensitivity;
+  readonly caller_metadata: Readonly<Record<string, unknown>>;
+  readonly run: InvocationRun | null;
+  readonly command: string;
+}
+
+/** How an invocation ended under its key: an invocation live run's result. */
+export interface InvocationOutcome {
+  readonly status: InvocationStatus | "rejected";
+  readonly replayed: boolean;
+  readonly idempotency_key: string;
+  readonly invocation_id: string | null;
+  readonly result: unknown;
+  readonly error: InvocationError | null;
+  readonly warnings: readonly string[];
+  readonly command: string | null;
+}
+
+function isProductionStepModels(value: unknown): value is ProductionStepModels {
+  return (
+    isRecord(value) &&
+    typeof value.step_id === "string" &&
+    typeof value.primary === "string" &&
+    isTextList(value.substitutes)
+  );
+}
+
+function isStepModelsList(value: unknown): value is readonly ProductionStepModels[] {
+  return Array.isArray(value) && value.every(isProductionStepModels);
+}
+
+/** Returns whether a value is one production revision. */
+export function isProductionRevisionSummary(value: unknown): value is ProductionRevisionSummary {
+  return (
+    isRecord(value) &&
+    typeof value.revision_id === "string" &&
+    typeof value.workflow_id === "string" &&
+    isNumberOrNullWhole(value.workflow_revision) &&
+    typeof value.created_at === "string" &&
+    isAuthorOrNull(value.author) &&
+    isTextOrNull(value.restores) &&
+    typeof value.active === "boolean" &&
+    isStepModelsList(value.steps)
+  );
+}
+
+/** Returns whether a value is what a workflow's production runs now. */
+export function isProductionState(value: unknown): value is ProductionState {
+  return (
+    isRecord(value) &&
+    typeof value.workflow_id === "string" &&
+    typeof value.workflow_name === "string" &&
+    isNumberOrNullWhole(value.workflow_revision) &&
+    (value.revision === null || isProductionRevisionSummary(value.revision)) &&
+    isStepModelsList(value.steps) &&
+    typeof value.command === "string"
+  );
+}
+
+/** Returns whether a value is `GET /api/workflows/{id}/production`'s answer. */
+export function isProductionAnswer(
+  value: unknown,
+): value is { readonly production: ProductionState | null } {
+  return isRecord(value) && (value.production === null || isProductionState(value.production));
+}
+
+/** Returns whether a value is one invocation, as a list shows it. */
+export function isInvocationSummary(value: unknown): value is InvocationSummary {
+  return (
+    isRecord(value) &&
+    typeof value.invocation_id === "string" &&
+    typeof value.workflow_id === "string" &&
+    typeof value.created_at === "string" &&
+    INVOCATION_STATUSES.includes(value.status) &&
+    isRecord(value.caller_metadata) &&
+    SENSITIVITIES.includes(value.sensitivity) &&
+    isTextOrNull(value.run_id) &&
+    typeof value.command === "string"
+  );
+}
+
+function isInvocationErrorOrNull(value: unknown): value is InvocationError | null {
+  return (
+    value === null ||
+    (isRecord(value) &&
+      typeof value.code === "string" &&
+      typeof value.message === "string" &&
+      isRecord(value.metadata))
+  );
+}
+
+function isInvocationRun(value: unknown): value is InvocationRun {
+  return (
+    isRecord(value) &&
+    typeof value.run_id === "string" &&
+    typeof value.finished === "boolean" &&
+    isWholeNumber(value.resumes) &&
+    isNumberOrNullWhole(value.workflow_revision) &&
+    isTextOrNull(value.started_at) &&
+    isTextOrNull(value.completed_at) &&
+    (value.halted === null || typeof value.halted === "boolean") &&
+    Array.isArray(value.steps) &&
+    value.steps.every(
+      (step) =>
+        isRecord(step) &&
+        typeof step.step_id === "string" &&
+        STEP_STATUSES.includes(step.status) &&
+        isWholeNumber(step.attempts) &&
+        isNumberOrNull(step.confidence),
+    )
+  );
+}
+
+/** Returns whether a value is one invocation, with its input, outcome and run. */
+export function isInvocationDetail(value: unknown): value is InvocationDetail {
+  return (
+    isRecord(value) &&
+    typeof value.invocation_id === "string" &&
+    typeof value.workflow_id === "string" &&
+    typeof value.created_at === "string" &&
+    INVOCATION_STATUSES.includes(value.status) &&
+    isInvocationErrorOrNull(value.error) &&
+    isTextOrNull(value.idempotency_key) &&
+    SENSITIVITIES.includes(value.sensitivity) &&
+    isRecord(value.caller_metadata) &&
+    (value.run === null || isInvocationRun(value.run)) &&
+    typeof value.command === "string"
+  );
+}
+
+/** Returns whether a value is how an invocation ended under its key. */
+export function isInvocationOutcome(value: unknown): value is InvocationOutcome {
+  return (
+    isRecord(value) &&
+    (INVOCATION_STATUSES.includes(value.status) || value.status === "rejected") &&
+    typeof value.replayed === "boolean" &&
+    typeof value.idempotency_key === "string" &&
+    isTextOrNull(value.invocation_id) &&
+    isInvocationErrorOrNull(value.error) &&
+    isTextList(value.warnings) &&
+    isTextOrNull(value.command)
   );
 }

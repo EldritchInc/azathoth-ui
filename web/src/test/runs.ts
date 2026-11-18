@@ -33,6 +33,7 @@ export const LIVE_RUN: LiveRun = {
   kind: "run",
   workflow_id: WORKFLOW.id,
   step_id: null,
+  invocation_id: null,
   state: "running",
   started_at: "2026-11-10T10:00:00Z",
   finished_at: null,
