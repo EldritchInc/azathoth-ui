@@ -445,7 +445,7 @@ def test_a_workflow_that_is_not_configured_is_not_started(
         ),
         (
             {"workflow_id": WORKFLOW_ID, "surprise": True},
-            "A run takes workflow_id, input and file, not surprise.",
+            "A run takes workflow_id, input, file and sensitivity, not surprise.",
         ),
         ([], 'Send a JSON object, such as {"workflow_id": ..., "input": ...}.'),
     ],
@@ -737,7 +737,10 @@ def test_a_tried_step_is_cancelled(
         ),
         (
             {"document": counting(), "step_id": STEP_ID, "surprise": 1},
-            "A step to try takes document, step_id, inputs, files, input and file, not surprise.",
+            (
+                "A step to try takes document, step_id, inputs, files, input, file and "
+                "sensitivity, not surprise."
+            ),
         ),
     ],
 )

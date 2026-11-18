@@ -67,6 +67,8 @@ class Models:
         self.error: api.ApiError | None = None
         self.asked = 0
         self.matched = 0
+        self.private: set[str] = set()
+        self.labels: list[api.Sensitivity | None] = []
 
     def list(self) -> tuple[api.ModelSummary, ...]:
         """Return what the providers serve, counting each time they are asked."""
@@ -81,10 +83,16 @@ class Models:
     def matching(
         self,
         requirements: Mapping[str, object],
+        *,
+        sensitivity: api.Sensitivity | None = None,
     ) -> tuple[api.ModelSummary, ...]:
-        """Return the served models with every capability asked, counting each time asked."""
+        """Return the served models with every capability asked, counting each time asked.
+
+        For restricted input, only the models in `private` match.
+        """
 
         self.matched += 1
+        self.labels.append(sensitivity)
 
         if self.error is not None:
             raise self.error
@@ -100,6 +108,7 @@ class Models:
             model.model_copy(update={"authorized": True})
             for model in self.models
             if all(capability in model.capabilities for capability in needed)
+            and (sensitivity is not api.Sensitivity.RESTRICTED or model.identifier in self.private)
         )
 
 
@@ -113,6 +122,7 @@ class Portfolio:
         self.served = served
         self.entries: list[api.PortfolioEntry] = []
         self.in_production: set[str] = set()
+        self.declared: list[tuple[str, api.DataPolicy]] = []
 
     def list(self) -> tuple[api.PortfolioEntry, ...]:
         """Return every authorized model, oldest first."""
@@ -148,6 +158,31 @@ class Portfolio:
         self.entries.append(entry)
 
         return entry
+
+    def set_data_policy(
+        self,
+        identifier: str,
+        data_policy: api.DataPolicy,
+    ) -> api.PortfolioEntry:
+        """Declare an authorized model's policy, as Eris, as `azathoth.api.Portfolio` does."""
+
+        found = next((entry for entry in self.entries if entry.identifier == identifier), None)
+
+        if found is None:
+            raise api.NotFoundError(f"Model {identifier!r} is not authorized.")
+
+        self.declared.append((identifier, data_policy))
+        declared = found.model_copy(
+            update={
+                "data_policy": data_policy,
+                "receives_restricted": data_policy.private,
+                "policy_declared_by": api.Author(name="Eris Discordia", email=None),
+                "policy_declared_at": LISTED,
+            }
+        )
+        self.entries = [declared if entry is found else entry for entry in self.entries]
+
+        return declared
 
     def remove(
         self,

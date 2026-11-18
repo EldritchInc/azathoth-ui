@@ -208,3 +208,13 @@ button[aria-busy="true"] .refresh {
     margin-left: auto;
   }
 }
+
+.private {
+  justify-self: start;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--tide-wash);
+  color: var(--tide-strong);
+  font-size: 0.6875rem;
+  font-weight: 650;
+}

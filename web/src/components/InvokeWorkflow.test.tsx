@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { Route, Routes } from "react-router";
 import { describe, expect, it } from "vitest";
 
@@ -107,6 +107,21 @@ describe("InvokeWorkflow", () => {
     await screen.findByText("The live invocation");
 
     expect(sent).toEqual([{ workflow_id: WORKFLOW.id, input: "", idempotency_key: "order-7" }]);
+  });
+
+  it("labels the invocation's input with the label chosen", async () => {
+    const sent = open();
+    await screen.findByRole("heading", { level: 1, name: "Invoke summarize" });
+
+    fireEvent.click(
+      within(screen.getByRole("radiogroup", { name: "The input's label" })).getByRole("radio", {
+        name: "Restricted",
+      }),
+    );
+    await invoke();
+    await screen.findByText("The live invocation");
+
+    expect(sent).toEqual([{ workflow_id: WORKFLOW.id, input: "", sensitivity: "restricted" }]);
   });
 
   it("says what production runs, and on which instance", async () => {

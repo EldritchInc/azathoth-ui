@@ -96,6 +96,8 @@ describe("ComponentList", () => {
       `/benchmarks/${BENCHMARK.id}`,
     );
     expect(screen.getByRole("columnheader", { name: "Cases" })).toBeVisible();
+    expect(screen.getByRole("columnheader", { name: "Label" })).toBeVisible();
+    expect(screen.getByText("Internal")).toHaveAttribute("data-sensitivity", "internal");
   });
 
   it("says how to import the first one into an empty instance", async () => {

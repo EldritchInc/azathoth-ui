@@ -17,7 +17,9 @@ import {
   serving,
   type Answers,
 } from "../test/instances";
+import type { Permissions } from "../permissions";
 import { renderAt } from "../test/render";
+import { DECLARED_ENTRY } from "../test/sensitivity";
 import { ModelPage } from "./ModelPage";
 
 const SUMMARIZE = uuid(12);
@@ -42,12 +44,50 @@ const ANSWERS: Answers = {
   [`/api/workflows/${REVIEW_WORKFLOW.id}`]: [200, PLAIN],
 };
 
-function open(path: string, answers: Answers = ANSWERS, fetcher?: typeof fetch) {
+function open(
+  path: string,
+  answers: Answers = ANSWERS,
+  fetcher?: typeof fetch,
+  permissions?: Permissions,
+) {
   renderAt(
     <Routes>
       <Route path="/models/*" element={<ModelPage />} />
     </Routes>,
-    { path, answers, fetcher },
+    { path, answers, fetcher, ...(permissions === undefined ? {} : { permissions }) },
+  );
+}
+
+/** Returns the model page's policy section, once it shows. */
+async function policy() {
+  return within(await screen.findByRole("region", { name: "Data policy" }));
+}
+
+/** Opens the large model with a server that answers a declaration with `declared`. */
+function declaring(declared: readonly [number, unknown] = [200, DECLARED_ENTRY]) {
+  const sent: unknown[] = [];
+  const fetcher: typeof fetch = (input, init) => {
+    const path = new URL(input instanceof Request ? input.url : input.toString(), "http://x")
+      .pathname;
+
+    if (path === "/api/local/portfolio/policy" && typeof init?.body === "string") {
+      sent.push(JSON.parse(init.body));
+      return answering(declared[0], declared[1])(input, init);
+    }
+    return serving(ANSWERS)(input, init);
+  };
+
+  open("/models/openrouter/acme/large", ANSWERS, fetcher);
+
+  return sent;
+}
+
+/** Chooses one answer of the policy being declared. */
+function answer(question: string, choice: string) {
+  fireEvent.click(
+    within(screen.getByRole("radiogroup", { name: question })).getByRole("radio", {
+      name: choice,
+    }),
   );
 }
 
@@ -113,6 +153,93 @@ describe("ModelPage", () => {
       expect(within(uses).getAllByRole("link", { name: "Summarize" })).toHaveLength(2);
     });
     expect(uses).not.toHaveTextContent("Add it to your local portfolio");
+  });
+
+  it("says a policy was never declared, so the model takes no restricted input", async () => {
+    open("/models/openrouter/acme/large");
+
+    const section = await policy();
+
+    expect(await section.findByText("Never declared")).toBeVisible();
+    expect(section.getAllByText("Not declared")).toHaveLength(2);
+    expect(section.getByText("It may not receive restricted input.")).toBeVisible();
+    expect(section.getByText(/never verified/)).toBeVisible();
+  });
+
+  it("says what was declared, by whom, and that it may then take restricted input", async () => {
+    open("/models/openrouter/acme/large", {
+      ...ANSWERS,
+      "/api/local/portfolio": [200, { items: [DECLARED_ENTRY] }],
+    });
+
+    const section = await policy();
+
+    expect(await section.findByText("Eris Discordia")).toBeVisible();
+    expect(section.getAllByText("No")).toHaveLength(2);
+    expect(section.getByText("It may receive restricted input.")).toBeVisible();
+  });
+
+  it("declares a policy once it is confirmed, naming the instance", async () => {
+    const sent = declaring();
+
+    fireEvent.click(await (await policy()).findByRole("button", { name: "Declare policy…" }));
+
+    const confirm = within(screen.getByRole("group", { name: "Declare policy" }));
+
+    expect(
+      confirm.getByText("Declare the policy of openrouter/acme/large on your local instance?"),
+    ).toBeVisible();
+    expect(confirm.getByText("It may not receive restricted input then.")).toBeVisible();
+
+    answer("Retains data", "No");
+    answer("Trains on data", "No");
+
+    expect(confirm.getByText("It may then receive every restricted run’s input.")).toBeVisible();
+    expect(sent).toEqual([]);
+
+    fireEvent.click(confirm.getByRole("button", { name: "Declare" }));
+
+    expect(await screen.findByText("Policy declared.")).toBeVisible();
+    expect(sent).toEqual([
+      { identifier: LARGE_MODEL.identifier, retains_data: "no", trains_on_data: "no" },
+    ]);
+  });
+
+  it("says why a policy wasn't declared", async () => {
+    declaring([404, { error: { code: "not_found", message: "Model is not authorized." } }]);
+
+    fireEvent.click(await (await policy()).findByRole("button", { name: "Declare policy…" }));
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Declare policy" })).getByRole("button", {
+        name: "Declare",
+      }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Model is not authorized.");
+  });
+
+  it("won't declare a policy where it may not, and says why", async () => {
+    open("/models/openrouter/acme/large", ANSWERS, undefined, (_instance, action) =>
+      action === "declare_policy"
+        ? { allowed: false, reason: "Only owners declare policy." }
+        : { allowed: true },
+    );
+
+    const declare = await (await policy()).findByRole("button", { name: "Declare policy…" });
+
+    expect(declare).toBeDisabled();
+    expect(declare).toHaveAccessibleDescription("Only owners declare policy.");
+  });
+
+  it("offers no policy for a model the portfolio doesn't hold", async () => {
+    open("/models/openrouter/acme/small%3Afree");
+
+    const section = await policy();
+
+    expect(
+      section.getByText("Add it to your local portfolio first, then declare its policy."),
+    ).toBeVisible();
+    expect(section.queryByRole("button", { name: "Declare policy…" })).toBeNull();
   });
 
   it("adds the model to the local portfolio", async () => {

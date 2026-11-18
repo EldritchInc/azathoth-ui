@@ -47,6 +47,28 @@ editor to everything the command line does, on its own instance.
   `.../promote`, `.../rollback`, `.../invocations`, `/invocations/{id}`,
   `/live/invocations` and `/live/invocations/{id}/resume` (ADR 0003).
   `workflow_result_missing` answers 422, and `candidate_unavailable` 409.
+- ADR 0011 records how the editor labels, guards and declares, on
+  Azathoth's labels and policies (its ADR 0123), with nothing added to
+  core.
+- Run, Invoke and a step's trial offer Unlabelled, Public, Internal and
+  Restricted beside the input, and send the label chosen. The run page asks
+  readiness for that label; a restricted run that can't run names the
+  models each step could otherwise use, linked to their pages.
+- Every run, live run, invocation, benchmark and case shows its label, the
+  same everywhere, restricted standing out; an unlabelled case counts as
+  internal.
+- A restricted run's input, result and steps, a restricted invocation's
+  input and result, and a restricted case's input and expected output are
+  hidden until shown. Showing them is the `read_restricted` action, lasts
+  until the page is left, and is never remembered.
+- A model's page shows its declared data policy, whether it may receive
+  restricted input, and who declared it and when, as declared and never
+  verified; Declare policy, the `declare_policy` action, asks first. The
+  model list marks the models that may receive restricted input.
+- The server takes a `sensitivity` on `/live/runs`, `/live/invocations`,
+  `/live/steps`, `/workflows/readiness?sensitivity=` and `/models/matching`,
+  refusing any other value as `invalid_argument`, and declares a model's
+  policy at `/local/portfolio/policy` (ADR 0003).
 
 ## 1.4.0
 

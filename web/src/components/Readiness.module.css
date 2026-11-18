@@ -47,3 +47,15 @@
 .step[data-ready="false"] .detail {
   color: var(--rose);
 }
+
+.declare {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.declare a {
+  color: var(--ink);
+  font-family: var(--mono);
+  text-underline-offset: 0.2em;
+}

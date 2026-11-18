@@ -25,6 +25,7 @@ import { JsonBlock } from "./JsonBlock";
 import styles from "./LiveRun.module.css";
 import { Notice } from "./Notice";
 import { RunningContext } from "./runningContext";
+import { SensitivityLabel } from "./SensitivityLabel";
 import { WorkflowSteps } from "./WorkflowSteps";
 
 const MISSING_CODES = new Set(["not_found"]);
@@ -348,6 +349,7 @@ function LiveRunView({
             <span className={styles.pill} data-state={outcome.toLowerCase()} role="status">
               {outcome}
             </span>
+            {live.sensitivity !== null && <SensitivityLabel sensitivity={live.sensitivity} />}
             <span className={styles.facts}>
               {duration(live.started_at, live.finished_at, now)}
               {steps.length > 0 &&

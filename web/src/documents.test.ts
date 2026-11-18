@@ -277,6 +277,7 @@ describe("describeBenchmark", () => {
         expected: "8",
         comparison: "exact",
         description: "Eight words.",
+        sensitivity: "internal",
       },
       {
         id: "case-2",
@@ -284,9 +285,16 @@ describe("describeBenchmark", () => {
         expected: '{"count":2}',
         comparison: "semantic",
         description: null,
+        sensitivity: "public",
       },
     ]);
     expect(describeBenchmark({ cases: "none" }).cases).toEqual([]);
+  });
+
+  it("counts a case with no label, or one Azathoth doesn't give, as internal", () => {
+    expect(
+      describeBenchmark({ cases: [{ input: "a", sensitivity: "secret" }] }).cases[0]?.sensitivity,
+    ).toBe("internal");
   });
 });
 

@@ -46,6 +46,7 @@ import {
   type EditorDescription,
   type InstanceCommands,
   type InstanceDescription,
+  type DataPolicy,
   type InvocationDetail,
   type InvocationSummary,
   type ProductionRevisionSummary,
@@ -63,6 +64,7 @@ import {
   type PullReport,
   type PushReport,
   type RemoteStatus,
+  type Sensitivity,
   type Summary,
   type ToolSummary,
   type WorkflowSummary,
@@ -342,6 +344,29 @@ export async function addToPortfolio(
 }
 
 /**
+ * Declares what one authorized model's provider does with data:
+ * `POST /api/local/portfolio/policy`. Returns its entry, saying who declared
+ * it and when (ADR 0011).
+ */
+export async function declareModelPolicy(
+  identifier: string,
+  policy: DataPolicy,
+  options: RequestOptions = {},
+): Promise<PortfolioEntry> {
+  const body = await requestJson(
+    at(options, "/local/portfolio/policy"),
+    { method: "POST", body: JSON.stringify({ identifier, ...policy }) },
+    options,
+  );
+
+  if (!isPortfolioEntry(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/**
  * Removes one model from the local portfolio: `POST /api/local/portfolio/remove`.
  * A model local production uses is kept, with a `model_in_use` failure whose
  * details name its dependents, unless `force` is set.
@@ -379,15 +404,29 @@ export type RunGiven =
   | { readonly kind: "file"; readonly file: SentFile }
   | { readonly kind: "none" };
 
-/** Returns the body that starts a run of a workflow, given what it is given. */
-export function startBody(workflowId: string, given: RunGiven): Record<string, unknown> {
+/** Returns what a start sends of a label: the label when one is chosen, and nothing otherwise. */
+function labelled(sensitivity: Sensitivity | null | undefined): Record<string, unknown> {
+  return sensitivity === null || sensitivity === undefined ? {} : { sensitivity };
+}
+
+/**
+ * Returns the body that starts a run of a workflow, given what it is given,
+ * and its input's label when one is chosen (ADR 0011).
+ */
+export function startBody(
+  workflowId: string,
+  given: RunGiven,
+  sensitivity: Sensitivity | null = null,
+): Record<string, unknown> {
+  const label = labelled(sensitivity);
+
   switch (given.kind) {
     case "json":
-      return { workflow_id: workflowId, input: given.value };
+      return { workflow_id: workflowId, input: given.value, ...label };
     case "file":
-      return { workflow_id: workflowId, file: given.file };
+      return { workflow_id: workflowId, file: given.file, ...label };
     case "none":
-      return { workflow_id: workflowId };
+      return { workflow_id: workflowId, ...label };
   }
 }
 
@@ -405,15 +444,21 @@ async function liveRunOf(path: string, body: string | undefined, options: Reques
   return answer;
 }
 
+/** What a run is started with: its workflow, what it is given, and that input's label. */
+export interface RunStart {
+  readonly workflowId: string;
+  readonly given: RunGiven;
+  readonly sensitivity?: Sensitivity | null;
+}
+
 /** Starts a live run of a workflow: `POST /api/live/runs`. Returns it, running. */
 export function startRun(
-  workflowId: string,
-  given: RunGiven,
+  { workflowId, given, sensitivity = null }: RunStart,
   options: RequestOptions = {},
 ): Promise<LiveRun> {
   return liveRunOf(
     at(options, "/live/runs"),
-    JSON.stringify(startBody(workflowId, given)),
+    JSON.stringify(startBody(workflowId, given, sensitivity)),
     options,
   );
 }
@@ -430,6 +475,8 @@ export interface TrialStart {
   readonly files: Readonly<Record<string, SentFile>>;
   readonly input?: unknown;
   readonly file?: SentFile;
+  /** The label of everything the step is given, when one is chosen. */
+  readonly sensitivity?: Sensitivity;
 }
 
 /** Starts trying one step alone: `POST /api/live/steps`. Returns its live run, running. */
@@ -507,13 +554,16 @@ export async function checkWorkflow(
 /**
  * Returns whether each step of a workflow document could run here now, as
  * Azathoth resolves it, asking the providers: `POST /api/workflows/readiness`.
+ * With `sensitivity`, each step is judged for input so labelled (ADR 0011).
  */
 export async function fetchReadiness(
   document: unknown,
   options: RequestOptions = {},
+  sensitivity: Sensitivity | null = null,
 ): Promise<WorkflowReadiness> {
+  const query = sensitivity === null ? "" : `?sensitivity=${sensitivity}`;
   const body = await requestJson(
-    at(options, "/workflows/readiness"),
+    at(options, `/workflows/readiness${query}`),
     { method: "POST", body: JSON.stringify(document) },
     options,
   );
@@ -528,14 +578,16 @@ export async function fetchReadiness(
 /**
  * Returns the local portfolio's models that meet a step's requirements, in
  * the order a run tries them, by Azathoth's own rules: `POST /api/models/matching`.
+ * With `sensitivity`, only those that may receive input so labelled (ADR 0011).
  */
 export async function matchModels(
   requirements: Readonly<Record<string, unknown>>,
   options: RequestOptions = {},
+  sensitivity: Sensitivity | null = null,
 ): Promise<ModelSummary[]> {
   const body = await requestJson(
     at(options, "/models/matching"),
-    { method: "POST", body: JSON.stringify({ requirements }) },
+    { method: "POST", body: JSON.stringify({ requirements, ...labelled(sensitivity) }) },
     options,
   );
   const items = itemsOf(body, isModelSummary);
@@ -811,6 +863,7 @@ export interface InvocationStart {
   readonly workflowId: string;
   readonly given: RunGiven;
   readonly idempotencyKey?: string;
+  readonly sensitivity?: Sensitivity | null;
 }
 
 /**
@@ -818,13 +871,14 @@ export interface InvocationStart {
  * Returns it, running; its end carries the invocation's outcome.
  */
 export function startInvocation(
-  { workflowId, given, idempotencyKey }: InvocationStart,
+  { workflowId, given, idempotencyKey, sensitivity = null }: InvocationStart,
   options: RequestOptions = {},
 ): Promise<LiveRun> {
+  const body = startBody(workflowId, given, sensitivity);
   const sent =
     idempotencyKey === undefined || idempotencyKey === ""
-      ? startBody(workflowId, given)
-      : { ...startBody(workflowId, given), idempotency_key: idempotencyKey };
+      ? body
+      : { ...body, idempotency_key: idempotencyKey };
 
   return liveRunOf(at(options, "/live/invocations"), JSON.stringify(sent), options);
 }

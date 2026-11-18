@@ -1,0 +1,35 @@
+/* Restricted data, hidden until a person shows it. */
+
+.hidden {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--rose) 35%, var(--line));
+  border-left: 3px solid var(--rose);
+  border-radius: var(--radius);
+  background: var(--rose-wash);
+  justify-items: start;
+}
+
+.title {
+  color: var(--rose);
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+.why {
+  max-width: 62ch;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--rose);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}

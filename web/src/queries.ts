@@ -24,6 +24,7 @@ import {
   addToPortfolio,
   cancelLiveRun,
   checkWorkflow,
+  declareModelPolicy,
   fetchCommands,
   fetchDetail,
   fetchInvocation,
@@ -55,12 +56,13 @@ import {
   startTrial,
   type InvocationStart,
   type RemoteToAdd,
-  type RunGiven,
+  type RunStart,
   type Selection,
   type TrialStart,
 } from "./api/client";
 import type {
   ComponentDetail,
+  DataPolicy,
   EditorDescription,
   InstanceCommands,
   InvocationDetail,
@@ -78,6 +80,7 @@ import type {
   RemoteStatus,
   RunDetail,
   RunSummary,
+  Sensitivity,
   Summary,
   WorkflowCheck,
   WorkflowReadiness,
@@ -107,9 +110,11 @@ export const queryKeys = {
   models: ["models"] as const,
   modelList: ["models", "list"] as const,
   portfolio: ["models", "portfolio"] as const,
-  matching: (requirements: string) => ["models", "matching", requirements] as const,
+  matching: (requirements: string, sensitivity: Sensitivity | null = null) =>
+    ["models", "matching", requirements, sensitivity] as const,
   check: (document: string) => ["check", document] as const,
-  readiness: (document: string) => ["readiness", document] as const,
+  readiness: (document: string, sensitivity: Sensitivity | null = null) =>
+    ["readiness", document, sensitivity] as const,
   live: ["live"] as const,
   liveList: ["live", "list"] as const,
   remotes: ["remotes"] as const,
@@ -254,6 +259,37 @@ export interface PortfolioChange {
   readonly force?: boolean;
 }
 
+/** A model's policy to declare: the model, and both answers (ADR 0011). */
+export interface PolicyDeclaration {
+  readonly identifier: string;
+  readonly policy: DataPolicy;
+}
+
+/**
+ * Returns a declaration of a model's policy, after which every view of the
+ * models, and every readiness, is fetched again, since what may receive
+ * restricted input has changed.
+ */
+export function useDeclarePolicy(): UseMutationResult<
+  PortfolioEntry,
+  ApiFailure,
+  PolicyDeclaration
+> {
+  const client = useQueryClient();
+  const scope = useScope();
+
+  return useMutation<PortfolioEntry, ApiFailure, PolicyDeclaration>({
+    mutationFn: ({ identifier, policy }) =>
+      declareModelPolicy(identifier, policy, { base: scope.api }),
+    onSettled: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: scoped(scope, queryKeys.models) }),
+        client.invalidateQueries({ queryKey: scoped(scope, ["readiness"]) }),
+      ]);
+    },
+  });
+}
+
 /** Returns a change to the local portfolio, after which every view of the models is fetched again. */
 export function usePortfolioChange(): UseMutationResult<
   PortfolioEntry | PortfolioRemoval,
@@ -338,18 +374,13 @@ export function useLiveRun(handle: string): UseQueryResult<LiveRun, ApiFailure> 
 }
 
 /** What starting a run takes: the workflow, and what it is given. */
-export interface RunStart {
-  readonly workflowId: string;
-  readonly given: RunGiven;
-}
-
 /** Returns a start of a live run, after which the live runs are fetched again. */
 export function useStartRun(): UseMutationResult<LiveRun, ApiFailure, RunStart> {
   const client = useQueryClient();
   const scope = useScope();
 
   return useMutation<LiveRun, ApiFailure, RunStart>({
-    mutationFn: ({ workflowId, given }) => startRun(workflowId, given, { base: scope.api }),
+    mutationFn: (start) => startRun(start, { base: scope.api }),
     onSuccess: (run) => {
       client.setQueryData(scoped(scope, queryKeys.liveRun(run.handle)), run);
     },
@@ -410,13 +441,14 @@ export function useRun(runId: string): UseQueryResult<RunDetail, ApiFailure> {
  */
 export function useMatching(
   requirements: Readonly<Record<string, unknown>>,
+  sensitivity: Sensitivity | null = null,
 ): UseQueryResult<ModelSummary[], ApiFailure> {
   const scope = useScope();
   const key = JSON.stringify(requirements);
 
   return useQuery<ModelSummary[], ApiFailure>({
-    queryKey: scoped(scope, queryKeys.matching(key)),
-    queryFn: ({ signal }) => matchModels(requirements, { signal, base: scope.api }),
+    queryKey: scoped(scope, queryKeys.matching(key, sensitivity)),
+    queryFn: ({ signal }) => matchModels(requirements, { signal, base: scope.api }, sensitivity),
     placeholderData: keepPreviousData,
     staleTime: 60_000,
   });
@@ -444,14 +476,17 @@ export function useWorkflowCheck(document: unknown): UseQueryResult<WorkflowChec
  */
 export function useReadiness(
   document: unknown,
-  { enabled = true }: { readonly enabled?: boolean } = {},
+  {
+    enabled = true,
+    sensitivity = null,
+  }: { readonly enabled?: boolean; readonly sensitivity?: Sensitivity | null } = {},
 ): UseQueryResult<WorkflowReadiness, ApiFailure> {
   const scope = useScope();
   const key = JSON.stringify(document);
 
   return useQuery<WorkflowReadiness, ApiFailure>({
-    queryKey: scoped(scope, queryKeys.readiness(key)),
-    queryFn: ({ signal }) => fetchReadiness(document, { signal, base: scope.api }),
+    queryKey: scoped(scope, queryKeys.readiness(key, sensitivity)),
+    queryFn: ({ signal }) => fetchReadiness(document, { signal, base: scope.api }, sensitivity),
     staleTime: 60_000,
     enabled,
   });

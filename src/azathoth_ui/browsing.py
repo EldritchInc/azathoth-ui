@@ -25,6 +25,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
+from azathoth_ui.labels import sensitivity_of
 from azathoth_ui.scoping import context_of
 
 MAX_DOCUMENT_BYTES: Final = 10 * 1024 * 1024
@@ -232,12 +233,19 @@ async def check_workflow(
 async def workflow_readiness(
     request: Request,
 ) -> Response:
-    """`POST /api/workflows/readiness`: whether each step of a document could run here now.
+    """`POST /api/workflows/readiness?sensitivity=`: whether each step could run here now.
 
-    The providers are asked what they serve, as a run asks them; nothing is saved.
+    The providers are asked what they serve, as a run asks them; nothing is
+    saved. With `sensitivity`, each step is judged as for input so labelled,
+    so a restricted run's steps need models that may receive it (ADR 0011).
     """
 
-    return await judged_by(request, instance_of(request).runs.readiness)
+    sensitivity = sensitivity_of(request.query_params.get("sensitivity"))
+    runs = instance_of(request).runs
+
+    return await judged_by(
+        request, lambda document: runs.readiness(document, sensitivity=sensitivity)
+    )
 
 
 def workflow_runs(

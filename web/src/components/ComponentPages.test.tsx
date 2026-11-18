@@ -5,6 +5,7 @@ import { App } from "../App";
 import { saveDraft } from "../drafts";
 import {
   BENCHMARK_DETAIL,
+  BENCHMARK_DOCUMENT,
   TOOL_DETAIL,
   WORKFLOW_DETAIL,
   WORKFLOW_HISTORY,
@@ -35,6 +36,17 @@ const ANSWERS: Answers = {
     { items: [BENCHMARK_DETAIL] },
   ],
 };
+
+/** Returns one entry of a list, failing the test if there is none at that place. */
+function entryOf(entries: readonly HTMLElement[], index: number): HTMLElement {
+  const found = entries[index];
+
+  if (found === undefined) {
+    throw new Error(`The list has no entry ${String(index)}.`);
+  }
+
+  return found;
+}
 
 function workflowPage(rest = ""): void {
   renderAt(<App />, { path: `/workflows/${WORKFLOW_DETAIL.id}${rest}`, answers: ANSWERS });
@@ -87,6 +99,30 @@ describe("a workflow's page", () => {
     expect(links[1]).toHaveTextContent("Failed");
     expect(links[1]).toHaveTextContent("Production");
     expect(links[1]).toHaveTextContent("The model refused.");
+  });
+
+  it("labels each run on its Runs tab", async () => {
+    renderAt(<App />, {
+      path: `/workflows/${WORKFLOW_DETAIL.id}/runs`,
+      answers: {
+        ...ANSWERS,
+        [`${WORKFLOW_PATH}/runs?limit=20`]: [
+          200,
+          {
+            items: [
+              { ...RUN_SUMMARY, sensitivity: "restricted" },
+              { ...RUN_SUMMARY, run_id: "b1000000-0000-4000-8000-000000000002" },
+            ],
+          },
+        ],
+      },
+    });
+    const links = await within(await screen.findByRole("region", { name: "Runs" })).findAllByRole(
+      "link",
+    );
+
+    expect(within(entryOf(links, 0)).getByText("Restricted")).toBeVisible();
+    expect(within(entryOf(links, 1)).getByText("Internal")).toBeVisible();
   });
 
   it("says on its Runs tab when it has no runs yet", async () => {
@@ -248,5 +284,54 @@ describe("a benchmark's page", () => {
     expect(cases).toHaveTextContent("2 cases");
     expect(cases).toHaveTextContent("that is not dead which can eternal lie");
     expect(cases).toHaveTextContent("semantic");
+  });
+
+  it("hides a restricted case's input and expected output until they are shown", async () => {
+    const restricted = {
+      ...BENCHMARK_DETAIL,
+      sensitivity: "restricted",
+      document: {
+        ...BENCHMARK_DETAIL.document,
+        cases: [
+          {
+            id: "case-3",
+            input: "a patient's chart",
+            expected: { value: "a summary", comparison: "exact" },
+            metadata: {},
+            sensitivity: "restricted",
+          },
+          ...BENCHMARK_DOCUMENT.cases,
+        ],
+      },
+    };
+
+    renderAt(<App />, {
+      path: `/benchmarks/${BENCHMARK_DETAIL.id}`,
+      answers: { ...ANSWERS, [`/api/benchmarks/${BENCHMARK_DETAIL.id}`]: [200, restricted] },
+    });
+
+    const cases = within(await screen.findByRole("region", { name: "Cases" }));
+
+    expect(cases.queryByText("a patient's chart")).toBeNull();
+    expect(cases.getByText("that is not dead which can eternal lie")).toBeVisible();
+
+    fireEvent.click(cases.getByRole("button", { name: "Show it" }));
+
+    expect(cases.getByText("a patient's chart")).toBeVisible();
+    expect(cases.getByText("a summary")).toBeVisible();
+  });
+
+  it("labels the benchmark, and each case, an unlabelled one as internal", async () => {
+    renderAt(<App />, { path: `/benchmarks/${BENCHMARK_DETAIL.id}`, answers: ANSWERS });
+
+    const cases = within(await screen.findByRole("region", { name: "Cases" }));
+    const rows = cases.getAllByRole("row");
+
+    expect(cases.getByRole("columnheader", { name: "Label" })).toBeVisible();
+    expect(within(entryOf(rows, 1)).getByText("Internal")).toBeVisible();
+    expect(within(entryOf(rows, 2)).getByText("Public")).toBeVisible();
+    expect(cases.getByText(/The benchmark is labelled/)).toHaveTextContent(
+      "The benchmark is labelled Internal, as its most sensitive case is.",
+    );
   });
 });

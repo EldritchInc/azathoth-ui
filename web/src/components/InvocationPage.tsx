@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "react-router";
 
 import type { InvocationDetail, InvocationRun } from "../api/types";
-import { callerName, INVOCATION_STATUS_NAMES, SENSITIVITY_NAMES } from "../invocations";
+import { callerName, INVOCATION_STATUS_NAMES } from "../invocations";
 import { useDetail, useInvocation, useResumeInvocation } from "../queries";
 import { duration } from "../running";
 import { usePage } from "../scope";
@@ -14,6 +14,8 @@ import { JsonBlock } from "./JsonBlock";
 import page from "./LiveRun.module.css";
 import { Notice } from "./Notice";
 import { RelativeTime } from "./RelativeTime";
+import { Restricted } from "./Restricted";
+import { SensitivityLabel } from "./SensitivityLabel";
 
 const MISSING_CODES = new Set(["not_found", "invalid_argument"]);
 
@@ -166,8 +168,8 @@ function Invocation({ invocation }: { readonly invocation: InvocationDetail }) {
         </li>
         <li>
           <span className={styles.name}>Label</span>
-          <span className={styles.label} data-sensitivity={invocation.sensitivity}>
-            {SENSITIVITY_NAMES[invocation.sensitivity]}
+          <span className={styles.value}>
+            <SensitivityLabel sensitivity={invocation.sensitivity} />
           </span>
         </li>
         <li>
@@ -181,24 +183,30 @@ function Invocation({ invocation }: { readonly invocation: InvocationDetail }) {
           </span>
         </li>
       </ul>
-      <div className={page.pair}>
-        <section className={page.outcome} aria-labelledby="input-heading">
-          <h2 id="input-heading" className={page.sectionTitle}>
-            Input
-          </h2>
-          <JsonBlock value={invocation.input} label="The invocation's input, as JSON" />
-        </section>
-        <section className={page.outcome} aria-labelledby="result-heading">
-          <h2 id="result-heading" className={page.sectionTitle}>
-            Result
-          </h2>
-          {invocation.status === "succeeded" ? (
-            <JsonBlock value={invocation.result} label="The invocation's result, as JSON" />
-          ) : (
-            <p className={page.quiet}>{incomplete ? "It has none yet." : "It produced none."}</p>
-          )}
-        </section>
-      </div>
+      <Restricted
+        sensitivity={invocation.sensitivity}
+        what="the invocation's input and result"
+        subject={invocation.invocation_id}
+      >
+        <div className={page.pair}>
+          <section className={page.outcome} aria-labelledby="input-heading">
+            <h2 id="input-heading" className={page.sectionTitle}>
+              Input
+            </h2>
+            <JsonBlock value={invocation.input} label="The invocation's input, as JSON" />
+          </section>
+          <section className={page.outcome} aria-labelledby="result-heading">
+            <h2 id="result-heading" className={page.sectionTitle}>
+              Result
+            </h2>
+            {invocation.status === "succeeded" ? (
+              <JsonBlock value={invocation.result} label="The invocation's result, as JSON" />
+            ) : (
+              <p className={page.quiet}>{incomplete ? "It has none yet." : "It produced none."}</p>
+            )}
+          </section>
+        </div>
+      </Restricted>
       <section className={page.outcome} aria-labelledby="run-heading">
         <h2 id="run-heading" className={page.sectionTitle}>
           Its run
@@ -252,5 +260,5 @@ export function InvocationPage() {
     );
   }
 
-  return <Invocation invocation={invocation.data} />;
+  return <Invocation key={invocation.data.invocation_id} invocation={invocation.data} />;
 }

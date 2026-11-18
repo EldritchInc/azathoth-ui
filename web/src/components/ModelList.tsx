@@ -20,7 +20,13 @@ import {
   shownModels,
   type ModelFilter,
 } from "../models";
-import { useEditor, useModels, usePortfolioChange, useRefreshModels } from "../queries";
+import {
+  useEditor,
+  useModels,
+  usePortfolio,
+  usePortfolioChange,
+  useRefreshModels,
+} from "../queries";
 import buttons from "./Buttons.module.css";
 import { Skeleton } from "./ComponentList";
 import list from "./ComponentList.module.css";
@@ -214,7 +220,16 @@ function Tags({ names, kind }: { readonly names: readonly string[]; readonly kin
   );
 }
 
-function ModelRow({ model, change }: { readonly model: ModelSummary; readonly change: Change }) {
+function ModelRow({
+  model,
+  change,
+  receivesRestricted,
+}: {
+  readonly model: ModelSummary;
+  readonly change: Change;
+  /** Whether its portfolio entry is declared to neither retain nor train on data. */
+  readonly receivesRestricted: boolean;
+}) {
   return (
     <tr data-authorized={model.authorized}>
       <td className={list.name}>
@@ -223,6 +238,11 @@ function ModelRow({ model, change }: { readonly model: ModelSummary; readonly ch
             {nameOf(model)}
           </InstanceLink>
           <code className={styles.identifier}>{model.identifier}</code>
+          {receivesRestricted && (
+            <span className={styles.private} title="Declared to neither retain nor train on data">
+              Takes restricted input
+            </span>
+          )}
         </div>
       </td>
       <td className={list.number} data-label="Context">
@@ -275,6 +295,12 @@ export function ModelList() {
   const models = useModels();
   const refresh = useRefreshModels();
   const change = usePortfolioChange();
+  const portfolio = usePortfolio();
+  const takesRestricted = new Set(
+    (portfolio.data ?? [])
+      .filter((entry) => entry.receives_restricted)
+      .map((entry) => entry.identifier),
+  );
   const [params, setParams] = useSearchParams();
   const filter = filterOf(params);
   const filterId = useId();
@@ -344,7 +370,12 @@ export function ModelList() {
         </thead>
         <tbody>
           {shown.map((model) => (
-            <ModelRow key={model.identifier} model={model} change={change} />
+            <ModelRow
+              key={model.identifier}
+              model={model}
+              change={change}
+              receivesRestricted={takesRestricted.has(model.identifier)}
+            />
           ))}
         </tbody>
       </table>

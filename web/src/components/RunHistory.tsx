@@ -5,6 +5,7 @@ import { duration } from "../running";
 import { InstanceLink } from "./InstanceLink";
 import { RelativeTime } from "./RelativeTime";
 import styles from "./RunHistory.module.css";
+import { SensitivityLabel } from "./SensitivityLabel";
 
 function outcome(run: RunSummary): string {
   return run.succeeded ? "Succeeded" : "Failed";
@@ -12,7 +13,8 @@ function outcome(run: RunSummary): string {
 
 /**
  * A workflow's kept runs, newest first: how each ended, when, how long it
- * took, and whether it ran for production. Each opens the run (ADR 0007).
+ * took, whether it ran for production, and its input's label (ADR 0011).
+ * Each opens the run (ADR 0007).
  */
 export function RunHistory({ workflowId }: { readonly workflowId: string }) {
   const runs = useWorkflowRuns(workflowId);
@@ -54,6 +56,7 @@ export function RunHistory({ workflowId }: { readonly workflowId: string }) {
                   {run.workflow_revision !== null && ` · revision ${String(run.workflow_revision)}`}
                 </span>
                 {run.invocation_id !== null && <span className={styles.badge}>Production</span>}
+                <SensitivityLabel sensitivity={run.sensitivity} />
                 {run.error !== null && <span className={styles.error}>{run.error.message}</span>}
               </InstanceLink>
             </li>

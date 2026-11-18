@@ -44,6 +44,16 @@ export interface Revision {
   readonly identical_to: number | null;
 }
 
+/** How sensitive data is, from public to restricted (Azathoth's ADR 0123). */
+export type Sensitivity = "public" | "internal" | "restricted";
+
+const SENSITIVITIES: readonly unknown[] = ["public", "internal", "restricted"];
+
+/** Returns whether a value is one of Azathoth's labels. */
+export function isSensitivity(value: unknown): value is Sensitivity {
+  return SENSITIVITIES.includes(value);
+}
+
 /** What every workflow, tool and benchmark summary carries. */
 export interface Summary {
   readonly id: string;
@@ -66,6 +76,8 @@ export interface ToolSummary extends Summary {
 /** A benchmark at one revision. */
 export interface BenchmarkSummary extends Summary {
   readonly case_count: number;
+  /** The most sensitive of its cases' labels, an unlabelled case counting as internal. */
+  readonly sensitivity: Sensitivity;
 }
 
 /** One revision of a workflow, tool version or benchmark, with its document. */
@@ -108,11 +120,25 @@ export interface ModelListing {
   readonly listed_at: string;
 }
 
-/** One model the local portfolio authorizes. */
+/** One answer of a model's declared policy: yes, no, or never declared. */
+export type PolicyAnswer = "yes" | "no" | "unknown";
+
+/** What was declared a model's provider does with data it is sent (Azathoth's ADR 0123). */
+export interface DataPolicy {
+  readonly retains_data: PolicyAnswer;
+  readonly trains_on_data: PolicyAnswer;
+}
+
+/** One model the local portfolio authorizes, with its declared policy. */
 export interface PortfolioEntry {
   readonly identifier: string;
   readonly provider: string;
   readonly model: string;
+  readonly data_policy: DataPolicy;
+  /** Whether it may be sent restricted input: only when declared to neither retain nor train. */
+  readonly receives_restricted: boolean;
+  readonly policy_declared_by: Author | null;
+  readonly policy_declared_at: string | null;
   readonly command: string;
 }
 
@@ -169,6 +195,8 @@ export interface RunSummary {
   readonly invocation_id: string | null;
   readonly succeeded: boolean;
   readonly error: RunError | null;
+  /** The label its input was given, internal when none was. */
+  readonly sensitivity: Sensitivity;
   readonly started_at: string;
   readonly completed_at: string;
   readonly command: string;
@@ -276,6 +304,8 @@ export interface LiveRun {
   readonly step_id: string | null;
   /** An invocation's id, once it is known: from the start for a resume, from its outcome otherwise. */
   readonly invocation_id: string | null;
+  /** The label it was given, or none. */
+  readonly sensitivity: Sensitivity | null;
   readonly state: LiveState;
   readonly started_at: string;
   readonly finished_at: string | null;
@@ -411,7 +441,12 @@ export function isToolSummary(value: unknown): value is ToolSummary {
 
 /** Returns whether a value summarizes a benchmark. */
 export function isBenchmarkSummary(value: unknown): value is BenchmarkSummary {
-  return isSummary(value) && isRecord(value) && isWholeNumber(value.case_count);
+  return (
+    isSummary(value) &&
+    isRecord(value) &&
+    isWholeNumber(value.case_count) &&
+    isSensitivity(value.sensitivity)
+  );
 }
 
 /** Returns whether a value is one revision of a component with its document. */
@@ -491,6 +526,17 @@ export function isModelListing(value: unknown): value is ModelListing {
   );
 }
 
+const POLICY_ANSWERS: readonly unknown[] = ["yes", "no", "unknown"];
+
+/** Returns whether a value is a model's declared policy. */
+export function isDataPolicy(value: unknown): value is DataPolicy {
+  return (
+    isRecord(value) &&
+    POLICY_ANSWERS.includes(value.retains_data) &&
+    POLICY_ANSWERS.includes(value.trains_on_data)
+  );
+}
+
 /** Returns whether a value is one model the local portfolio authorizes. */
 export function isPortfolioEntry(value: unknown): value is PortfolioEntry {
   return (
@@ -498,6 +544,10 @@ export function isPortfolioEntry(value: unknown): value is PortfolioEntry {
     typeof value.identifier === "string" &&
     typeof value.provider === "string" &&
     typeof value.model === "string" &&
+    isDataPolicy(value.data_policy) &&
+    typeof value.receives_restricted === "boolean" &&
+    isAuthorOrNull(value.policy_declared_by) &&
+    isTextOrNull(value.policy_declared_at) &&
     typeof value.command === "string"
   );
 }
@@ -602,6 +652,7 @@ export function isLiveRun(value: unknown): value is LiveRun {
     typeof value.workflow_id === "string" &&
     isTextOrNull(value.step_id) &&
     isTextOrNull(value.invocation_id) &&
+    (value.sensitivity === null || isSensitivity(value.sensitivity)) &&
     LIVE_STATES.includes(value.state) &&
     typeof value.started_at === "string" &&
     isTextOrNull(value.finished_at) &&
@@ -625,6 +676,7 @@ export function isRunSummary(value: unknown): value is RunSummary {
     isTextOrNull(value.invocation_id) &&
     typeof value.succeeded === "boolean" &&
     (value.error === null || isRunError(value.error)) &&
+    isSensitivity(value.sensitivity) &&
     typeof value.started_at === "string" &&
     typeof value.completed_at === "string" &&
     typeof value.command === "string"
@@ -942,11 +994,6 @@ export function isPullReport(value: unknown): value is PullReport {
     value.withheld.every(isLineage)
   );
 }
-
-/** How sensitive data is, from public to restricted (Azathoth's ADR 0123). */
-export type Sensitivity = "public" | "internal" | "restricted";
-
-const SENSITIVITIES: readonly unknown[] = ["public", "internal", "restricted"];
 
 /** Who made a revision, or a production revision (Azathoth's ADR 0122). */
 export interface Author {
