@@ -13,6 +13,7 @@ import { Rail } from "./components/Rail";
 import { RemoteList } from "./components/RemoteList";
 import { RemotePage } from "./components/RemotePage";
 import { RunPage } from "./components/RunPage";
+import { InvocationPage } from "./components/InvocationPage";
 import { InvokeWorkflow } from "./components/InvokeWorkflow";
 import { RunWorkflow } from "./components/RunWorkflow";
 import { NewWorkflow, WorkflowEditor } from "./components/WorkflowEditor";
@@ -49,6 +50,7 @@ export function App() {
           <Route path="/workflows/:id/invoke" element={<InvokeWorkflow />} />
           <Route path="/live/:handle" element={<LiveRunPage />} />
           <Route path="/runs/:runId" element={<RunPage />} />
+          <Route path="/invocations/:invocationId" element={<InvocationPage />} />
           <Route path="/tools" element={<ComponentList kind="tools" />} />
           <Route path="/tools/:id/versions/:version" element={<ToolPage />} />
           <Route path="/benchmarks" element={<ComponentList kind="benchmarks" />} />

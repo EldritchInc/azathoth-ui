@@ -1,0 +1,35 @@
+/* One invocation: what is known of it, beside the run page's layout. */
+
+.about {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about li {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.name {
+  color: var(--faint);
+  font-size: 0.75rem;
+}
+
+.value code {
+  font-family: var(--mono);
+  font-size: 0.875rem;
+}
+
+.label[data-sensitivity="restricted"] {
+  color: var(--rose);
+  font-weight: 600;
+}
+
+.run {
+  display: grid;
+  gap: 0.4rem;
+}
