@@ -36,6 +36,7 @@ export const LIVE_RUN: LiveRun = {
   invocation_id: null,
   sensitivity: null,
   resumes_run_id: null,
+  benchmark_id: null,
   state: "running",
   started_at: "2026-11-10T10:00:00Z",
   finished_at: null,

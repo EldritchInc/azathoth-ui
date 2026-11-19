@@ -1,7 +1,7 @@
 """Every endpoint that acts on an instance, built once and mounted for each (ADR 0009).
 
 `instance_routes(context, prefix=...)` returns the browsing, models,
-portfolio and live-run endpoints, and the instance's own description and
+portfolio, benchmark and live-run endpoints, and the instance's own description and
 command prefix, under one prefix, each bound to one instance. The editor
 mounts them at `/api` for its own instance; Azathoth 1.6's remotes are
 mounted the same way, under `/api/remotes/{name}`, with nothing rebuilt.
@@ -15,6 +15,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import BaseRoute, Route
 
+from azathoth_ui.benchmarks import benchmark_routes
 from azathoth_ui.browsing import browsing_routes
 from azathoth_ui.catalog import catalog_routes
 from azathoth_ui.evidence import evidence_routes
@@ -55,6 +56,7 @@ def instance_endpoints() -> list[Route]:
         Route("/instance", describe_instance, methods=["GET"]),
         Route("/commands", describe_commands, methods=["GET"]),
         *browsing_routes(),
+        *benchmark_routes(),
         *catalog_routes(),
         *live_routes(),
         *production_routes(),

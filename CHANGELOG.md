@@ -5,10 +5,9 @@
 The first pre-release of the editor for Azathoth 1.5, which brings the
 editor to everything the command line does, on its own instance.
 
-- The editor needs Azathoth 1.5, and builds on its pre-release 1.5.0a2,
-  the first with judges and a run's evidence in the service API: `make
-  install` and CI name it, so pip takes Azathoth's pre-releases and no
-  other package's.
+- The editor needs Azathoth 1.5, and builds on its pre-release 1.5.0a3,
+  the first with benchmarks in the service API: `make install` and CI name
+  it, so pip takes Azathoth's pre-releases and no other package's.
 - ADR 0009 records how the editor works on any instance. Every endpoint
   that acts on an instance is built once, for one instance, and mounted at
   `/api` for the editor's own; every call, query and link in the web app
@@ -99,6 +98,39 @@ editor to everything the command line does, on its own instance.
   `/live/runs/{id}/resume`, which refuses any run its workflow does not
   list as interrupted before anything runs (ADR 0003).
   `content_unavailable` answers 502, and `run_not_resumable` 409.
+- ADR 0012's amendment records how the editor builds, runs and reads
+  benchmarks, on Azathoth 1.5.0a3's benchmarks in the service API (its
+  ADR 0130).
+- A benchmark's page has tabs: Cases at `/benchmarks/:id`, its document
+  and revisions at `/benchmarks/:id/document`, and Executions at
+  `/benchmarks/:id/executions`.
+- New benchmark, on the Benchmarks list, creates an empty one from a name
+  and a description. Cases lists each case with where it came from, its
+  comparison, whether it names citations, and its label; Add case takes
+  text, JSON or a file, a comparison, an expected value, a description
+  and a label.
+- A case's page shows its input, what it expects and what its run must
+  cite, a restricted case's hidden until shown. Edit sends only what
+  changed, and a label can only be raised; Remove asks first, naming the
+  instance. Earlier revisions keep every case. All three are the
+  `edit_benchmark` action.
+- A run's page adds the run to a benchmark as a case, with a comparison,
+  expecting its latest correction or a value given; the case keeps the
+  run's label.
+- Run and Compare, the `run_benchmark` action, run one workflow against a
+  benchmark, or compare two or more against latency and cost targets, as a
+  live run. Its page shows each workflow's cases as they start and finish,
+  how many passed, and Cancel, which stops it between cases and keeps the
+  case runs that finished; once it ends, it links to the execution.
+- An execution's page, `/benchmark-executions/:id`, shows its scoring
+  targets, its workflows ranked with their scorecards, and each case's
+  result, score and reason, linking to its run; a restricted execution's
+  results are hidden until shown.
+- The server serves `/benchmarks` (create), a benchmark's `/cases`, each
+  case, its edit and `/remove`, its `/executions`,
+  `/benchmark-executions/{id}`, `/live/benchmarks` and
+  `/live/comparisons`, telling a left-out key from `null` as Azathoth does
+  (ADR 0003). `judge_unavailable` answers 409.
 
 ## 1.4.0
 

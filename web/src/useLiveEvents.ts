@@ -2,19 +2,31 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import { liveEventsPath } from "./api/client";
-import { isLiveRun, isRunEvent, type LiveRun, type RunEvent } from "./api/types";
+import {
+  isBenchmarkEvent,
+  isLiveRun,
+  isRunEvent,
+  type BenchmarkEvent,
+  type LiveRun,
+  type RunEvent,
+} from "./api/types";
 import { queryKeys } from "./queries";
 import { scoped, useScope } from "./scope";
 
-/** A live run's events so far, how it ended once it has, and whether its stream was lost. */
+/**
+ * A live run's events so far, how it ended once it has, and whether its
+ * stream was lost. A benchmark run's or a comparison's events are its
+ * cases, kept apart from a run's.
+ */
 export interface LiveEvents {
   readonly events: readonly RunEvent[];
+  readonly cases: readonly BenchmarkEvent[];
   readonly end: LiveRun | null;
   /** Whether the stream closed before the run's end, and will not come back. */
   readonly lost: boolean;
 }
 
-const NOTHING_YET: LiveEvents = { events: [], end: null, lost: false };
+const NOTHING_YET: LiveEvents = { events: [], cases: [], end: null, lost: false };
 
 function parsed(data: unknown): unknown {
   try {
@@ -49,15 +61,24 @@ export function useLiveEvents(handle: string): LiveEvents {
       const number = Number(message.lastEventId);
       const event = parsed(message.data);
 
-      if (!Number.isInteger(number) || number <= seen || !isRunEvent(event)) {
+      if (!Number.isInteger(number) || number <= seen) {
         return;
       }
-      seen = number;
-      setShown((last) =>
-        last.handle === handle
-          ? { handle, live: { ...last.live, events: [...last.live.events, event] } }
-          : last,
-      );
+      if (isRunEvent(event)) {
+        seen = number;
+        setShown((last) =>
+          last.handle === handle
+            ? { handle, live: { ...last.live, events: [...last.live.events, event] } }
+            : last,
+        );
+      } else if (isBenchmarkEvent(event)) {
+        seen = number;
+        setShown((last) =>
+          last.handle === handle
+            ? { handle, live: { ...last.live, cases: [...last.live.cases, event] } }
+            : last,
+        );
+      }
     });
 
     source.addEventListener("end", (message: MessageEvent) => {
@@ -74,6 +95,7 @@ export function useLiveEvents(handle: string): LiveEvents {
       void client.invalidateQueries({ queryKey: scoped(scope, queryKeys.liveList) });
       void client.invalidateQueries({ queryKey: scoped(scope, queryKeys.runs) });
       void client.invalidateQueries({ queryKey: scoped(scope, queryKeys.invocations) });
+      void client.invalidateQueries({ queryKey: scoped(scope, queryKeys.executions) });
     });
 
     source.addEventListener("error", () => {

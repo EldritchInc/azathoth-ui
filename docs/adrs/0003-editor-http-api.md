@@ -50,6 +50,14 @@ The table names each at the editor's own instance.
 | `GET /api/benchmarks/{id}?revision=` | One revision with its document |
 | `GET /api/benchmarks/{id}/history?limit=` | Its revisions, newest first |
 | `POST /api/benchmarks/import` | Imports a document as its next revision: 201 |
+| `POST /api/benchmarks` | Creates an empty benchmark, from `{"name", "description", "version"}`, the version optional: 201 ([ADR 0012](0012-judges-and-a-runs-evidence-in-the-editor.md)) |
+| `GET /api/benchmarks/{id}/cases?revision=` | A revision's cases, in order, the latest by default |
+| `GET /api/benchmarks/{id}/cases/{case_id}?revision=` | One case, with its input, what it expects and what its run must cite |
+| `POST /api/benchmarks/{id}/cases` | Adds a case to its next revision, from exactly one of `"run_id"`, `"input"` and `"file"`, with `"comparison"`, and `"expected"`, `"description"`, `"citations"` and `"sensitivity"` optional: 201 |
+| `POST /api/benchmarks/{id}/cases/{case_id}` | Edits a case into its next revision, from any of `"comparison"`, `"expected"`, `"description"`, `"citations"` and `"sensitivity"` |
+| `POST /api/benchmarks/{id}/cases/{case_id}/remove` | Leaves a case out of its next revision |
+| `GET /api/benchmarks/{id}/executions?limit=` | Its saved runs and comparisons, newest first |
+| `GET /api/benchmark-executions/{id}` | One execution, with every workflow, its scorecard, and each case's result |
 | `GET /api/models?refresh=` | Every model the providers serve, marked by whether the local portfolio holds it, and when the providers were asked |
 | `GET /api/models/{identifier}` | One model, by its identifier, slashes and all |
 | `GET /api/local/portfolio` | The models the local portfolio authorizes, oldest first |
@@ -80,6 +88,8 @@ The table names each at the editor's own instance.
 | `POST /api/live/runs` | Starts a live run of a workflow, from `{"workflow_id", "input" \| "file", "sensitivity"}`: 201 ([ADR 0007](0007-running-and-watching-workflows.md)) |
 | `POST /api/live/invocations` | Invokes a workflow in production as a live run, from `{"workflow_id", "input" \| "file", "idempotency_key", "sensitivity"}`, the key and the label optional: 201 ([ADR 0010](0010-production-in-the-editor.md)) |
 | `POST /api/live/invocations/{id}/resume` | Resumes an incomplete invocation as a live run: 201, or 409 once it has completed |
+| `POST /api/live/benchmarks` | Runs a workflow against a benchmark as a live run, from `{"benchmark_id", "workflow_id"}`: 201, or 404 before anything starts for an unknown benchmark or workflow ([ADR 0012](0012-judges-and-a-runs-evidence-in-the-editor.md)) |
+| `POST /api/live/comparisons` | Compares workflows against a benchmark as a live run, from `{"benchmark_id", "workflow_ids", "target_latency_seconds", "target_cost_usd"}`, the targets numbers: 201, or 404 before anything starts |
 | `POST /api/live/runs/{run_id}/resume` | Resumes an interrupted run of `{"workflow_id"}` from its journal as a live run: 201; 409 `run_not_resumable` for a finished run or an invocation's, 404 for any other the workflow does not list as interrupted |
 | `GET /api/live` | Every live run the editor remembers, newest first |
 | `GET /api/live/{handle}` | One live run: where it is, and how it ended |
@@ -120,6 +130,15 @@ The table names each at the editor's own instance.
   run it picks up as `resumes_run_id`, or `null`. A content store that fails
   as citations are exported is `content_unavailable`, 502, since it failed
   the editor, not the person ([ADR 0012](0012-judges-and-a-runs-evidence-in-the-editor.md)).
+- **Left out is not `null`.** Adding a case without `"expected"` expects
+  its run's latest correction, and `"expected": null` expects null;
+  editing a case leaves what is left out as it was, and `"citations": null`
+  stops requiring citations, as Azathoth decides. Every change to a case
+  answers with the case and the benchmark's revision that holds it. A
+  benchmark run or a comparison is a live run of kind `benchmark` or
+  `comparison` that names its `benchmark_id`; its events are Azathoth's
+  `case_started` and `case_finished`, its result the execution it saved,
+  and `judge_unavailable` is 409 ([ADR 0012](0012-judges-and-a-runs-evidence-in-the-editor.md)).
 - **Tool versions live under `/versions/`,** so that no version name, such as
   `history`, can be mistaken for another endpoint.
 - **Commands name the editor's database.** `GET /api/commands` gives the

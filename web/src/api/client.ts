@@ -14,6 +14,11 @@
 
 import {
   isAnnotations,
+  isBenchmarkCaseChange,
+  isBenchmarkCaseDetail,
+  isBenchmarkCaseSummary,
+  isBenchmarkExecutionDetail,
+  isBenchmarkExecutionSummary,
   isBenchmarkSummary,
   isInterruptedRun,
   isJudgeSummary,
@@ -46,7 +51,14 @@ import {
   isToolSummary,
   itemsOf,
   type Annotations,
+  type BenchmarkCaseChange,
+  type BenchmarkCaseDetail,
+  type BenchmarkCaseSummary,
+  type BenchmarkExecutionDetail,
+  type BenchmarkExecutionSummary,
   type BenchmarkSummary,
+  type CaseCitations,
+  type CaseComparison,
   type FeedbackDisposition,
   type InterruptedRun,
   type JudgeSummary,
@@ -1062,6 +1074,275 @@ export function resumeRun(
   return liveRunOf(
     at(options, `/live/runs/${encodeURIComponent(runId)}/resume`),
     JSON.stringify({ workflow_id: workflowId }),
+    options,
+  );
+}
+
+function benchmarkPath(benchmarkId: string, path: string): string {
+  return `/benchmarks/${encodeURIComponent(benchmarkId)}${path}`;
+}
+
+function casePath(benchmarkId: string, caseId: string, path = ""): string {
+  return benchmarkPath(benchmarkId, `/cases/${encodeURIComponent(caseId)}${path}`);
+}
+
+function atRevision(revision: number | null): string {
+  return revision === null ? "" : `?revision=${String(revision)}`;
+}
+
+/** What a new benchmark is created with; Azathoth gives it 1.0.0 when no version is given. */
+export interface NewBenchmark {
+  readonly name: string;
+  readonly description: string;
+  readonly version?: string;
+}
+
+/**
+ * Creates an empty benchmark: `POST {base}/benchmarks`. Returns it, as an
+ * import answers; it cannot be run until a case is added.
+ */
+export async function createBenchmark(
+  { name, description, version }: NewBenchmark,
+  options: RequestOptions = {},
+): Promise<ComponentImport> {
+  const sent = version === undefined ? { name, description } : { name, description, version };
+  const body = await requestJson(
+    at(options, "/benchmarks"),
+    { method: "POST", body: JSON.stringify(sent) },
+    options,
+  );
+  const created = importOf(body, "benchmarks");
+
+  if (created === null) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 201);
+  }
+
+  return created;
+}
+
+/**
+ * Returns a benchmark's cases, in order: `GET {base}/benchmarks/{id}/cases`,
+ * at its latest revision when `revision` is `null`.
+ */
+export function fetchBenchmarkCases(
+  benchmarkId: string,
+  revision: number | null,
+  options: RequestOptions = {},
+): Promise<BenchmarkCaseSummary[]> {
+  return fetchItems(
+    at(options, benchmarkPath(benchmarkId, `/cases${atRevision(revision)}`)),
+    isBenchmarkCaseSummary,
+    options,
+  );
+}
+
+/** Returns one case, with its input and what it expects: `GET {base}/benchmarks/{id}/cases/{case}`. */
+export async function fetchBenchmarkCase(
+  benchmarkId: string,
+  caseId: string,
+  revision: number | null,
+  options: RequestOptions = {},
+): Promise<BenchmarkCaseDetail> {
+  const body = await getJson(
+    at(options, casePath(benchmarkId, caseId, atRevision(revision))),
+    options,
+  );
+
+  if (!isBenchmarkCaseDetail(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/** What a new case is made from: a kept run, JSON, or a file. */
+export type CaseFrom =
+  | { readonly kind: "run"; readonly runId: string }
+  | { readonly kind: "json"; readonly value: unknown }
+  | { readonly kind: "file"; readonly file: SentFile };
+
+/**
+ * One case to add. What is left out is not sent: a case from a run with no
+ * `expected` expects the run's latest correction, as Azathoth decides.
+ */
+export interface NewCase {
+  readonly from: CaseFrom;
+  readonly comparison: CaseComparison;
+  /** What it expects; sent whenever it is given, even as `null`. */
+  readonly expected?: unknown;
+  readonly description?: string;
+  readonly citations?: CaseCitations | null;
+  readonly sensitivity?: Sensitivity | null;
+}
+
+function fromOf(from: CaseFrom): Record<string, unknown> {
+  switch (from.kind) {
+    case "run":
+      return { run_id: from.runId };
+    case "json":
+      return { input: from.value };
+    case "file":
+      return { file: from.file };
+  }
+}
+
+/** Returns what a body sends of the fields given, leaving out each that is `undefined`. */
+function given(fields: Readonly<Record<string, unknown>>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined));
+}
+
+async function caseChange(
+  path: string,
+  sent: Readonly<Record<string, unknown>>,
+  status: number,
+  options: RequestOptions,
+): Promise<BenchmarkCaseChange> {
+  const body = await requestJson(
+    at(options, path),
+    { method: "POST", body: JSON.stringify(sent) },
+    options,
+  );
+
+  if (!isBenchmarkCaseChange(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, status);
+  }
+
+  return body;
+}
+
+/**
+ * Adds a case to a benchmark: `POST {base}/benchmarks/{id}/cases`. Returns
+ * it, and the benchmark's revision that holds it.
+ */
+export function addBenchmarkCase(
+  benchmarkId: string,
+  { from, comparison, expected, description, citations, sensitivity }: NewCase,
+  options: RequestOptions = {},
+): Promise<BenchmarkCaseChange> {
+  const sent = {
+    ...fromOf(from),
+    ...given({ comparison, expected, description, citations }),
+    ...labelled(sensitivity),
+  };
+
+  return caseChange(benchmarkPath(benchmarkId, "/cases"), sent, 201, options);
+}
+
+/**
+ * One edit of a case: only what is given changes. `citations: null` stops
+ * requiring citations, and `expected: null` expects null. A label may only
+ * be raised.
+ */
+export interface CaseEdit {
+  readonly comparison?: CaseComparison;
+  readonly expected?: unknown;
+  readonly description?: string;
+  readonly citations?: CaseCitations | null;
+  readonly sensitivity?: Sensitivity;
+}
+
+/** Edits a case into the benchmark's next revision: `POST {base}/benchmarks/{id}/cases/{case}`. */
+export function editBenchmarkCase(
+  benchmarkId: string,
+  caseId: string,
+  edit: CaseEdit,
+  options: RequestOptions = {},
+): Promise<BenchmarkCaseChange> {
+  return caseChange(casePath(benchmarkId, caseId), given({ ...edit }), 200, options);
+}
+
+/**
+ * Removes a case from the benchmark's next revision:
+ * `POST {base}/benchmarks/{id}/cases/{case}/remove`. Earlier revisions still hold it.
+ */
+export function removeBenchmarkCase(
+  benchmarkId: string,
+  caseId: string,
+  options: RequestOptions = {},
+): Promise<BenchmarkCaseChange> {
+  return caseChange(casePath(benchmarkId, caseId, "/remove"), {}, 200, options);
+}
+
+/** How many of a benchmark's executions the editor lists. */
+export const EXECUTIONS_LISTED = 20;
+
+/**
+ * Returns a benchmark's runs and comparisons, newest first:
+ * `GET {base}/benchmarks/{id}/executions`, the newest `EXECUTIONS_LISTED` of them.
+ */
+export function fetchBenchmarkExecutions(
+  benchmarkId: string,
+  options: RequestOptions = {},
+): Promise<BenchmarkExecutionSummary[]> {
+  return fetchItems(
+    at(options, benchmarkPath(benchmarkId, `/executions?limit=${String(EXECUTIONS_LISTED)}`)),
+    isBenchmarkExecutionSummary,
+    options,
+  );
+}
+
+/** Returns one execution, with every workflow and case: `GET {base}/benchmark-executions/{id}`. */
+export async function fetchBenchmarkExecution(
+  executionId: string,
+  options: RequestOptions = {},
+): Promise<BenchmarkExecutionDetail> {
+  const body = await getJson(
+    at(options, `/benchmark-executions/${encodeURIComponent(executionId)}`),
+    options,
+  );
+
+  if (!isBenchmarkExecutionDetail(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/** One workflow to run against a benchmark. */
+export interface BenchmarkRunStart {
+  readonly benchmarkId: string;
+  readonly workflowId: string;
+}
+
+/**
+ * Runs a workflow against a benchmark, as a live run told case by case:
+ * `POST {base}/live/benchmarks`. Its end carries the execution.
+ */
+export function startBenchmarkRun(
+  { benchmarkId, workflowId }: BenchmarkRunStart,
+  options: RequestOptions = {},
+): Promise<LiveRun> {
+  return liveRunOf(
+    at(options, "/live/benchmarks"),
+    JSON.stringify({ benchmark_id: benchmarkId, workflow_id: workflowId }),
+    options,
+  );
+}
+
+/** Workflows to compare against a benchmark, and the targets they are scored against. */
+export interface ComparisonStart {
+  readonly benchmarkId: string;
+  readonly workflowIds: readonly string[];
+  readonly targetLatencySeconds: number;
+  readonly targetCostUsd: number;
+}
+
+/**
+ * Compares workflows against a benchmark, as a live run told case by case:
+ * `POST {base}/live/comparisons`. Its end carries the execution, best first.
+ */
+export function startComparison(
+  { benchmarkId, workflowIds, targetLatencySeconds, targetCostUsd }: ComparisonStart,
+  options: RequestOptions = {},
+): Promise<LiveRun> {
+  return liveRunOf(
+    at(options, "/live/comparisons"),
+    JSON.stringify({
+      benchmark_id: benchmarkId,
+      workflow_ids: workflowIds,
+      target_latency_seconds: targetLatencySeconds,
+      target_cost_usd: targetCostUsd,
+    }),
     options,
   );
 }

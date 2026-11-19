@@ -294,9 +294,9 @@ describe("a tool version's page", () => {
   });
 });
 
-describe("a benchmark's page", () => {
+describe("a benchmark's document", () => {
   it("shows its cases", async () => {
-    renderAt(<App />, { path: `/benchmarks/${BENCHMARK_DETAIL.id}`, answers: ANSWERS });
+    renderAt(<App />, { path: `/benchmarks/${BENCHMARK_DETAIL.id}/document`, answers: ANSWERS });
 
     const cases = await screen.findByRole("region", { name: "Cases" });
 
@@ -325,7 +325,7 @@ describe("a benchmark's page", () => {
     };
 
     renderAt(<App />, {
-      path: `/benchmarks/${BENCHMARK_DETAIL.id}`,
+      path: `/benchmarks/${BENCHMARK_DETAIL.id}/document`,
       answers: { ...ANSWERS, [`/api/benchmarks/${BENCHMARK_DETAIL.id}`]: [200, restricted] },
     });
 
@@ -341,7 +341,7 @@ describe("a benchmark's page", () => {
   });
 
   it("labels the benchmark, and each case, an unlabelled one as internal", async () => {
-    renderAt(<App />, { path: `/benchmarks/${BENCHMARK_DETAIL.id}`, answers: ANSWERS });
+    renderAt(<App />, { path: `/benchmarks/${BENCHMARK_DETAIL.id}/document`, answers: ANSWERS });
 
     const cases = within(await screen.findByRole("region", { name: "Cases" }));
     const rows = cases.getAllByRole("row");

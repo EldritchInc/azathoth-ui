@@ -7,6 +7,9 @@ import { browserStorage } from "../theme";
 import buttons from "./Buttons.module.css";
 
 import { BenchmarkCases } from "./BenchmarkCases";
+import { BenchmarkTabs, type BenchmarkTab } from "./BenchmarkTabs";
+import { CaseList } from "./CaseList";
+import { ExecutionList } from "./ExecutionList";
 import { DetailPage } from "./DetailPage";
 import { InstanceLink } from "./InstanceLink";
 import { ProductionTab } from "./ProductionTab";
@@ -95,12 +98,46 @@ export function ToolPage() {
   );
 }
 
-/** `/benchmarks/:id`: one benchmark's page. */
-export function BenchmarkPage() {
+/**
+ * `/benchmarks/:id`: one benchmark's page, with its tabs (ADR 0012): its
+ * cases here, its document, with its revisions, at `/document`, and its
+ * executions at `/executions`.
+ */
+export function BenchmarkPage({ tab = "cases" }: { readonly tab?: BenchmarkTab }) {
   const { id = "" } = useParams();
 
   return (
-    <DetailPage kind="benchmarks" component={{ id }}>
+    <DetailPage
+      kind="benchmarks"
+      component={{ id }}
+      tabs={<BenchmarkTabs benchmarkId={id} />}
+      section={
+        tab === "cases"
+          ? (detail) => <CaseList detail={detail} />
+          : tab === "executions"
+            ? () => <ExecutionList benchmarkId={id} />
+            : undefined
+      }
+      actions={
+        <>
+          <InstanceLink className={buttons.primary} to={`/benchmarks/${id}/run`}>
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              focusable="false"
+              fill="currentColor"
+              stroke="none"
+            >
+              <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" />
+            </svg>
+            Run
+          </InstanceLink>
+          <InstanceLink className={buttons.quiet} to={`/benchmarks/${id}/compare`}>
+            Compare
+          </InstanceLink>
+        </>
+      }
+    >
       {(detail) => (
         <BenchmarkCases
           document={detail.document}

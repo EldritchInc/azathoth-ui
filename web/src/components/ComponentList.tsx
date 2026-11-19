@@ -186,7 +186,7 @@ export function ComponentList({ kind }: { readonly kind: Kind }) {
                 kind={kind}
                 busy={importer.busy}
                 onFiles={importFiles}
-                quiet={kind === "workflows"}
+                quiet={kind === "workflows" || kind === "benchmarks"}
               />
             )}
             {kind === "workflows" && (
@@ -203,6 +203,22 @@ export function ComponentList({ kind }: { readonly kind: Kind }) {
                   <path d="M12 5v14M5 12h14" />
                 </svg>
                 New workflow
+              </InstanceLink>
+            )}
+            {kind === "benchmarks" && (
+              <InstanceLink className={buttons.primary} to="/benchmarks/new">
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  focusable="false"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                New benchmark
               </InstanceLink>
             )}
           </div>
