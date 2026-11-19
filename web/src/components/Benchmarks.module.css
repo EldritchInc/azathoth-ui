@@ -131,3 +131,9 @@
   margin: 0;
   padding-left: 1.2rem;
 }
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

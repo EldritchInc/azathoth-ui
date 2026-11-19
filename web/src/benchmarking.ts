@@ -7,7 +7,9 @@
 import type { CaseEdit } from "./api/client";
 import {
   isCaseCitations,
+  type BenchmarkEvent,
   type BenchmarkCaseDetail,
+  type CaseFinished,
   type CaseCitations,
   type CaseComparison,
   type CaseSource,
@@ -137,4 +139,79 @@ export function caseEditOf(
     },
     problem: null,
   };
+}
+
+/** One case of a live benchmark, once it started: its place, and how it finished, if it has. */
+export interface CaseRun {
+  readonly case_id: string;
+  readonly index: number;
+  readonly finished: CaseFinished | null;
+}
+
+/** One workflow's cases in a live benchmark run or comparison. */
+export interface WorkflowCases {
+  readonly workflow_id: string;
+  /** How many cases it runs. */
+  readonly total: number;
+  readonly done: number;
+  readonly passed: number;
+  /** Each case that started, in the order it did. */
+  readonly cases: readonly CaseRun[];
+}
+
+/** Returns each workflow's cases so far, in the order the workflows started, from its events. */
+export function caseProgressOf(events: readonly BenchmarkEvent[]): WorkflowCases[] {
+  const workflows = new Map<string, { total: number; cases: Map<string, CaseRun> }>();
+
+  for (const event of events) {
+    const known = workflows.get(event.workflow_id);
+    const workflow = known ?? { total: 0, cases: new Map<string, CaseRun>() };
+
+    if (known === undefined) {
+      workflows.set(event.workflow_id, workflow);
+    }
+    if (event.type === "case_started") {
+      workflow.total = event.total;
+      workflow.cases.set(event.case_id, {
+        case_id: event.case_id,
+        index: event.index,
+        finished: null,
+      });
+    } else {
+      const started = workflow.cases.get(event.case_id);
+
+      workflow.cases.set(event.case_id, {
+        case_id: event.case_id,
+        index: started?.index ?? workflow.cases.size + 1,
+        finished: event,
+      });
+    }
+  }
+
+  return [...workflows].map(([workflowId, { total, cases }]) => {
+    const runs = [...cases.values()];
+    const finished = runs.filter((each) => each.finished !== null);
+
+    return {
+      workflow_id: workflowId,
+      total: Math.max(total, runs.length),
+      done: finished.length,
+      passed: finished.filter((each) => each.finished?.passed === true).length,
+      cases: runs,
+    };
+  });
+}
+
+const TARGET_PROBLEM = "Give a number above zero.";
+
+/** Returns a comparison's latency or cost target, as written, or why it isn't one. */
+export function targetOf(text: string): {
+  readonly value: number | null;
+  readonly problem: string | null;
+} {
+  const value = text.trim() === "" ? Number.NaN : Number(text);
+
+  return Number.isFinite(value) && value > 0
+    ? { value, problem: null }
+    : { value: null, problem: TARGET_PROBLEM };
 }

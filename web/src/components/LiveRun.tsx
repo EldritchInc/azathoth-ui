@@ -22,6 +22,7 @@ import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { InstanceLink } from "./InstanceLink";
 import { JsonBlock } from "./JsonBlock";
+import { LiveBenchmarkView } from "./LiveBenchmark";
 import styles from "./LiveRun.module.css";
 import { Notice } from "./Notice";
 import { RunningContext } from "./runningContext";
@@ -457,6 +458,10 @@ export function LiveRunPage() {
         </Notice>
       </div>
     );
+  }
+
+  if (live.data.kind === "benchmark" || live.data.kind === "comparison") {
+    return <LiveBenchmarkView key={handle} handle={handle} described={live.data} />;
   }
 
   return <LiveRunView key={handle} handle={handle} described={live.data} />;

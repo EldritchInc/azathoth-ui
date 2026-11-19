@@ -110,6 +110,25 @@ export function BenchmarkPage({ tab = "cases" }: { readonly tab?: BenchmarkTab }
       component={{ id }}
       tabs={<BenchmarkTabs benchmarkId={id} />}
       section={tab === "cases" ? (detail) => <CaseList detail={detail} /> : undefined}
+      actions={
+        <>
+          <InstanceLink className={buttons.primary} to={`/benchmarks/${id}/run`}>
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              focusable="false"
+              fill="currentColor"
+              stroke="none"
+            >
+              <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" />
+            </svg>
+            Run
+          </InstanceLink>
+          <InstanceLink className={buttons.quiet} to={`/benchmarks/${id}/compare`}>
+            Compare
+          </InstanceLink>
+        </>
+      }
     >
       {(detail) => (
         <BenchmarkCases
