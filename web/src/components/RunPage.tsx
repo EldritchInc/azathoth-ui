@@ -17,6 +17,7 @@ import { Restricted, RestrictedScope } from "./Restricted";
 import { ChildRuns } from "./ChildRuns";
 import { RunCitations } from "./RunCitations";
 import { RunJudgment } from "./RunJudgment";
+import { RunToCase } from "./RunToCase";
 import { RunningContext } from "./runningContext";
 import { SensitivityLabel } from "./SensitivityLabel";
 import { WorkflowSteps } from "./WorkflowSteps";
@@ -141,6 +142,7 @@ function KeptRun({ run }: { readonly run: RunDetail }) {
           )}
         </Restricted>
         <RunJudgment run={run} />
+        <RunToCase run={run} />
         <RunCitations run={run} />
         <ChildRuns runId={run.run_id} titles={titles} />
       </div>
