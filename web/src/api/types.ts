@@ -294,12 +294,19 @@ export type RunEvent = RunStarted | StepStarted | StepFinished | ContextChanged 
 
 /**
  * What a live run runs: a workflow, one step tried alone, an invocation
- * through production, a workflow against a benchmark, or workflows compared
- * against one.
+ * through production, a workflow against a benchmark, workflows compared
+ * against one, or a workflow optimized against one.
  */
-export type LiveKind = "run" | "step" | "invocation" | "benchmark" | "comparison";
+export type LiveKind = "run" | "step" | "invocation" | "benchmark" | "comparison" | "optimization";
 
-const LIVE_KINDS: readonly unknown[] = ["run", "step", "invocation", "benchmark", "comparison"];
+const LIVE_KINDS: readonly unknown[] = [
+  "run",
+  "step",
+  "invocation",
+  "benchmark",
+  "comparison",
+  "optimization",
+];
 
 /** Where a live run is. */
 export type LiveState = "running" | "finished" | "cancelled" | "refused";
@@ -1619,7 +1626,7 @@ export interface CaseFinished {
 export type BenchmarkEvent = CaseStarted | CaseFinished;
 
 /** One event of any live run. */
-export type LiveEvent = RunEvent | BenchmarkEvent;
+export type LiveEvent = RunEvent | BenchmarkEvent | OptimizationEvent;
 
 function isNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -1808,6 +1815,422 @@ export function isBenchmarkEvent(value: unknown): value is BenchmarkEvent {
         typeof value.run_id === "string" &&
         typeof value.passed === "boolean" &&
         isNumber(value.score)
+      );
+    default:
+      return false;
+  }
+}
+
+/** What every view of one recorded optimization experiment carries (Azathoth's ADR 0131). */
+interface ExperimentHeader {
+  readonly experiment_id: string;
+  readonly workflow_id: string;
+  readonly workflow_name: string;
+  readonly recorded_at: string;
+  /** The benchmark its candidates ran, or none from before benchmark optimization. */
+  readonly benchmark_id: string | null;
+  readonly benchmark_digest: string | null;
+  readonly benchmark_revision: number | null;
+  readonly sensitivity: Sensitivity;
+  readonly candidate_count: number;
+  readonly case_count: number;
+  readonly winner_observation_id: string;
+  readonly command: string;
+}
+
+/** One experiment, as a workflow's list shows it. */
+export interface ExperimentSummary extends ExperimentHeader {
+  readonly winner_score: number;
+}
+
+/** How one case went for one candidate of an experiment. */
+export interface ExperimentCase {
+  readonly case_id: string | null;
+  readonly run_id: string;
+  readonly evaluation_id: string;
+  readonly passed: boolean | null;
+  readonly judge_calls: number;
+  readonly judge_cost_usd: number;
+}
+
+/** One step of a candidate, with the model its first case's run ran it on. */
+export interface ExperimentStep {
+  readonly step_id: string;
+  readonly strategy_id: string | null;
+  readonly model: string | null;
+}
+
+/** One candidate of an experiment, in its place in the ranking. */
+export interface ExperimentCandidate {
+  readonly observation_id: string;
+  /** From 1 for the winner. */
+  readonly rank: number;
+  readonly workflow_revision: number | null;
+  readonly strategy_ids: readonly string[];
+  /** Empty once its first case's run is no longer kept. */
+  readonly steps: readonly ExperimentStep[];
+  readonly cases_run: number;
+  readonly cases_passed: number | null;
+  readonly scorecard: CandidateScorecard;
+  readonly judge_calls: number;
+  readonly judge_cost_usd: number;
+  readonly cases: readonly ExperimentCase[];
+}
+
+/** One experiment, with every candidate, best first. */
+export interface ExperimentDetail extends ExperimentHeader {
+  readonly candidates: readonly ExperimentCandidate[];
+}
+
+/** What an experiment's winner is compared against. */
+export type ComparisonBaseline = "production" | "configured";
+
+/** One step of the winner and of the baseline, each with its model. */
+export interface ComparedStep {
+  readonly step_id: string;
+  readonly winner_model: string | null;
+  readonly baseline_model: string | null;
+  readonly differs: boolean;
+}
+
+/** One case, as the winner and the baseline did on it. */
+export interface ComparedCase {
+  readonly case_id: string | null;
+  readonly winner_passed: boolean | null;
+  readonly baseline_passed: boolean | null;
+  readonly winner_score: number | null;
+  readonly baseline_score: number | null;
+}
+
+/** What one candidate's kept case runs cost and took, each the mean. */
+export interface RunCosts {
+  readonly runs: number;
+  readonly cost_usd: number | null;
+  readonly latency_seconds: number | null;
+}
+
+/** What the winner saves per run on the benchmark, measured; negative is a cost. */
+export interface Savings {
+  readonly cost_usd: number | null;
+  readonly cost_percent: number | null;
+  readonly latency_seconds: number | null;
+  readonly latency_percent: number | null;
+}
+
+/** The saving per run over production's recent invocations: a projection, never a measurement. */
+export interface SavingsProjection {
+  readonly window_days: number;
+  readonly since: string;
+  readonly invocations: number;
+  readonly cost_usd: number | null;
+  readonly latency_seconds: number | null;
+}
+
+/** An experiment's winner beside what promoting it would replace. */
+export interface ExperimentComparison {
+  readonly experiment_id: string;
+  readonly workflow_id: string;
+  /** None when there is nothing to compare, with the reason why. */
+  readonly baseline: ComparisonBaseline | null;
+  readonly reason: string | null;
+  readonly winner: ExperimentCandidate;
+  readonly baseline_candidate: ExperimentCandidate | null;
+  readonly steps: readonly ComparedStep[];
+  readonly cases: readonly ComparedCase[];
+  readonly winner_runs: RunCosts;
+  readonly baseline_runs: RunCosts | null;
+  /** The `azathoth workflow promote` command that promotes the winner. */
+  readonly command: string;
+  readonly savings: Savings | null;
+  readonly projection: SavingsProjection | null;
+}
+
+/** Whether an experiment's winner can still be promoted, and why not. */
+export interface Promotability {
+  readonly experiment_id: string;
+  readonly workflow_id: string;
+  readonly promotable: boolean;
+  /** The code promoting would refuse with, or none. */
+  readonly code: string | null;
+  readonly reason: string | null;
+  readonly command: string;
+}
+
+/** One generation of a session: the experiment that measured it, and what it proposed. */
+export interface OptimizationGeneration {
+  readonly generation: number;
+  readonly experiment_id: string;
+  readonly winner_strategy_ids: readonly string[];
+  readonly winner_score: number;
+  readonly proposed: number;
+}
+
+/** What one optimization session measured, and which experiment holds its winner. */
+export interface OptimizationSummary {
+  readonly workflow_id: string;
+  readonly benchmark_id: string;
+  readonly generations: readonly OptimizationGeneration[];
+  readonly final_experiment_id: string | null;
+  /** Why the final evaluation did not run, or none when it ran. */
+  readonly final_skipped: string | null;
+  readonly winning_experiment_id: string;
+  readonly judge_calls: number;
+  readonly judge_cost_usd: number;
+  readonly command: string;
+}
+
+/** One generation of a session is about to run its candidates. */
+export interface GenerationStarted {
+  readonly type: "generation_started";
+  readonly generation: number;
+  readonly candidates: number;
+  /** Whether it is the final evaluation of the last generation's proposals. */
+  readonly final: boolean;
+}
+
+/** One candidate of a generation ran every case, and was scored. */
+export interface CandidateFinished {
+  readonly type: "candidate_finished";
+  readonly generation: number;
+  readonly workflow_id: string;
+  readonly strategy_ids: readonly string[];
+  readonly cases_run: number;
+  readonly cases_passed: number;
+  readonly overall_score: number;
+}
+
+/** One generation's experiment was recorded, and its winner chosen. */
+export interface GenerationFinished {
+  readonly type: "generation_finished";
+  readonly generation: number;
+  readonly experiment_id: string;
+  readonly winner_strategy_ids: readonly string[];
+  readonly winner_score: number;
+  /** How many candidates it proposes next; none after the final evaluation. */
+  readonly proposed: number;
+}
+
+/** One event of an optimization. */
+export type OptimizationEvent = GenerationStarted | CandidateFinished | GenerationFinished;
+
+function isRank(value: unknown): value is number {
+  return isWholeNumber(value) && value >= 1;
+}
+
+function isNumberOrNullFinite(value: unknown): value is number | null {
+  return value === null || isNumber(value);
+}
+
+function isBooleanOrNull(value: unknown): value is boolean | null {
+  return value === null || typeof value === "boolean";
+}
+
+function isExperimentHeader(value: unknown): value is ExperimentHeader {
+  return (
+    isRecord(value) &&
+    typeof value.experiment_id === "string" &&
+    typeof value.workflow_id === "string" &&
+    typeof value.workflow_name === "string" &&
+    typeof value.recorded_at === "string" &&
+    isTextOrNull(value.benchmark_id) &&
+    isTextOrNull(value.benchmark_digest) &&
+    isNumberOrNullWhole(value.benchmark_revision) &&
+    isSensitivity(value.sensitivity) &&
+    isRank(value.candidate_count) &&
+    isRank(value.case_count) &&
+    typeof value.winner_observation_id === "string" &&
+    typeof value.command === "string"
+  );
+}
+
+/** Returns whether a value is one experiment, as a workflow's list shows it. */
+export function isExperimentSummary(value: unknown): value is ExperimentSummary {
+  return isExperimentHeader(value) && isRecord(value) && isNumber(value.winner_score);
+}
+
+function isExperimentCase(value: unknown): value is ExperimentCase {
+  return (
+    isRecord(value) &&
+    isTextOrNull(value.case_id) &&
+    typeof value.run_id === "string" &&
+    typeof value.evaluation_id === "string" &&
+    isBooleanOrNull(value.passed) &&
+    isCount(value.judge_calls) &&
+    isNumber(value.judge_cost_usd)
+  );
+}
+
+function isExperimentStep(value: unknown): value is ExperimentStep {
+  return (
+    isRecord(value) &&
+    typeof value.step_id === "string" &&
+    isTextOrNull(value.strategy_id) &&
+    isTextOrNull(value.model)
+  );
+}
+
+function isExperimentCandidate(value: unknown): value is ExperimentCandidate {
+  return (
+    isRecord(value) &&
+    typeof value.observation_id === "string" &&
+    isRank(value.rank) &&
+    isNumberOrNullWhole(value.workflow_revision) &&
+    isTextList(value.strategy_ids) &&
+    Array.isArray(value.steps) &&
+    value.steps.every(isExperimentStep) &&
+    isCount(value.cases_run) &&
+    (value.cases_passed === null || isCount(value.cases_passed)) &&
+    isScorecard(value.scorecard) &&
+    isCount(value.judge_calls) &&
+    isNumber(value.judge_cost_usd) &&
+    Array.isArray(value.cases) &&
+    value.cases.every(isExperimentCase)
+  );
+}
+
+/** Returns whether a value is one experiment, with every candidate ranked. */
+export function isExperimentDetail(value: unknown): value is ExperimentDetail {
+  return (
+    isExperimentHeader(value) &&
+    isRecord(value) &&
+    Array.isArray(value.candidates) &&
+    value.candidates.every(isExperimentCandidate)
+  );
+}
+
+function isRunCosts(value: unknown): value is RunCosts {
+  return (
+    isRecord(value) &&
+    isCount(value.runs) &&
+    isNumberOrNullFinite(value.cost_usd) &&
+    isNumberOrNullFinite(value.latency_seconds)
+  );
+}
+
+function isSavings(value: unknown): value is Savings {
+  return (
+    isRecord(value) &&
+    isNumberOrNullFinite(value.cost_usd) &&
+    isNumberOrNullFinite(value.cost_percent) &&
+    isNumberOrNullFinite(value.latency_seconds) &&
+    isNumberOrNullFinite(value.latency_percent)
+  );
+}
+
+function isProjection(value: unknown): value is SavingsProjection {
+  return (
+    isRecord(value) &&
+    isRank(value.window_days) &&
+    typeof value.since === "string" &&
+    isRank(value.invocations) &&
+    isNumberOrNullFinite(value.cost_usd) &&
+    isNumberOrNullFinite(value.latency_seconds)
+  );
+}
+
+/** Returns whether a value is an experiment's winner beside what promoting it would replace. */
+export function isExperimentComparison(value: unknown): value is ExperimentComparison {
+  return (
+    isRecord(value) &&
+    typeof value.experiment_id === "string" &&
+    typeof value.workflow_id === "string" &&
+    (value.baseline === null ||
+      value.baseline === "production" ||
+      value.baseline === "configured") &&
+    isTextOrNull(value.reason) &&
+    isExperimentCandidate(value.winner) &&
+    (value.baseline_candidate === null || isExperimentCandidate(value.baseline_candidate)) &&
+    Array.isArray(value.steps) &&
+    value.steps.every(
+      (step) =>
+        isRecord(step) &&
+        typeof step.step_id === "string" &&
+        isTextOrNull(step.winner_model) &&
+        isTextOrNull(step.baseline_model) &&
+        typeof step.differs === "boolean",
+    ) &&
+    Array.isArray(value.cases) &&
+    value.cases.every(
+      (compared) =>
+        isRecord(compared) &&
+        isTextOrNull(compared.case_id) &&
+        isBooleanOrNull(compared.winner_passed) &&
+        isBooleanOrNull(compared.baseline_passed) &&
+        isNumberOrNullFinite(compared.winner_score) &&
+        isNumberOrNullFinite(compared.baseline_score),
+    ) &&
+    isRunCosts(value.winner_runs) &&
+    (value.baseline_runs === null || isRunCosts(value.baseline_runs)) &&
+    typeof value.command === "string" &&
+    (value.savings === null || isSavings(value.savings)) &&
+    (value.projection === null || isProjection(value.projection))
+  );
+}
+
+/** Returns whether a value says whether an experiment's winner can still be promoted. */
+export function isPromotability(value: unknown): value is Promotability {
+  return (
+    isRecord(value) &&
+    typeof value.experiment_id === "string" &&
+    typeof value.workflow_id === "string" &&
+    typeof value.promotable === "boolean" &&
+    isTextOrNull(value.code) &&
+    isTextOrNull(value.reason) &&
+    typeof value.command === "string"
+  );
+}
+
+function isGeneration(value: unknown): value is OptimizationGeneration {
+  return (
+    isRecord(value) &&
+    isRank(value.generation) &&
+    typeof value.experiment_id === "string" &&
+    isTextList(value.winner_strategy_ids) &&
+    isNumber(value.winner_score) &&
+    isCount(value.proposed)
+  );
+}
+
+/** Returns whether a value is what one optimization session measured. */
+export function isOptimizationSummary(value: unknown): value is OptimizationSummary {
+  return (
+    isRecord(value) &&
+    typeof value.workflow_id === "string" &&
+    typeof value.benchmark_id === "string" &&
+    Array.isArray(value.generations) &&
+    value.generations.length > 0 &&
+    value.generations.every(isGeneration) &&
+    isTextOrNull(value.final_experiment_id) &&
+    isTextOrNull(value.final_skipped) &&
+    typeof value.winning_experiment_id === "string" &&
+    isCount(value.judge_calls) &&
+    isNumber(value.judge_cost_usd) &&
+    typeof value.command === "string"
+  );
+}
+
+/** Returns whether a value is one event of an optimization. */
+export function isOptimizationEvent(value: unknown): value is OptimizationEvent {
+  if (!isRecord(value) || !isRank(value.generation)) {
+    return false;
+  }
+  switch (value.type) {
+    case "generation_started":
+      return isRank(value.candidates) && typeof value.final === "boolean";
+    case "candidate_finished":
+      return (
+        typeof value.workflow_id === "string" &&
+        isTextList(value.strategy_ids) &&
+        isCount(value.cases_run) &&
+        isCount(value.cases_passed) &&
+        isNumber(value.overall_score)
+      );
+    case "generation_finished":
+      return (
+        typeof value.experiment_id === "string" &&
+        isTextList(value.winner_strategy_ids) &&
+        isNumber(value.winner_score) &&
+        isCount(value.proposed)
       );
     default:
       return false;

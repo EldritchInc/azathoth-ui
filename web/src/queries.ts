@@ -33,6 +33,10 @@ import {
   fetchBenchmarkCases,
   fetchBenchmarkExecution,
   fetchBenchmarkExecutions,
+  fetchComparison,
+  fetchExperiment,
+  fetchPromotability,
+  fetchWorkflowExperiments,
   fetchCommands,
   fetchDetail,
   fetchInterruptedRuns,
@@ -72,6 +76,7 @@ import {
   startBenchmarkRun,
   startComparison,
   startInvocation,
+  startOptimization,
   startRun,
   startTrial,
   type BenchmarkRunStart,
@@ -80,6 +85,7 @@ import {
   type InvocationStart,
   type NewBenchmark,
   type NewCase,
+  type OptimizationStart,
   type Judgment,
   type RemoteToAdd,
   type RunResumption,
@@ -96,6 +102,10 @@ import type {
   BenchmarkExecutionSummary,
   ComponentDetail,
   ComponentImport,
+  ExperimentComparison,
+  ExperimentDetail,
+  ExperimentSummary,
+  Promotability,
   DataPolicy,
   EditorDescription,
   InstanceCommands,
@@ -182,6 +192,11 @@ export const queryKeys = {
   executions: ["executions"] as const,
   benchmarkExecutions: (benchmarkId: string) => ["executions", "benchmark", benchmarkId] as const,
   execution: (executionId: string) => ["executions", "one", executionId] as const,
+  experiments: ["experiments"] as const,
+  workflowExperiments: (workflowId: string) => ["experiments", "workflow", workflowId] as const,
+  experiment: (experimentId: string) => ["experiments", "one", experimentId] as const,
+  comparison: (experimentId: string) => ["experiments", "compare", experimentId] as const,
+  promotability: (experimentId: string) => ["experiments", "promotable", experimentId] as const,
 };
 
 /** How often the editor asks which live runs are running, while any is. */
@@ -667,7 +682,8 @@ export type ProductionChange =
 
 /**
  * Returns a change to a workflow's production, after which its production,
- * its revisions and its invocations are fetched again.
+ * its revisions, its invocations and every experiment's comparison and
+ * promotability are fetched again, since each depends on what production runs.
  */
 export function useProductionChange(
   workflowId: string,
@@ -690,6 +706,7 @@ export function useProductionChange(
       await Promise.all([
         client.invalidateQueries({ queryKey: scoped(scope, queryKeys.production(workflowId)) }),
         client.invalidateQueries({ queryKey: scoped(scope, queryKeys.invocations) }),
+        client.invalidateQueries({ queryKey: scoped(scope, queryKeys.experiments) }),
       ]);
     },
   });
@@ -1020,6 +1037,68 @@ export function useStartComparison(): UseMutationResult<LiveRun, ApiFailure, Com
 
   return useMutation<LiveRun, ApiFailure, ComparisonStart>({
     mutationFn: (start) => startComparison(start, { base: scope.api }),
+    onSuccess: (run) => {
+      client.setQueryData(scoped(scope, queryKeys.liveRun(run.handle)), run);
+    },
+    onSettled: () => client.invalidateQueries({ queryKey: scoped(scope, queryKeys.liveList) }),
+  });
+}
+
+/** Returns a workflow's experiments, newest first. */
+export function useWorkflowExperiments(
+  workflowId: string,
+): UseQueryResult<ExperimentSummary[], ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<ExperimentSummary[], ApiFailure>({
+    queryKey: scoped(scope, queryKeys.workflowExperiments(workflowId)),
+    queryFn: ({ signal }) => fetchWorkflowExperiments(workflowId, { signal, base: scope.api }),
+  });
+}
+
+/** Returns one experiment; a recorded experiment never changes, though its runs may go. */
+export function useExperiment(experimentId: string): UseQueryResult<ExperimentDetail, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<ExperimentDetail, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.experiment(experimentId)),
+    queryFn: ({ signal }) => fetchExperiment(experimentId, { signal, base: scope.api }),
+  });
+}
+
+/** Returns an experiment's winner beside what promoting it would replace, with its savings. */
+export function useComparison(
+  experimentId: string,
+): UseQueryResult<ExperimentComparison, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<ExperimentComparison, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.comparison(experimentId)),
+    queryFn: ({ signal }) => fetchComparison(experimentId, { signal, base: scope.api }),
+  });
+}
+
+/** Returns whether an experiment's winner can still be promoted; it asks the providers. */
+export function usePromotability(
+  experimentId: string,
+  { enabled = true }: { readonly enabled?: boolean } = {},
+): UseQueryResult<Promotability, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<Promotability, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.promotability(experimentId)),
+    queryFn: ({ signal }) => fetchPromotability(experimentId, { signal, base: scope.api }),
+    enabled,
+  });
+}
+
+/** Returns an optimization of a workflow against a benchmark, as a live run. */
+export function useStartOptimization(): UseMutationResult<LiveRun, ApiFailure, OptimizationStart> {
+  const client = useQueryClient();
+  const scope = useScope();
+
+  return useMutation<LiveRun, ApiFailure, OptimizationStart>({
+    mutationFn: (start) => startOptimization(start, { base: scope.api }),
     onSuccess: (run) => {
       client.setQueryData(scoped(scope, queryKeys.liveRun(run.handle)), run);
     },

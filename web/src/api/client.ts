@@ -20,6 +20,10 @@ import {
   isBenchmarkExecutionDetail,
   isBenchmarkExecutionSummary,
   isBenchmarkSummary,
+  isExperimentComparison,
+  isExperimentDetail,
+  isExperimentSummary,
+  isPromotability,
   isInterruptedRun,
   isJudgeSummary,
   isRunChildSummary,
@@ -58,6 +62,10 @@ import {
   type BenchmarkExecutionSummary,
   type BenchmarkSummary,
   type CaseCitations,
+  type ExperimentComparison,
+  type ExperimentDetail,
+  type ExperimentSummary,
+  type Promotability,
   type CaseComparison,
   type FeedbackDisposition,
   type InterruptedRun,
@@ -1342,6 +1350,102 @@ export function startComparison(
       workflow_ids: workflowIds,
       target_latency_seconds: targetLatencySeconds,
       target_cost_usd: targetCostUsd,
+    }),
+    options,
+  );
+}
+
+/** How many of a workflow's experiments the editor lists. */
+export const EXPERIMENTS_LISTED = 20;
+
+function experimentPath(experimentId: string, path = ""): string {
+  return `/experiments/${encodeURIComponent(experimentId)}${path}`;
+}
+
+async function oneOf<T>(
+  path: string,
+  guard: (value: unknown) => value is T,
+  options: RequestOptions,
+): Promise<T> {
+  const body = await getJson(at(options, path), options);
+
+  if (!guard(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/**
+ * Returns a workflow's experiments, newest first:
+ * `GET {base}/workflows/{id}/experiments`, the newest `EXPERIMENTS_LISTED` of them.
+ */
+export function fetchWorkflowExperiments(
+  workflowId: string,
+  options: RequestOptions = {},
+): Promise<ExperimentSummary[]> {
+  return fetchItems(
+    at(options, workflowPath(workflowId, `/experiments?limit=${String(EXPERIMENTS_LISTED)}`)),
+    isExperimentSummary,
+    options,
+  );
+}
+
+/** Returns one experiment, its candidates ranked: `GET {base}/experiments/{id}`. */
+export function fetchExperiment(
+  experimentId: string,
+  options: RequestOptions = {},
+): Promise<ExperimentDetail> {
+  return oneOf(experimentPath(experimentId), isExperimentDetail, options);
+}
+
+/**
+ * Returns an experiment's winner beside what promoting it would replace, with
+ * the saving and the projection: `GET {base}/experiments/{id}/compare`.
+ */
+export function fetchComparison(
+  experimentId: string,
+  options: RequestOptions = {},
+): Promise<ExperimentComparison> {
+  return oneOf(experimentPath(experimentId, "/compare"), isExperimentComparison, options);
+}
+
+/**
+ * Returns whether an experiment's winner can still be promoted, and why not:
+ * `GET {base}/experiments/{id}/promotable`. Nothing is saved.
+ */
+export function fetchPromotability(
+  experimentId: string,
+  options: RequestOptions = {},
+): Promise<Promotability> {
+  return oneOf(experimentPath(experimentId, "/promotable"), isPromotability, options);
+}
+
+/** A workflow to optimize against a benchmark, the targets it is scored against, and how long. */
+export interface OptimizationStart {
+  readonly workflowId: string;
+  readonly benchmarkId: string;
+  readonly targetLatencySeconds: number;
+  readonly targetCostUsd: number;
+  readonly generations: number;
+}
+
+/**
+ * Optimizes a workflow against a benchmark, as a live run told generation by
+ * generation: `POST {base}/live/optimizations`. Its end carries the session.
+ */
+export function startOptimization(
+  { workflowId, benchmarkId, targetLatencySeconds, targetCostUsd, generations }: OptimizationStart,
+  options: RequestOptions = {},
+): Promise<LiveRun> {
+  return liveRunOf(
+    at(options, "/live/optimizations"),
+    JSON.stringify({
+      workflow_id: workflowId,
+      benchmark_id: benchmarkId,
+      target_latency_seconds: targetLatencySeconds,
+      target_cost_usd: targetCostUsd,
+      generations,
     }),
     options,
   );
