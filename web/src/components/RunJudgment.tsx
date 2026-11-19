@@ -83,6 +83,7 @@ function JudgeRun({ runId }: { readonly runId: string }) {
   const corrected = draft.disposition === "bad" ? correctedOf(draft.corrected) : null;
   const unreadable = corrected !== null && "error" in corrected ? corrected.error : null;
   const disposition = draft.disposition;
+  const reasonMissing = disposition === "bad" && draft.reason.trim() === "";
 
   return (
     <>
@@ -92,7 +93,7 @@ function JudgeRun({ runId }: { readonly runId: string }) {
         onSubmit={(event) => {
           event.preventDefault();
 
-          if (disposition === null || unreadable !== null) {
+          if (disposition === null || reasonMissing || unreadable !== null) {
             return;
           }
           record.mutate(judgmentOf({ ...draft, disposition }), {
@@ -166,7 +167,9 @@ function JudgeRun({ runId }: { readonly runId: string }) {
             subject={runId}
             type="submit"
             className={buttons.primary}
-            disabled={disposition === null || unreadable !== null || record.isPending}
+            disabled={
+              disposition === null || reasonMissing || unreadable !== null || record.isPending
+            }
             aria-busy={record.isPending}
           >
             Record judgment
@@ -182,19 +185,27 @@ function JudgeRun({ runId }: { readonly runId: string }) {
 
 /**
  * A run's judgments, newest first, and a way to judge it again: the
- * `annotate_run` action. A judgment is never changed; the newest is the
- * run's (ADR 0012). A restricted run's judgments are hidden with the rest
+ * `annotate_run` action, a bad one only with a reason. A judgment is never
+ * changed; the newest is the run's (ADR 0012). A restricted run's judgments are hidden with the rest
  * of its data, since a reason or a corrected output may repeat it.
  */
 export function RunJudgment({ run }: { readonly run: RunDetail }) {
   const judgments = useRunFeedback(run.run_id);
   const heading = useId();
+  const latest = judgments.data?.[0];
 
   return (
     <section className={styles.section} aria-labelledby={heading}>
-      <h2 id={heading} className={styles.title}>
-        Judgment
-      </h2>
+      <header className={styles.header}>
+        <h2 id={heading} className={styles.title}>
+          Judgment
+        </h2>
+        {latest !== undefined && (
+          <span className={styles.disposition} data-feedback={latest.disposition}>
+            Latest: {latest.disposition}
+          </span>
+        )}
+      </header>
       {judgments.isPending && (
         <p className={styles.quiet} role="status">
           Loading its judgments…

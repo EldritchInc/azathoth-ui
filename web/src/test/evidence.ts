@@ -89,6 +89,7 @@ export const ANNOTATIONS: Annotations = {
     "@context": "http://www.w3.org/ns/anno.jsonld",
     id: `urn:azathoth:run:${RUN_SUMMARY.run_id}`,
     type: "AnnotationCollection",
+    label: `Citations of run ${RUN_SUMMARY.run_id}: 1 verified, 1 not verified and left out.`,
     total: 1,
     first: { type: "AnnotationPage", startIndex: 0, items: [CITATION] },
   },

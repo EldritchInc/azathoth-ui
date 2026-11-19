@@ -14,6 +14,8 @@ import styles from "./LiveRun.module.css";
 import { Notice } from "./Notice";
 import { RelativeTime } from "./RelativeTime";
 import { Restricted, RestrictedScope } from "./Restricted";
+import { ChildRuns } from "./ChildRuns";
+import { RunCitations } from "./RunCitations";
 import { RunJudgment } from "./RunJudgment";
 import { RunningContext } from "./runningContext";
 import { SensitivityLabel } from "./SensitivityLabel";
@@ -39,7 +41,7 @@ function Crumbs({ run }: { readonly run: RunDetail | undefined }) {
 
 /**
  * One kept run, once it has loaded: how it ended, what it was given, each
- * step, and how it was judged. Showing any of its restricted data shows all
+ * step, how it was judged, what it cited, and the runs it started. Showing any of its restricted data shows all
  * of it (ADR 0011).
  */
 function KeptRun({ run }: { readonly run: RunDetail }) {
@@ -139,6 +141,8 @@ function KeptRun({ run }: { readonly run: RunDetail }) {
           )}
         </Restricted>
         <RunJudgment run={run} />
+        <RunCitations run={run} />
+        <ChildRuns runId={run.run_id} titles={titles} />
       </div>
     </RestrictedScope>
   );

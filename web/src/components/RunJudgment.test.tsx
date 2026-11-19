@@ -73,6 +73,29 @@ describe("a run's judgment", () => {
     ).toHaveTextContent('"A printer is on fire."');
     expect(within(oldest).getByText("Good")).toHaveAttribute("data-feedback", "good");
     expect(within(oldest).queryByLabelText("What it should have produced, as JSON")).toBeNull();
+    expect(within(await judgment()).getByText("Latest: bad")).toHaveAttribute(
+      "data-feedback",
+      "bad",
+    );
+  });
+
+  it("asks for a reason before a bad judgment is sent", async () => {
+    open();
+
+    const judging = within(await form());
+
+    fireEvent.click(judging.getByRole("radio", { name: "Bad" }));
+    const record = judging.getByRole("button", { name: "Record judgment" });
+
+    expect(record).toBeDisabled();
+
+    fireEvent.change(judging.getByLabelText("Reason"), { target: { value: "   " } });
+
+    expect(record).toBeDisabled();
+
+    fireEvent.change(judging.getByLabelText("Reason"), { target: { value: "Wrong." } });
+
+    expect(record).toBeEnabled();
   });
 
   it("says when nobody has judged the run yet", async () => {
@@ -203,8 +226,8 @@ describe("a run's judgment", () => {
     openRecording(
       {
         [FEEDBACK_PATH]: [
-          422,
-          { error: { code: "invalid_argument", message: "A bad judgment needs a reason." } },
+          404,
+          { error: { code: "not_found", message: "The run is no longer kept." } },
         ],
       },
       [],
@@ -213,10 +236,11 @@ describe("a run's judgment", () => {
     const judging = within(await form());
 
     fireEvent.click(judging.getByRole("radio", { name: "Bad" }));
+    fireEvent.change(judging.getByLabelText("Reason"), { target: { value: "Wrong." } });
     fireEvent.click(judging.getByRole("button", { name: "Record judgment" }));
 
     expect(await screen.findByText("Couldn't record the judgment")).toBeVisible();
-    expect(screen.getByText("A bad judgment needs a reason.")).toBeVisible();
+    expect(screen.getByText("The run is no longer kept.")).toBeVisible();
     expect(judging.getByRole("radio", { name: "Bad" })).toBeChecked();
   });
 
