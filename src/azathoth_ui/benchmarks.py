@@ -314,11 +314,11 @@ def _workflow_ids(
     )
 
 
-def _target(
+def target_field(
     body: dict[str, object],
     name: str,
 ) -> float:
-    """Return one scoring target a comparison names; Azathoth decides whether it is positive.
+    """Return one scoring target a body names; Azathoth decides whether it is positive.
 
     Raises:
         InvalidArgumentError: It is not a number.
@@ -390,8 +390,8 @@ async def compare_benchmark(
 
     benchmark_id = uuid_field(body, "benchmark_id", "benchmark")
     workflow_ids = _workflow_ids(body.get("workflow_ids"))
-    latency = _target(body, "target_latency_seconds")
-    cost = _target(body, "target_cost_usd")
+    latency = target_field(body, "target_latency_seconds")
+    cost = target_field(body, "target_cost_usd")
 
     if not workflow_ids:
         raise api.InvalidArgumentError("workflow_ids must name the workflows to compare.")
@@ -467,4 +467,5 @@ __all__ = [
     "EDIT_FIELDS",
     "RUN_FIELDS",
     "benchmark_routes",
+    "target_field",
 ]
