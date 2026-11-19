@@ -11,6 +11,7 @@ import { RunPage } from "./RunPage";
 const ANSWERS: Answers = {
   ...SERVER,
   [`/api/runs/${RUN_DETAIL.run_id}`]: [200, RUN_DETAIL],
+  [`/api/runs/${RUN_DETAIL.run_id}/feedback`]: [200, { items: [] }],
   [`/api/workflows/${WORKFLOW.id}?revision=3`]: [200, RUN_WORKFLOW],
 };
 

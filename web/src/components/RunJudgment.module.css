@@ -1,0 +1,170 @@
+/* A run's judgments, and judging it (ADR 0012). */
+
+.section {
+  display: grid;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.title {
+  font-size: 1.3rem;
+  font-weight: 450;
+}
+
+.quiet {
+  color: var(--muted);
+}
+
+.list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--raised);
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.8rem 1rem;
+}
+
+.item + .item {
+  border-top: 1px solid var(--line);
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.disposition {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.disposition::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.disposition[data-feedback="good"] {
+  background: var(--tide-wash);
+  color: var(--tide-strong);
+}
+
+.disposition[data-feedback="bad"] {
+  background: var(--rose-wash);
+  color: var(--rose);
+}
+
+.when {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.reason {
+  max-width: 70ch;
+}
+
+.form {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--raised);
+}
+
+.dispositions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  float: left;
+  margin-right: 0.5rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.choice[data-feedback="good"] input {
+  accent-color: var(--tide);
+}
+
+.choice[data-feedback="bad"] input {
+  accent-color: var(--rose);
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.text,
+.code {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  resize: vertical;
+}
+
+.code {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+.text:focus,
+.code:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.code[aria-invalid="true"] {
+  border-color: var(--rose);
+}
+
+.hint {
+  color: var(--faint);
+  font-size: 0.8rem;
+}
+
+.hint[data-invalid="true"] {
+  color: var(--rose);
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}

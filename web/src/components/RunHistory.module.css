@@ -103,6 +103,23 @@
   font-weight: 650;
 }
 
+.judged {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.judged[data-feedback="good"] {
+  background: var(--tide-wash);
+  color: var(--tide-strong);
+}
+
+.judged[data-feedback="bad"] {
+  background: var(--rose-wash);
+  color: var(--rose);
+}
+
 .error {
   grid-column: 2 / -1;
   overflow: hidden;
