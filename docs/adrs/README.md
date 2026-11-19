@@ -18,3 +18,4 @@ the editor follows them, and the one it rests on is
 | [0009](0009-one-editor-any-instance.md) | One Editor, Any Instance | Accepted |
 | [0010](0010-production-in-the-editor.md) | Production in the Editor | Accepted |
 | [0011](0011-sensitivity-and-model-policy-in-the-editor.md) | Sensitivity and Model Policy in the Editor | Accepted |
+| [0012](0012-judges-and-a-runs-evidence-in-the-editor.md) | Judges and a Run's Evidence in the Editor | Accepted |
