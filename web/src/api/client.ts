@@ -13,7 +13,12 @@
  */
 
 import {
+  isAnnotations,
   isBenchmarkSummary,
+  isInterruptedRun,
+  isJudgeSummary,
+  isRunChildSummary,
+  isRunFeedback,
   importOf,
   isComponentDetail,
   isEditorDescription,
@@ -40,7 +45,13 @@ import {
   isSummary,
   isToolSummary,
   itemsOf,
+  type Annotations,
   type BenchmarkSummary,
+  type FeedbackDisposition,
+  type InterruptedRun,
+  type JudgeSummary,
+  type RunChildSummary,
+  type RunFeedback,
   type ComponentDetail,
   type ComponentImport,
   type EditorDescription,
@@ -891,6 +902,166 @@ export function resumeInvocation(
   return liveRunOf(
     at(options, `/live/invocations/${encodeURIComponent(invocationId)}/resume`),
     "{}",
+    options,
+  );
+}
+
+/** Returns the judge rotation, in the order judges are tried: `GET {base}/judges`. */
+export function fetchJudges(options: RequestOptions = {}): Promise<JudgeSummary[]> {
+  return fetchItems(at(options, "/judges"), isJudgeSummary, options);
+}
+
+async function judgeChange(
+  path: string,
+  identifier: string,
+  options: RequestOptions,
+): Promise<JudgeSummary> {
+  const body = await requestJson(
+    at(options, path),
+    { method: "POST", body: JSON.stringify({ identifier }) },
+    options,
+  );
+
+  if (!isJudgeSummary(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/**
+ * Appends one served model the portfolio authorizes to the rotation:
+ * `POST {base}/judges`. Returns it, in its place.
+ */
+export function addJudge(identifier: string, options: RequestOptions = {}): Promise<JudgeSummary> {
+  return judgeChange("/judges", identifier, options);
+}
+
+/** Takes one model out of the rotation: `POST {base}/judges/remove`. Returns what it was. */
+export function removeJudge(
+  identifier: string,
+  options: RequestOptions = {},
+): Promise<JudgeSummary> {
+  return judgeChange("/judges/remove", identifier, options);
+}
+
+function runPath(runId: string, path: string): string {
+  return `/runs/${encodeURIComponent(runId)}${path}`;
+}
+
+/** Returns every judgment of a run, newest first: `GET {base}/runs/{id}/feedback`. */
+export function fetchRunFeedback(
+  runId: string,
+  options: RequestOptions = {},
+): Promise<RunFeedback[]> {
+  return fetchItems(at(options, runPath(runId, "/feedback")), isRunFeedback, options);
+}
+
+/**
+ * One judgment of a run, as a person gives it. Azathoth decides what it may
+ * be: a bad one needs a reason, and only a bad one takes a corrected output.
+ */
+export interface Judgment {
+  readonly disposition: FeedbackDisposition;
+  readonly reason?: string;
+  /** What the run should have produced; sent whenever it is given, even as `null`. */
+  readonly correctedOutput?: unknown;
+}
+
+/** Records one judgment of a run: `POST {base}/runs/{id}/feedback`. Returns it. */
+export async function recordFeedback(
+  runId: string,
+  { disposition, reason, correctedOutput }: Judgment,
+  options: RequestOptions = {},
+): Promise<RunFeedback> {
+  const sent: Record<string, unknown> = { disposition };
+
+  if (reason !== undefined) {
+    sent.reason = reason;
+  }
+  if (correctedOutput !== undefined) {
+    sent.corrected_output = correctedOutput;
+  }
+  const body = await requestJson(
+    at(options, runPath(runId, "/feedback")),
+    { method: "POST", body: JSON.stringify(sent) },
+    options,
+  );
+
+  if (!isRunFeedback(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 201);
+  }
+
+  return body;
+}
+
+async function annotationsAt(path: string, options: RequestOptions): Promise<Annotations> {
+  const body = await getJson(at(options, path), options);
+
+  if (!isAnnotations(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/** Returns a run's verified citations, as Web Annotations: `GET {base}/runs/{id}/annotations`. */
+export function fetchRunAnnotations(
+  runId: string,
+  options: RequestOptions = {},
+): Promise<Annotations> {
+  return annotationsAt(runPath(runId, "/annotations"), options);
+}
+
+/** Returns an invocation's run's citations: `GET {base}/invocations/{id}/annotations`. */
+export function fetchInvocationAnnotations(
+  invocationId: string,
+  options: RequestOptions = {},
+): Promise<Annotations> {
+  return annotationsAt(`/invocations/${encodeURIComponent(invocationId)}/annotations`, options);
+}
+
+/** Returns the runs a run's steps started, oldest first: `GET {base}/runs/{id}/children`. */
+export function fetchRunChildren(
+  runId: string,
+  options: RequestOptions = {},
+): Promise<RunChildSummary[]> {
+  return fetchItems(at(options, runPath(runId, "/children")), isRunChildSummary, options);
+}
+
+/**
+ * Returns a workflow's runs that started and never finished, newest first:
+ * `GET {base}/workflows/{id}/interrupted`, the newest `RUNS_LISTED` of them.
+ */
+export function fetchInterruptedRuns(
+  workflowId: string,
+  options: RequestOptions = {},
+): Promise<InterruptedRun[]> {
+  return fetchItems(
+    at(options, workflowPath(workflowId, `/interrupted?limit=${String(RUNS_LISTED)}`)),
+    isInterruptedRun,
+    options,
+  );
+}
+
+/** An interrupted run to resume, and the workflow it is a run of (ADR 0012). */
+export interface RunResumption {
+  readonly runId: string;
+  readonly workflowId: string;
+}
+
+/**
+ * Resumes an interrupted run from its journal, as a live run that names it:
+ * `POST {base}/live/runs/{id}/resume`. An invocation's run is resumed as its
+ * invocation, with `resumeInvocation`.
+ */
+export function resumeRun(
+  { runId, workflowId }: RunResumption,
+  options: RequestOptions = {},
+): Promise<LiveRun> {
+  return liveRunOf(
+    at(options, `/live/runs/${encodeURIComponent(runId)}/resume`),
+    JSON.stringify({ workflow_id: workflowId }),
     options,
   );
 }

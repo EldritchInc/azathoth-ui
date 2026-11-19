@@ -21,13 +21,17 @@ import {
 
 import {
   ApiFailure,
+  addJudge,
   addToPortfolio,
   cancelLiveRun,
   checkWorkflow,
   declareModelPolicy,
   fetchCommands,
   fetchDetail,
+  fetchInterruptedRuns,
   fetchInvocation,
+  fetchInvocationAnnotations,
+  fetchJudges,
   fetchProduction,
   fetchProductionRevisions,
   fetchWorkflowInvocations,
@@ -39,6 +43,9 @@ import {
   fetchPortfolio,
   fetchReadiness,
   fetchRun,
+  fetchRunAnnotations,
+  fetchRunChildren,
+  fetchRunFeedback,
   fetchWorkflowRuns,
   addRemote,
   fetchRemoteStatus,
@@ -47,26 +54,34 @@ import {
   promoteWorkflow,
   pullFromRemote,
   pushToRemote,
+  recordFeedback,
   removeFromPortfolio,
+  removeJudge,
   removeRemote,
   resumeInvocation,
+  resumeRun,
   rollBackWorkflow,
   startInvocation,
   startRun,
   startTrial,
   type InvocationStart,
+  type Judgment,
   type RemoteToAdd,
+  type RunResumption,
   type RunStart,
   type Selection,
   type TrialStart,
 } from "./api/client";
 import type {
+  Annotations,
   ComponentDetail,
   DataPolicy,
   EditorDescription,
   InstanceCommands,
+  InterruptedRun,
   InvocationDetail,
   InvocationSummary,
+  JudgeSummary,
   LiveRun,
   ModelListing,
   ModelSummary,
@@ -78,7 +93,9 @@ import type {
   PullReport,
   PushReport,
   RemoteStatus,
+  RunChildSummary,
   RunDetail,
+  RunFeedback,
   RunSummary,
   Sensitivity,
   Summary,
@@ -130,6 +147,13 @@ export const queryKeys = {
   invocations: ["invocations"] as const,
   workflowInvocations: (workflowId: string) => ["invocations", "workflow", workflowId] as const,
   invocation: (invocationId: string) => ["invocations", "one", invocationId] as const,
+  judges: ["judges"] as const,
+  feedback: (runId: string) => ["runs", "feedback", runId] as const,
+  runAnnotations: (runId: string) => ["runs", "annotations", runId] as const,
+  children: (runId: string) => ["runs", "children", runId] as const,
+  interrupted: (workflowId: string) => ["runs", "interrupted", workflowId] as const,
+  invocationAnnotations: (invocationId: string) =>
+    ["invocations", "annotations", invocationId] as const,
 };
 
 /** How often the editor asks which live runs are running, while any is. */
@@ -691,6 +715,137 @@ export function useResumeInvocation(): UseMutationResult<LiveRun, ApiFailure, st
       await Promise.all([
         client.invalidateQueries({ queryKey: scoped(scope, queryKeys.liveList) }),
         client.invalidateQueries({ queryKey: scoped(scope, queryKeys.invocations) }),
+      ]);
+    },
+  });
+}
+
+/** Returns the judge rotation, in the order judges are tried. */
+export function useJudges(): UseQueryResult<JudgeSummary[], ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<JudgeSummary[], ApiFailure>({
+    queryKey: scoped(scope, queryKeys.judges),
+    queryFn: ({ signal }) => fetchJudges({ signal, base: scope.api }),
+  });
+}
+
+/** One change to the rotation: a model appended, or taken out. */
+export interface JudgeChange {
+  readonly identifier: string;
+  readonly add: boolean;
+}
+
+/** Returns a change to the rotation, after which it is fetched again. */
+export function useJudgeChange(): UseMutationResult<JudgeSummary, ApiFailure, JudgeChange> {
+  const client = useQueryClient();
+  const scope = useScope();
+
+  return useMutation<JudgeSummary, ApiFailure, JudgeChange>({
+    mutationFn: ({ identifier, add }) =>
+      add
+        ? addJudge(identifier, { base: scope.api })
+        : removeJudge(identifier, { base: scope.api }),
+    onSettled: () => client.invalidateQueries({ queryKey: scoped(scope, queryKeys.judges) }),
+  });
+}
+
+/** Returns every judgment of a run, newest first. */
+export function useRunFeedback(runId: string): UseQueryResult<RunFeedback[], ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<RunFeedback[], ApiFailure>({
+    queryKey: scoped(scope, queryKeys.feedback(runId)),
+    queryFn: ({ signal }) => fetchRunFeedback(runId, { signal, base: scope.api }),
+  });
+}
+
+/**
+ * Returns a judgment of one run, after which its judgments, the run, and
+ * every workflow's list of runs are fetched again, since each shows the
+ * latest judgment.
+ */
+export function useRecordFeedback(
+  runId: string,
+): UseMutationResult<RunFeedback, ApiFailure, Judgment> {
+  const client = useQueryClient();
+  const scope = useScope();
+
+  return useMutation<RunFeedback, ApiFailure, Judgment>({
+    mutationFn: (judgment) => recordFeedback(runId, judgment, { base: scope.api }),
+    onSettled: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: scoped(scope, queryKeys.feedback(runId)) }),
+        client.invalidateQueries({ queryKey: scoped(scope, queryKeys.run(runId)) }),
+        client.invalidateQueries({ queryKey: scoped(scope, ["runs", "workflow"]) }),
+      ]);
+    },
+  });
+}
+
+/** Returns a kept run's verified citations; a kept run's citations never change. */
+export function useRunAnnotations(runId: string): UseQueryResult<Annotations, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<Annotations, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.runAnnotations(runId)),
+    queryFn: ({ signal }) => fetchRunAnnotations(runId, { signal, base: scope.api }),
+    staleTime: Infinity,
+  });
+}
+
+/** Returns an invocation's run's citations, which change only while it is resumed. */
+export function useInvocationAnnotations(
+  invocationId: string,
+): UseQueryResult<Annotations, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<Annotations, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.invocationAnnotations(invocationId)),
+    queryFn: ({ signal }) => fetchInvocationAnnotations(invocationId, { signal, base: scope.api }),
+  });
+}
+
+/** Returns the runs a run's steps started, oldest first; an unfinished one may since have ended. */
+export function useRunChildren(runId: string): UseQueryResult<RunChildSummary[], ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<RunChildSummary[], ApiFailure>({
+    queryKey: scoped(scope, queryKeys.children(runId)),
+    queryFn: ({ signal }) => fetchRunChildren(runId, { signal, base: scope.api }),
+  });
+}
+
+/** Returns a workflow's interrupted runs, newest first: the newest `RUNS_LISTED` of them. */
+export function useInterruptedRuns(
+  workflowId: string,
+): UseQueryResult<InterruptedRun[], ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<InterruptedRun[], ApiFailure>({
+    queryKey: scoped(scope, queryKeys.interrupted(workflowId)),
+    queryFn: ({ signal }) => fetchInterruptedRuns(workflowId, { signal, base: scope.api }),
+  });
+}
+
+/**
+ * Returns a resume of an interrupted run, as a live run, after which the
+ * live runs and its workflow's interrupted runs are fetched again. Its end
+ * fetches every run again, as any live run's does.
+ */
+export function useResumeRun(): UseMutationResult<LiveRun, ApiFailure, RunResumption> {
+  const client = useQueryClient();
+  const scope = useScope();
+
+  return useMutation<LiveRun, ApiFailure, RunResumption>({
+    mutationFn: (resumption) => resumeRun(resumption, { base: scope.api }),
+    onSuccess: (run) => {
+      client.setQueryData(scoped(scope, queryKeys.liveRun(run.handle)), run);
+    },
+    onSettled: async (_run, _error, { workflowId }) => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: scoped(scope, queryKeys.liveList) }),
+        client.invalidateQueries({ queryKey: scoped(scope, queryKeys.interrupted(workflowId)) }),
       ]);
     },
   });
