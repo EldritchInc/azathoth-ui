@@ -12,6 +12,7 @@ import {
 } from "../test/documents";
 import { COMMANDS, SERVER, type Answers } from "../test/instances";
 import { renderAt } from "../test/render";
+import { INTERRUPTED } from "../test/evidence";
 import { RUN_SUMMARY } from "../test/runs";
 
 const WORKFLOW_PATH = `/api/workflows/${WORKFLOW_DETAIL.id}`;
@@ -28,6 +29,7 @@ const ANSWERS: Answers = {
   [`${WORKFLOW_PATH}?revision=1`]: [200, FIRST_REVISION],
   [`${WORKFLOW_PATH}/history?limit=100`]: [200, { items: WORKFLOW_HISTORY }],
   [`${WORKFLOW_PATH}/runs?limit=20`]: [200, { items: [] }],
+  [`${WORKFLOW_PATH}/interrupted?limit=20`]: [200, { items: [] }],
   [`/api/tools/${TOOL_DETAIL.id}/versions/1.0.0`]: [200, TOOL_DETAIL],
   [`/api/tools/${TOOL_DETAIL.id}/history?limit=100&version=1.0.0`]: [200, { items: [TOOL_DETAIL] }],
   [`/api/benchmarks/${BENCHMARK_DETAIL.id}`]: [200, BENCHMARK_DETAIL],
@@ -60,6 +62,23 @@ describe("a workflow's page", () => {
       "href",
       `/workflows/${WORKFLOW_DETAIL.id}/run`,
     );
+  });
+
+  it("lists its interrupted runs above its finished ones, on its Runs tab", async () => {
+    renderAt(<App />, {
+      path: `/workflows/${WORKFLOW_DETAIL.id}/runs`,
+      answers: {
+        ...ANSWERS,
+        [`${WORKFLOW_PATH}/interrupted?limit=20`]: [200, { items: [INTERRUPTED] }],
+      },
+    });
+
+    const interrupted = await screen.findByRole("heading", { name: "Interrupted runs" });
+    const finished = screen.getByRole("heading", { level: 2, name: "Runs" });
+
+    expect(
+      interrupted.compareDocumentPosition(finished) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("lists its runs, newest first, each opening the run, on its Runs tab", async () => {

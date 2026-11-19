@@ -336,7 +336,9 @@ function LiveRunView({
       ? `Trying ${title(live.step_id ?? "")}`
       : live.kind === "invocation"
         ? "Invocation in production"
-        : "Live run";
+        : live.resumes_run_id !== null
+          ? "Resumed run"
+          : "Live run";
 
   return (
     <div className={styles.page}>
@@ -387,6 +389,11 @@ function LiveRunView({
           )}
         </div>
       </header>
+      {live.resumes_run_id !== null && (
+        <p className={styles.kept}>
+          It picks up run <code>{live.resumes_run_id}</code> where its journal stopped.
+        </p>
+      )}
       {stream.lost && live.state === "running" && (
         <Notice title="The run's events stopped coming">
           <p>The editor’s server may have stopped. Reload the page to ask it again.</p>

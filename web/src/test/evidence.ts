@@ -127,7 +127,7 @@ export const CHILDREN: readonly RunChildSummary[] = [FINISHED_CHILD, UNFINISHED_
 
 /** A run of the workflow that stopped part way, never resumed. */
 export const INTERRUPTED: InterruptedRun = {
-  run_id: "a1000000-0000-4000-8000-000000000001",
+  run_id: "a3000000-0000-4000-8000-000000000001",
   workflow_id: WORKFLOW.id,
   workflow_name: WORKFLOW.name,
   workflow_revision: 3,
@@ -135,13 +135,13 @@ export const INTERRUPTED: InterruptedRun = {
   started_at: "2026-11-18T08:00:00Z",
   last_recorded_at: "2026-11-18T08:00:01Z",
   resumes: 0,
-  command: "azathoth run resume a1000000-0000-4000-8000-000000000001",
+  command: "azathoth run resume a3000000-0000-4000-8000-000000000001",
 };
 
 /** An invocation's run that stopped part way, resumed once and stopped again. */
 export const INTERRUPTED_INVOCATION: InterruptedRun = {
   ...INTERRUPTED,
-  run_id: "a1000000-0000-4000-8000-000000000002",
+  run_id: "a3000000-0000-4000-8000-000000000002",
   invocation_id: "a2000000-0000-4000-8000-000000000002",
   started_at: "2026-11-18T07:00:00Z",
   last_recorded_at: "2026-11-18T07:30:00Z",

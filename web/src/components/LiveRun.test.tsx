@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { LiveRun } from "../api/types";
 import { lastStream, stubEventSource } from "../test/eventSource";
 import { SERVER, WORKFLOW, urlOf, type Answers } from "../test/instances";
+import { RESUMING } from "../test/evidence";
 import { LIVE_INVOCATION, OUTCOME } from "../test/production";
 import { renderAt } from "../test/render";
 import {
@@ -55,6 +56,22 @@ function timeline() {
 describe("LiveRunPage", () => {
   beforeEach(() => {
     stubEventSource();
+  });
+
+  it("names the interrupted run a resume picks up", async () => {
+    open({ ...ANSWERS, "/api/live/h4ndle": [200, { ...RESUMING, handle: "h4ndle" }] });
+
+    expect(await screen.findByText("Resumed run")).toBeVisible();
+    expect(screen.getByText(/picks up run/)).toHaveTextContent(
+      `It picks up run ${RESUMING.resumes_run_id ?? ""} where its journal stopped.`,
+    );
+  });
+
+  it("names no run for a run that resumes none", async () => {
+    open();
+
+    expect(await screen.findByText("Live run")).toBeVisible();
+    expect(screen.queryByText(/picks up run/)).toBeNull();
   });
 
   it("follows a run's events as they come, then shows its result", async () => {

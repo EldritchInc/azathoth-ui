@@ -10,6 +10,7 @@ import { BenchmarkCases } from "./BenchmarkCases";
 import { DetailPage } from "./DetailPage";
 import { InstanceLink } from "./InstanceLink";
 import { ProductionTab } from "./ProductionTab";
+import { InterruptedRuns } from "./InterruptedRuns";
 import { RunHistory } from "./RunHistory";
 import { ToolStructure } from "./ToolStructure";
 import { WorkflowSteps } from "./WorkflowSteps";
@@ -18,7 +19,8 @@ import { WorkflowTabs, type WorkflowTab } from "./WorkflowTabs";
 /**
  * `/workflows/:id`: one workflow's page, with a way to edit it, or go on
  * editing it, and its tabs (ADR 0010): its revisions here, its runs at
- * `/runs`, and its production at `/production`.
+ * `/runs`, interrupted ones first (ADR 0012), and its production at
+ * `/production`.
  */
 export function WorkflowPage({ tab = "revisions" }: { readonly tab?: WorkflowTab }) {
   const { id = "" } = useParams();
@@ -31,7 +33,12 @@ export function WorkflowPage({ tab = "revisions" }: { readonly tab?: WorkflowTab
       tabs={<WorkflowTabs workflowId={id} />}
       section={
         tab === "runs"
-          ? () => <RunHistory workflowId={id} />
+          ? () => (
+              <>
+                <InterruptedRuns workflowId={id} />
+                <RunHistory workflowId={id} />
+              </>
+            )
           : tab === "production"
             ? (detail) => (
                 <ProductionTab workflowId={id} name={detail.name} latest={detail.latest_number} />
