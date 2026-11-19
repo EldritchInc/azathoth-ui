@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router";
 
 import styles from "./App.module.css";
 import { ComponentList } from "./components/ComponentList";
+import { JudgeList } from "./components/JudgeList";
 import { LiveRunPage } from "./components/LiveRun";
 import { BenchmarkPage, ToolPage, WorkflowPage } from "./components/ComponentPages";
 import { ModelList } from "./components/ModelList";
@@ -57,6 +58,7 @@ export function App() {
           <Route path="/benchmarks/:id" element={<BenchmarkPage />} />
           <Route path="/models" element={<ModelList />} />
           <Route path="/models/*" element={<ModelPage />} />
+          <Route path="/judges" element={<JudgeList />} />
           <Route path="/remotes" element={<RemoteList />} />
           <Route path="/remotes/:name" element={<RemotePage />} />
           <Route path="*" element={<NotFound />} />

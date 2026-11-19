@@ -3,7 +3,7 @@ import { NavLink } from "react-router";
 
 import { instanceStyle } from "../instanceColour";
 import { DESCRIPTIONS, KINDS, type Kind } from "../kinds";
-import { useList, useLiveRuns, usePortfolio, useRemotes } from "../queries";
+import { useJudges, useList, useLiveRuns, usePortfolio, useRemotes } from "../queries";
 import { LOCAL_SCOPE, useScope } from "../scope";
 import type { ThemeChoice } from "../theme";
 import type { Connection } from "../useInstance";
@@ -14,7 +14,7 @@ import { Mark } from "./Mark";
 import styles from "./Rail.module.css";
 import { ThemeSwitch } from "./ThemeSwitch";
 
-type IconName = Kind | "overview" | "models" | "remotes";
+type IconName = Kind | "overview" | "models" | "judges" | "remotes";
 
 const ICONS: Record<IconName, ReactNode> = {
   overview: (
@@ -44,6 +44,13 @@ const ICONS: Record<IconName, ReactNode> = {
     <>
       <rect x="6.5" y="6.5" width="11" height="11" rx="2" />
       <path d="M10 3v3.5M14 3v3.5M10 17.5V21M14 17.5V21M3 10h3.5M3 14h3.5M17.5 10H21M17.5 14H21" />
+    </>
+  ),
+  judges: (
+    <>
+      <path d="M12 4v16M8 20h8M5 7h14" />
+      <path d="M7 7l-3 6a3 3 0 0 0 6 0Z" />
+      <path d="M17 7l-3 6a3 3 0 0 0 6 0Z" />
     </>
   ),
   remotes: (
@@ -101,6 +108,23 @@ function ModelsLink() {
       {portfolio.data !== undefined && (
         <span className={styles.count} aria-hidden="true">
           {portfolio.data.length}
+        </span>
+      )}
+    </InstanceNavLink>
+  );
+}
+
+/** The judges link, counting the models in the instance's rotation. */
+function JudgesLink() {
+  const judges = useJudges();
+
+  return (
+    <InstanceNavLink className={styles.item} to="/judges">
+      <Icon name="judges" />
+      <span className={styles.label}>Judges</span>
+      {judges.data !== undefined && (
+        <span className={styles.count} aria-hidden="true">
+          {judges.data.length}
         </span>
       )}
     </InstanceNavLink>
@@ -178,6 +202,7 @@ export function Rail({
           <KindLink key={kind} kind={kind} />
         ))}
         <ModelsLink />
+        <JudgesLink />
         <RunningLink />
         <p className={styles.section}>Sharing</p>
         <RemotesLink />
