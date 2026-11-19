@@ -4,14 +4,19 @@ import {
   caseEditOf,
   caseProgressOf,
   citationsOf,
+  dollarsOf,
   draftOf,
   expectedOf,
+  passedOf,
+  percentOf,
   raisableLabels,
+  scoreOf,
   targetOf,
   type EditDraft,
 } from "./benchmarking";
 import {
   CASE_EVENTS,
+  COMPARISON,
   JSON_CASE,
   JSON_CASE_DETAIL,
   RUN_CASE,
@@ -165,5 +170,23 @@ describe("a comparison's target", () => {
     for (const text of ["", "0", "-1", "fast", "Infinity"]) {
       expect(targetOf(text)).toEqual({ value: null, problem: "Give a number above zero." });
     }
+  });
+});
+
+describe("an execution's numbers", () => {
+  it("are said as people read them", () => {
+    const [best] = COMPARISON.candidates;
+
+    if (best === undefined) {
+      throw new Error("A candidate was expected.");
+    }
+
+    expect(passedOf(best)).toBe("2 of 2 passed");
+    expect(scoreOf(0.912)).toBe("0.91");
+    expect(scoreOf(null)).toBe("—");
+    expect(percentOf(0.5)).toBe("50%");
+    expect(dollarsOf(0.0004)).toBe("$0.0004");
+    expect(dollarsOf(0)).toBe("$0.00");
+    expect(dollarsOf(1.5)).toBe("$1.50");
   });
 });

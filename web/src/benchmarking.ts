@@ -13,6 +13,8 @@ import {
   type CaseCitations,
   type CaseComparison,
   type CaseSource,
+  type ExecutionCandidateSummary,
+  type ExecutionKind,
   type Sensitivity,
 } from "./api/types";
 
@@ -214,4 +216,30 @@ export function targetOf(text: string): {
   return Number.isFinite(value) && value > 0
     ? { value, problem: null }
     : { value: null, problem: TARGET_PROBLEM };
+}
+
+/** What each kind of execution is called. */
+export const EXECUTION_KIND_NAMES: Readonly<Record<ExecutionKind, string>> = {
+  run: "Benchmark run",
+  compare: "Comparison",
+};
+
+/** Returns how many of a workflow's cases passed, said in words. */
+export function passedOf(candidate: ExecutionCandidateSummary): string {
+  return `${String(candidate.cases_passed)} of ${String(candidate.cases_run)} passed`;
+}
+
+/** Returns a score from 0 to 1 as people read it: to two places, or none. */
+export function scoreOf(score: number | null): string {
+  return score === null ? "—" : score.toFixed(2);
+}
+
+/** Returns a fraction as a whole percentage. */
+export function percentOf(fraction: number): string {
+  return `${String(Math.round(fraction * 100))}%`;
+}
+
+/** Returns a cost in US dollars, to as many places as a judge's cost needs. */
+export function dollarsOf(amount: number): string {
+  return `$${amount.toFixed(amount !== 0 && amount < 0.01 ? 4 : 2)}`;
 }

@@ -9,6 +9,7 @@ import buttons from "./Buttons.module.css";
 import { BenchmarkCases } from "./BenchmarkCases";
 import { BenchmarkTabs, type BenchmarkTab } from "./BenchmarkTabs";
 import { CaseList } from "./CaseList";
+import { ExecutionList } from "./ExecutionList";
 import { DetailPage } from "./DetailPage";
 import { InstanceLink } from "./InstanceLink";
 import { ProductionTab } from "./ProductionTab";
@@ -99,7 +100,8 @@ export function ToolPage() {
 
 /**
  * `/benchmarks/:id`: one benchmark's page, with its tabs (ADR 0012): its
- * cases here, and its document, with its revisions, at `/document`.
+ * cases here, its document, with its revisions, at `/document`, and its
+ * executions at `/executions`.
  */
 export function BenchmarkPage({ tab = "cases" }: { readonly tab?: BenchmarkTab }) {
   const { id = "" } = useParams();
@@ -109,7 +111,13 @@ export function BenchmarkPage({ tab = "cases" }: { readonly tab?: BenchmarkTab }
       kind="benchmarks"
       component={{ id }}
       tabs={<BenchmarkTabs benchmarkId={id} />}
-      section={tab === "cases" ? (detail) => <CaseList detail={detail} /> : undefined}
+      section={
+        tab === "cases"
+          ? (detail) => <CaseList detail={detail} />
+          : tab === "executions"
+            ? () => <ExecutionList benchmarkId={id} />
+            : undefined
+      }
       actions={
         <>
           <InstanceLink className={buttons.primary} to={`/benchmarks/${id}/run`}>

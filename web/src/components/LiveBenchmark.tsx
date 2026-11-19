@@ -165,7 +165,9 @@ export function LiveBenchmarkView({
   const cancel = useCancelRun();
   const live = stream.end ?? described;
   const benchmarkId = live.benchmark_id ?? "";
-  const benchmark = useDetail("benchmarks", { id: benchmarkId }, null);
+  const benchmark = useDetail("benchmarks", { id: benchmarkId }, null, {
+    enabled: benchmarkId !== "",
+  });
   const cases = useBenchmarkCases(benchmarkId);
   const workflows = useList("workflows");
   const running = live.state === "running" && !stream.lost;

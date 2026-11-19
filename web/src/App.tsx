@@ -7,6 +7,7 @@ import { JudgeList } from "./components/JudgeList";
 import { LiveRunPage } from "./components/LiveRun";
 import { AddCase } from "./components/AddCase";
 import { CasePage } from "./components/CasePage";
+import { ExecutionPage } from "./components/ExecutionPage";
 import { BenchmarkPage, ToolPage, WorkflowPage } from "./components/ComponentPages";
 import { ModelList } from "./components/ModelList";
 import { RunBenchmark } from "./components/RunBenchmark";
@@ -62,6 +63,8 @@ export function App() {
           <Route path="/benchmarks/new" element={<NewBenchmark />} />
           <Route path="/benchmarks/:id" element={<BenchmarkPage />} />
           <Route path="/benchmarks/:id/document" element={<BenchmarkPage tab="document" />} />
+          <Route path="/benchmarks/:id/executions" element={<BenchmarkPage tab="executions" />} />
+          <Route path="/benchmark-executions/:id" element={<ExecutionPage />} />
           <Route path="/benchmarks/:id/run" element={<RunBenchmark />} />
           <Route path="/benchmarks/:id/compare" element={<RunBenchmark comparing />} />
           <Route path="/benchmarks/:id/cases/new" element={<AddCase />} />

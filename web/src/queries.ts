@@ -247,12 +247,14 @@ export function useDetail(
   kind: Kind,
   ref: ComponentRef,
   revision: number | null,
+  { enabled = true }: { readonly enabled?: boolean } = {},
 ): UseQueryResult<ComponentDetail, ApiFailure> {
   const scope = useScope();
 
   return useQuery<ComponentDetail, ApiFailure>({
     queryKey: scoped(scope, queryKeys.detail(kind, ref, revision)),
     queryFn: ({ signal }) => fetchDetail(detailApiPath(kind, ref, revision, scope.api), { signal }),
+    enabled,
   });
 }
 
