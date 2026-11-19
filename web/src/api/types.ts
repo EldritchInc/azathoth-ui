@@ -292,8 +292,14 @@ export interface RunFinished {
 /** One event of a run, as the service API reports it. */
 export type RunEvent = RunStarted | StepStarted | StepFinished | ContextChanged | RunFinished;
 
-/** What a live run runs: a workflow, one step tried alone, or an invocation through production. */
-export type LiveKind = "run" | "step" | "invocation";
+/**
+ * What a live run runs: a workflow, one step tried alone, an invocation
+ * through production, a workflow against a benchmark, or workflows compared
+ * against one.
+ */
+export type LiveKind = "run" | "step" | "invocation" | "benchmark" | "comparison";
+
+const LIVE_KINDS: readonly unknown[] = ["run", "step", "invocation", "benchmark", "comparison"];
 
 /** Where a live run is. */
 export type LiveState = "running" | "finished" | "cancelled" | "refused";
@@ -310,11 +316,16 @@ export interface LiveRun {
   readonly sensitivity: Sensitivity | null;
   /** The interrupted run it resumes from its journal, when it resumes one (ADR 0012). */
   readonly resumes_run_id: string | null;
+  /** The benchmark it runs, for a benchmark run or a comparison (ADR 0012). */
+  readonly benchmark_id: string | null;
   readonly state: LiveState;
   readonly started_at: string;
   readonly finished_at: string | null;
   readonly event_count: number;
-  /** A run's `RunResult`, a tried step's trial, or an invocation's outcome, once it has finished. */
+  /**
+   * A run's `RunResult`, a tried step's trial, an invocation's outcome, or a
+   * benchmark's execution, once it has finished.
+   */
   readonly result: Readonly<Record<string, unknown>> | null;
   readonly error: { readonly code: string; readonly message: string } | null;
 }
@@ -652,12 +663,13 @@ export function isLiveRun(value: unknown): value is LiveRun {
   return (
     isRecord(value) &&
     typeof value.handle === "string" &&
-    (value.kind === "run" || value.kind === "step" || value.kind === "invocation") &&
+    LIVE_KINDS.includes(value.kind) &&
     typeof value.workflow_id === "string" &&
     isTextOrNull(value.step_id) &&
     isTextOrNull(value.invocation_id) &&
     (value.sensitivity === null || isSensitivity(value.sensitivity)) &&
     isTextOrNull(value.resumes_run_id) &&
+    isTextOrNull(value.benchmark_id) &&
     LIVE_STATES.includes(value.state) &&
     typeof value.started_at === "string" &&
     isTextOrNull(value.finished_at) &&
@@ -1409,4 +1421,394 @@ export function isInterruptedRun(value: unknown): value is InterruptedRun {
     value.resumes >= 0 &&
     typeof value.command === "string"
   );
+}
+
+/** How a case's run is compared with what it expects (Azathoth's ADR 0130). */
+export type CaseComparison = "exact" | "normalized" | "semantic" | "schema";
+
+/** Every comparison, in the order the editor offers them. */
+export const CASE_COMPARISONS: readonly CaseComparison[] = [
+  "exact",
+  "normalized",
+  "semantic",
+  "schema",
+];
+
+/** Returns whether a value is one of the comparisons. */
+export function isCaseComparison(value: unknown): value is CaseComparison {
+  return (CASE_COMPARISONS as readonly unknown[]).includes(value);
+}
+
+/** What a case was made from: a kept run, a file, or JSON. */
+export type CaseSource = "run" | "file" | "json";
+
+const CASE_SOURCES: readonly unknown[] = ["run", "file", "json"];
+
+/** One segment of one source that a case's run must cite. */
+export interface CitedSegment {
+  readonly source: string;
+  readonly segment: string;
+}
+
+/** What a case's run must cite, and whether a check that did not verify fails it. */
+export interface CaseCitations {
+  readonly require: readonly CitedSegment[];
+  readonly on_unverified: "fail" | "ignore";
+}
+
+/** One case of a benchmark at one revision, as its list shows it. */
+export interface BenchmarkCaseSummary {
+  readonly benchmark_id: string;
+  /** The revision it was read from. */
+  readonly revision: number;
+  readonly case_id: string;
+  /** What it expects, in words. */
+  readonly description: string;
+  readonly comparison: CaseComparison;
+  /** Its input's label, internal when it has none. */
+  readonly sensitivity: Sensitivity;
+  readonly source: CaseSource;
+  /** The kept run it was made from, when it was made from one. */
+  readonly source_run_id: string | null;
+  /** Whether it names what its run must cite. */
+  readonly cited: boolean;
+  readonly command: string;
+}
+
+/** One case, with its input, what it expects, and where they came from. */
+export interface BenchmarkCaseDetail extends BenchmarkCaseSummary {
+  /** What its run is given: the content's handle for a PDF or an image. */
+  readonly input: unknown;
+  readonly input_provenance: Readonly<Record<string, unknown>> | null;
+  readonly expected: unknown;
+  readonly citations: CaseCitations | null;
+  /** The judgment whose corrected output it expects, when it was made from one. */
+  readonly source_feedback_id: string | null;
+  readonly metadata: Readonly<Record<string, unknown>>;
+}
+
+/** What adding, editing or removing a case answers: the case, and the revision it made. */
+export interface BenchmarkCaseChange {
+  readonly case: BenchmarkCaseDetail;
+  readonly benchmark: BenchmarkSummary;
+}
+
+/** Whether an execution ran one workflow against a benchmark, or compared several. */
+export type ExecutionKind = "run" | "compare";
+
+const EXECUTION_KINDS: readonly unknown[] = ["run", "compare"];
+
+/** What a comparison scored latency and cost against. */
+export interface ScoringPolicy {
+  readonly target_latency_seconds: number;
+  readonly target_cost_usd: number;
+}
+
+/** How a comparison scored one workflow, from 0 to 1. */
+export interface CandidateScorecard {
+  readonly quality_score: number;
+  readonly reliability_score: number;
+  readonly latency_score: number;
+  readonly cost_score: number;
+  /** How well its runs cited, or none when no case named citations. */
+  readonly citation_score: number | null;
+  readonly overall_score: number;
+  readonly rationale: string;
+}
+
+/** One workflow's pass count for one comparison. */
+export interface ComparisonTally {
+  readonly comparison: CaseComparison;
+  readonly cases_run: number;
+  readonly cases_passed: number;
+}
+
+/** How one case went for one workflow. */
+export interface ExecutionCaseResult {
+  readonly case_id: string;
+  readonly comparison: CaseComparison;
+  /** The run the case ran as, kept as any run is. */
+  readonly run_id: string;
+  readonly evaluation_id: string;
+  readonly passed: boolean;
+  /** Whether the run failed without the declared result, which fails the case. */
+  readonly run_failure: boolean;
+  /** The evaluation's score, or none once it is no longer kept. */
+  readonly score: number | null;
+  readonly reason: string | null;
+  readonly judge_calls: number;
+  /** What judging it cost, which is never charged to the workflow. */
+  readonly judge_cost_usd: number;
+}
+
+/** One workflow an execution ran, as its benchmark's list shows it. */
+export interface ExecutionCandidateSummary {
+  readonly candidate_id: string;
+  readonly workflow_id: string;
+  readonly workflow_name: string;
+  readonly workflow_revision: number | null;
+  readonly cases_run: number;
+  readonly cases_passed: number;
+  /** The fraction of its cases that passed. */
+  readonly accuracy: number;
+  /** Its overall score in a comparison; a run is not scored. */
+  readonly overall_score: number | null;
+}
+
+/** One workflow an execution ran, with every case. */
+export interface ExecutionCandidate extends ExecutionCandidateSummary {
+  readonly strategy_ids: readonly string[];
+  readonly run_failures: number;
+  readonly judged_semantically: boolean;
+  readonly judge_calls: number;
+  readonly judge_cost_usd: number;
+  readonly tallies: readonly ComparisonTally[];
+  readonly scorecard: CandidateScorecard | null;
+  /** Every case, in the order the benchmark holds them. */
+  readonly cases: readonly ExecutionCaseResult[];
+}
+
+/** What every execution carries. */
+interface ExecutionHeader {
+  readonly execution_id: string;
+  readonly benchmark_id: string;
+  readonly benchmark_revision: number | null;
+  readonly benchmark_digest: string | null;
+  readonly kind: ExecutionKind;
+  readonly recorded_at: string;
+  /** The label of the benchmark it ran. */
+  readonly sensitivity: Sensitivity;
+  readonly case_count: number;
+  readonly command: string;
+}
+
+/** One saved run or comparison of a benchmark, as its list shows it. */
+export interface BenchmarkExecutionSummary extends ExecutionHeader {
+  /** Every workflow it ran, best first in a comparison. */
+  readonly candidates: readonly ExecutionCandidateSummary[];
+}
+
+/** One saved run or comparison of a benchmark, with every workflow and case. */
+export interface BenchmarkExecutionDetail extends ExecutionHeader {
+  /** What a comparison scored against; none for a run. */
+  readonly scoring_policy: ScoringPolicy | null;
+  readonly candidates: readonly ExecutionCandidate[];
+}
+
+/** One case of a benchmark starting, as one workflow. */
+export interface CaseStarted {
+  readonly type: "case_started";
+  readonly case_id: string;
+  readonly workflow_id: string;
+  /** Its place among the workflow's cases, from 1. */
+  readonly index: number;
+  readonly total: number;
+}
+
+/** One case of a benchmark ran as one workflow, and was judged. */
+export interface CaseFinished {
+  readonly type: "case_finished";
+  readonly case_id: string;
+  readonly workflow_id: string;
+  readonly run_id: string;
+  readonly passed: boolean;
+  readonly score: number;
+}
+
+/** One event of a benchmark run or a comparison. */
+export type BenchmarkEvent = CaseStarted | CaseFinished;
+
+/** One event of any live run. */
+export type LiveEvent = RunEvent | BenchmarkEvent;
+
+function isNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isCount(value: unknown): value is number {
+  return isWholeNumber(value) && value >= 0;
+}
+
+function isCaseCitations(value: unknown): value is CaseCitations {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.require) &&
+    value.require.every(
+      (cited) =>
+        isRecord(cited) && typeof cited.source === "string" && typeof cited.segment === "string",
+    ) &&
+    (value.on_unverified === "fail" || value.on_unverified === "ignore")
+  );
+}
+
+/** Returns whether a value is one case, as a list of cases shows it. */
+export function isBenchmarkCaseSummary(value: unknown): value is BenchmarkCaseSummary {
+  return (
+    isRecord(value) &&
+    typeof value.benchmark_id === "string" &&
+    isWholeNumber(value.revision) &&
+    value.revision >= 1 &&
+    typeof value.case_id === "string" &&
+    typeof value.description === "string" &&
+    isCaseComparison(value.comparison) &&
+    isSensitivity(value.sensitivity) &&
+    CASE_SOURCES.includes(value.source) &&
+    isTextOrNull(value.source_run_id) &&
+    typeof value.cited === "boolean" &&
+    typeof value.command === "string"
+  );
+}
+
+/** Returns whether a value is one case, with its input and what it expects. */
+export function isBenchmarkCaseDetail(value: unknown): value is BenchmarkCaseDetail {
+  return (
+    isBenchmarkCaseSummary(value) &&
+    isRecord(value) &&
+    "input" in value &&
+    value.input !== undefined &&
+    (value.input_provenance === null || isRecord(value.input_provenance)) &&
+    "expected" in value &&
+    value.expected !== undefined &&
+    (value.citations === null || isCaseCitations(value.citations)) &&
+    isTextOrNull(value.source_feedback_id) &&
+    isRecord(value.metadata)
+  );
+}
+
+/** Returns whether a value is what adding, editing or removing a case answers. */
+export function isBenchmarkCaseChange(value: unknown): value is BenchmarkCaseChange {
+  return (
+    isRecord(value) && isBenchmarkCaseDetail(value.case) && isBenchmarkSummary(value.benchmark)
+  );
+}
+
+function isExecutionHeader(value: unknown): value is ExecutionHeader {
+  return (
+    isRecord(value) &&
+    typeof value.execution_id === "string" &&
+    typeof value.benchmark_id === "string" &&
+    isNumberOrNullWhole(value.benchmark_revision) &&
+    isTextOrNull(value.benchmark_digest) &&
+    EXECUTION_KINDS.includes(value.kind) &&
+    typeof value.recorded_at === "string" &&
+    isSensitivity(value.sensitivity) &&
+    isCount(value.case_count) &&
+    typeof value.command === "string"
+  );
+}
+
+function isExecutionCandidateSummary(value: unknown): value is ExecutionCandidateSummary {
+  return (
+    isRecord(value) &&
+    typeof value.candidate_id === "string" &&
+    typeof value.workflow_id === "string" &&
+    typeof value.workflow_name === "string" &&
+    isNumberOrNullWhole(value.workflow_revision) &&
+    isCount(value.cases_run) &&
+    isCount(value.cases_passed) &&
+    isNumber(value.accuracy) &&
+    (value.overall_score === null || isNumber(value.overall_score))
+  );
+}
+
+function isScorecard(value: unknown): value is CandidateScorecard {
+  return (
+    isRecord(value) &&
+    isNumber(value.quality_score) &&
+    isNumber(value.reliability_score) &&
+    isNumber(value.latency_score) &&
+    isNumber(value.cost_score) &&
+    (value.citation_score === null || isNumber(value.citation_score)) &&
+    isNumber(value.overall_score) &&
+    typeof value.rationale === "string"
+  );
+}
+
+function isCaseResult(value: unknown): value is ExecutionCaseResult {
+  return (
+    isRecord(value) &&
+    typeof value.case_id === "string" &&
+    isCaseComparison(value.comparison) &&
+    typeof value.run_id === "string" &&
+    typeof value.evaluation_id === "string" &&
+    typeof value.passed === "boolean" &&
+    typeof value.run_failure === "boolean" &&
+    (value.score === null || isNumber(value.score)) &&
+    isTextOrNull(value.reason) &&
+    isCount(value.judge_calls) &&
+    isNumber(value.judge_cost_usd)
+  );
+}
+
+function isExecutionCandidate(value: unknown): value is ExecutionCandidate {
+  return (
+    isExecutionCandidateSummary(value) &&
+    isRecord(value) &&
+    isTextList(value.strategy_ids) &&
+    isCount(value.run_failures) &&
+    typeof value.judged_semantically === "boolean" &&
+    isCount(value.judge_calls) &&
+    isNumber(value.judge_cost_usd) &&
+    Array.isArray(value.tallies) &&
+    value.tallies.every(
+      (tally) =>
+        isRecord(tally) &&
+        isCaseComparison(tally.comparison) &&
+        isCount(tally.cases_run) &&
+        isCount(tally.cases_passed),
+    ) &&
+    (value.scorecard === null || isScorecard(value.scorecard)) &&
+    Array.isArray(value.cases) &&
+    value.cases.every(isCaseResult)
+  );
+}
+
+/** Returns whether a value is one execution, as its benchmark's list shows it. */
+export function isBenchmarkExecutionSummary(value: unknown): value is BenchmarkExecutionSummary {
+  return (
+    isExecutionHeader(value) &&
+    isRecord(value) &&
+    Array.isArray(value.candidates) &&
+    value.candidates.every(isExecutionCandidateSummary)
+  );
+}
+
+/** Returns whether a value is one execution, with every workflow and case. */
+export function isBenchmarkExecutionDetail(value: unknown): value is BenchmarkExecutionDetail {
+  return (
+    isExecutionHeader(value) &&
+    isRecord(value) &&
+    (value.scoring_policy === null ||
+      (isRecord(value.scoring_policy) &&
+        isNumber(value.scoring_policy.target_latency_seconds) &&
+        isNumber(value.scoring_policy.target_cost_usd))) &&
+    Array.isArray(value.candidates) &&
+    value.candidates.every(isExecutionCandidate)
+  );
+}
+
+/** Returns whether a value is one event of a benchmark run or a comparison. */
+export function isBenchmarkEvent(value: unknown): value is BenchmarkEvent {
+  if (!isRecord(value) || typeof value.case_id !== "string") {
+    return false;
+  }
+  switch (value.type) {
+    case "case_started":
+      return (
+        typeof value.workflow_id === "string" &&
+        isWholeNumber(value.index) &&
+        value.index >= 1 &&
+        isWholeNumber(value.total) &&
+        value.total >= 1
+      );
+    case "case_finished":
+      return (
+        typeof value.workflow_id === "string" &&
+        typeof value.run_id === "string" &&
+        typeof value.passed === "boolean" &&
+        isNumber(value.score)
+      );
+    default:
+      return false;
+  }
 }

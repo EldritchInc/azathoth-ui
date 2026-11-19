@@ -21,11 +21,18 @@ import {
 
 import {
   ApiFailure,
+  addBenchmarkCase,
   addJudge,
   addToPortfolio,
   cancelLiveRun,
   checkWorkflow,
+  createBenchmark,
   declareModelPolicy,
+  editBenchmarkCase,
+  fetchBenchmarkCase,
+  fetchBenchmarkCases,
+  fetchBenchmarkExecution,
+  fetchBenchmarkExecutions,
   fetchCommands,
   fetchDetail,
   fetchInterruptedRuns,
@@ -56,15 +63,23 @@ import {
   pushToRemote,
   recordFeedback,
   removeFromPortfolio,
+  removeBenchmarkCase,
   removeJudge,
   removeRemote,
   resumeInvocation,
   resumeRun,
   rollBackWorkflow,
+  startBenchmarkRun,
+  startComparison,
   startInvocation,
   startRun,
   startTrial,
+  type BenchmarkRunStart,
+  type CaseEdit,
+  type ComparisonStart,
   type InvocationStart,
+  type NewBenchmark,
+  type NewCase,
   type Judgment,
   type RemoteToAdd,
   type RunResumption,
@@ -74,7 +89,13 @@ import {
 } from "./api/client";
 import type {
   Annotations,
+  BenchmarkCaseChange,
+  BenchmarkCaseDetail,
+  BenchmarkCaseSummary,
+  BenchmarkExecutionDetail,
+  BenchmarkExecutionSummary,
   ComponentDetail,
+  ComponentImport,
   DataPolicy,
   EditorDescription,
   InstanceCommands,
@@ -154,6 +175,13 @@ export const queryKeys = {
   interrupted: (workflowId: string) => ["runs", "interrupted", workflowId] as const,
   invocationAnnotations: (invocationId: string) =>
     ["invocations", "annotations", invocationId] as const,
+  benchmarkCases: (benchmarkId: string, revision: number | null) =>
+    ["benchmarks", "cases", benchmarkId, revision] as const,
+  benchmarkCase: (benchmarkId: string, caseId: string, revision: number | null) =>
+    ["benchmarks", "case", benchmarkId, caseId, revision] as const,
+  executions: ["executions"] as const,
+  benchmarkExecutions: (benchmarkId: string) => ["executions", "benchmark", benchmarkId] as const,
+  execution: (executionId: string) => ["executions", "one", executionId] as const,
 };
 
 /** How often the editor asks which live runs are running, while any is. */
@@ -848,5 +876,151 @@ export function useResumeRun(): UseMutationResult<LiveRun, ApiFailure, RunResump
         client.invalidateQueries({ queryKey: scoped(scope, queryKeys.interrupted(workflowId)) }),
       ]);
     },
+  });
+}
+
+/** Returns a benchmark's cases at a revision, its latest when `revision` is `null`. */
+export function useBenchmarkCases(
+  benchmarkId: string,
+  revision: number | null = null,
+): UseQueryResult<BenchmarkCaseSummary[], ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<BenchmarkCaseSummary[], ApiFailure>({
+    queryKey: scoped(scope, queryKeys.benchmarkCases(benchmarkId, revision)),
+    queryFn: ({ signal }) =>
+      fetchBenchmarkCases(benchmarkId, revision, { signal, base: scope.api }),
+  });
+}
+
+/** Returns one case of a benchmark at a revision, with its input and what it expects. */
+export function useBenchmarkCase(
+  benchmarkId: string,
+  caseId: string,
+  revision: number | null = null,
+): UseQueryResult<BenchmarkCaseDetail, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<BenchmarkCaseDetail, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.benchmarkCase(benchmarkId, caseId, revision)),
+    queryFn: ({ signal }) =>
+      fetchBenchmarkCase(benchmarkId, caseId, revision, { signal, base: scope.api }),
+  });
+}
+
+/** Returns what fetches every benchmark again: its list, revisions, documents and cases. */
+function useBenchmarksChanged(): () => Promise<void> {
+  const client = useQueryClient();
+  const scope = useScope();
+
+  return () => client.invalidateQueries({ queryKey: scoped(scope, ["benchmarks"]) });
+}
+
+/** Returns a new, empty benchmark, after which every benchmark is fetched again. */
+export function useCreateBenchmark(): UseMutationResult<ComponentImport, ApiFailure, NewBenchmark> {
+  const scope = useScope();
+  const changed = useBenchmarksChanged();
+
+  return useMutation<ComponentImport, ApiFailure, NewBenchmark>({
+    mutationFn: (benchmark) => createBenchmark(benchmark, { base: scope.api }),
+    onSettled: changed,
+  });
+}
+
+/** Returns a case added to a benchmark, after which every benchmark is fetched again. */
+export function useAddBenchmarkCase(
+  benchmarkId: string,
+): UseMutationResult<BenchmarkCaseChange, ApiFailure, NewCase> {
+  const scope = useScope();
+  const changed = useBenchmarksChanged();
+
+  return useMutation<BenchmarkCaseChange, ApiFailure, NewCase>({
+    mutationFn: (added) => addBenchmarkCase(benchmarkId, added, { base: scope.api }),
+    onSettled: changed,
+  });
+}
+
+/** One case to edit, and what changes. */
+export interface CaseEditing {
+  readonly caseId: string;
+  readonly edit: CaseEdit;
+}
+
+/** Returns a case edited, after which every benchmark is fetched again. */
+export function useEditBenchmarkCase(
+  benchmarkId: string,
+): UseMutationResult<BenchmarkCaseChange, ApiFailure, CaseEditing> {
+  const scope = useScope();
+  const changed = useBenchmarksChanged();
+
+  return useMutation<BenchmarkCaseChange, ApiFailure, CaseEditing>({
+    mutationFn: ({ caseId, edit }) =>
+      editBenchmarkCase(benchmarkId, caseId, edit, { base: scope.api }),
+    onSettled: changed,
+  });
+}
+
+/** Returns a case removed, after which every benchmark is fetched again. */
+export function useRemoveBenchmarkCase(
+  benchmarkId: string,
+): UseMutationResult<BenchmarkCaseChange, ApiFailure, string> {
+  const scope = useScope();
+  const changed = useBenchmarksChanged();
+
+  return useMutation<BenchmarkCaseChange, ApiFailure, string>({
+    mutationFn: (caseId) => removeBenchmarkCase(benchmarkId, caseId, { base: scope.api }),
+    onSettled: changed,
+  });
+}
+
+/** Returns a benchmark's runs and comparisons, newest first. */
+export function useBenchmarkExecutions(
+  benchmarkId: string,
+): UseQueryResult<BenchmarkExecutionSummary[], ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<BenchmarkExecutionSummary[], ApiFailure>({
+    queryKey: scoped(scope, queryKeys.benchmarkExecutions(benchmarkId)),
+    queryFn: ({ signal }) => fetchBenchmarkExecutions(benchmarkId, { signal, base: scope.api }),
+  });
+}
+
+/** Returns one execution; a saved execution never changes, though its evaluations may expire. */
+export function useBenchmarkExecution(
+  executionId: string,
+): UseQueryResult<BenchmarkExecutionDetail, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<BenchmarkExecutionDetail, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.execution(executionId)),
+    queryFn: ({ signal }) => fetchBenchmarkExecution(executionId, { signal, base: scope.api }),
+  });
+}
+
+/** Returns a run of a workflow against a benchmark, as a live run. */
+export function useStartBenchmarkRun(): UseMutationResult<LiveRun, ApiFailure, BenchmarkRunStart> {
+  const client = useQueryClient();
+  const scope = useScope();
+
+  return useMutation<LiveRun, ApiFailure, BenchmarkRunStart>({
+    mutationFn: (start) => startBenchmarkRun(start, { base: scope.api }),
+    onSuccess: (run) => {
+      client.setQueryData(scoped(scope, queryKeys.liveRun(run.handle)), run);
+    },
+    onSettled: () => client.invalidateQueries({ queryKey: scoped(scope, queryKeys.liveList) }),
+  });
+}
+
+/** Returns a comparison of workflows against a benchmark, as a live run. */
+export function useStartComparison(): UseMutationResult<LiveRun, ApiFailure, ComparisonStart> {
+  const client = useQueryClient();
+  const scope = useScope();
+
+  return useMutation<LiveRun, ApiFailure, ComparisonStart>({
+    mutationFn: (start) => startComparison(start, { base: scope.api }),
+    onSuccess: (run) => {
+      client.setQueryData(scoped(scope, queryKeys.liveRun(run.handle)), run);
+    },
+    onSettled: () => client.invalidateQueries({ queryKey: scoped(scope, queryKeys.liveList) }),
   });
 }
