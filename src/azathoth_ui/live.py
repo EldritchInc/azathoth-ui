@@ -80,13 +80,16 @@ EDITOR_CALLER: Final[dict[str, str]] = {"client": "azathoth-ui"}
 
 DOCUMENT_MESSAGE: Final = "document must be a workflow document, as a JSON object."
 
-LiveKind = Literal["run", "step", "invocation"]
-"""What a live run runs: a workflow, one step of a document tried alone, or an invocation."""
+LiveKind = Literal["run", "step", "invocation", "benchmark", "comparison"]
+"""What a live run runs: a workflow, one step tried alone, an invocation, or a benchmark."""
 
 LiveState = Literal["running", "finished", "cancelled", "refused"]
 """Where a live run is: running, finished with its value, cancelled, or refused by Azathoth."""
 
-LiveCall = Callable[[api.EventCallback, api.CancellationToken], api.ApiModel]
+LiveEvent = api.RunEvent | api.BenchmarkEvent
+"""One event a live run reports: a run's, or a benchmark's case starting or finishing."""
+
+LiveCall = Callable[[Callable[[LiveEvent], None], api.CancellationToken], api.ApiModel]
 """What a live run calls: given where to report events and a token, it returns its value."""
 
 
@@ -116,6 +119,7 @@ class LiveRun:
     started_at: datetime
     invocation_id: UUID | None = None
     resumes_run_id: UUID | None = None
+    benchmark_id: UUID | None = None
     sensitivity: api.Sensitivity | None = None
     token: api.CancellationToken = field(default_factory=api.CancellationToken)
     events: list[dict[str, object]] = field(default_factory=list)
@@ -127,7 +131,7 @@ class LiveRun:
 
     def record(
         self,
-        event: api.RunEvent,
+        event: LiveEvent,
     ) -> None:
         """Keep one event the run reported, as the next of its events."""
 
@@ -171,7 +175,8 @@ class LiveRun:
         An invocation names its invocation once it is known: from the start
         when it resumes one, and from its outcome when it makes one. Its
         `sensitivity` is the label it was given, or `None` (ADR 0011). A run
-        resumed from its journal names the run it resumes (ADR 0012).
+        resumed from its journal names the run it resumes, and a benchmark run
+        or comparison the benchmark it runs (ADR 0012).
         """
 
         with self.lock:
@@ -187,6 +192,7 @@ class LiveRun:
                 "resumes_run_id": (
                     str(self.resumes_run_id) if self.resumes_run_id is not None else None
                 ),
+                "benchmark_id": (str(self.benchmark_id) if self.benchmark_id is not None else None),
                 "sensitivity": self.sensitivity.value if self.sensitivity is not None else None,
                 "state": self.state,
                 "started_at": moment(self.started_at),
@@ -230,6 +236,7 @@ class LiveRuns:
         step_id: UUID | None = None,
         invocation_id: UUID | None = None,
         resumes_run_id: UUID | None = None,
+        benchmark_id: UUID | None = None,
         sensitivity: api.Sensitivity | None = None,
     ) -> LiveRun:
         """Start one live run of `call` on a thread of its own, and return it.
@@ -252,6 +259,7 @@ class LiveRuns:
                 started_at=datetime.now(UTC),
                 invocation_id=invocation_id,
                 resumes_run_id=resumes_run_id,
+                benchmark_id=benchmark_id,
                 sensitivity=sensitivity,
             )
             self._runs[run.handle] = run
@@ -942,6 +950,7 @@ __all__ = [
     "TOO_LARGE_MESSAGE",
     "START_FIELDS",
     "LiveCall",
+    "LiveEvent",
     "LiveKind",
     "LiveRun",
     "LiveRuns",
