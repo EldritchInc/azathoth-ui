@@ -200,6 +200,8 @@ export interface RunSummary {
   readonly started_at: string;
   readonly completed_at: string;
   readonly command: string;
+  /** How a person last judged it, or none when nobody has (Azathoth's ADR 0129). */
+  readonly feedback: FeedbackDisposition | null;
 }
 
 /** What a step's strategy measured as it ran; what it did not measure is null. */
@@ -306,6 +308,8 @@ export interface LiveRun {
   readonly invocation_id: string | null;
   /** The label it was given, or none. */
   readonly sensitivity: Sensitivity | null;
+  /** The interrupted run it resumes from its journal, when it resumes one (ADR 0012). */
+  readonly resumes_run_id: string | null;
   readonly state: LiveState;
   readonly started_at: string;
   readonly finished_at: string | null;
@@ -653,6 +657,7 @@ export function isLiveRun(value: unknown): value is LiveRun {
     isTextOrNull(value.step_id) &&
     isTextOrNull(value.invocation_id) &&
     (value.sensitivity === null || isSensitivity(value.sensitivity)) &&
+    isTextOrNull(value.resumes_run_id) &&
     LIVE_STATES.includes(value.state) &&
     typeof value.started_at === "string" &&
     isTextOrNull(value.finished_at) &&
@@ -679,7 +684,8 @@ export function isRunSummary(value: unknown): value is RunSummary {
     isSensitivity(value.sensitivity) &&
     typeof value.started_at === "string" &&
     typeof value.completed_at === "string" &&
-    typeof value.command === "string"
+    typeof value.command === "string" &&
+    (value.feedback === null || isFeedbackDisposition(value.feedback))
   );
 }
 
@@ -1236,5 +1242,171 @@ export function isInvocationOutcome(value: unknown): value is InvocationOutcome 
     isInvocationErrorOrNull(value.error) &&
     isTextList(value.warnings) &&
     isTextOrNull(value.command)
+  );
+}
+
+/** How a person judged a run (Azathoth's ADR 0068). */
+export type FeedbackDisposition = "good" | "bad";
+
+const FEEDBACK_DISPOSITIONS: readonly unknown[] = ["good", "bad"];
+
+/** Returns whether a value is how a person judged a run. */
+export function isFeedbackDisposition(value: unknown): value is FeedbackDisposition {
+  return FEEDBACK_DISPOSITIONS.includes(value);
+}
+
+/** One model of the rotation that judges semantic cases, in its place (Azathoth's ADR 0129). */
+export interface JudgeSummary {
+  readonly identifier: string;
+  readonly provider: string;
+  readonly model: string;
+  /** Its place in the rotation, from 1: the order judges are tried. */
+  readonly position: number;
+  /** Whether the portfolio still authorizes it; one that no longer does is never asked to judge. */
+  readonly authorized: boolean;
+  readonly command: string;
+}
+
+/** One immutable judgment of a kept run. */
+export interface RunFeedback {
+  readonly feedback_id: string;
+  readonly run_id: string;
+  readonly disposition: FeedbackDisposition;
+  /** Why the run was judged so; a bad judgment always has one. */
+  readonly reason: string | null;
+  /** What the run should have produced, given only with a bad judgment. */
+  readonly corrected_output: unknown;
+  readonly created_at: string;
+  readonly command: string;
+}
+
+/** A run's verified citations, as a W3C Web Annotation collection (Azathoth's ADR 0117). */
+export interface Annotations {
+  /** The run or invocation asked about. */
+  readonly subject_id: string;
+  /** The run whose cited steps kept the citations: an invocation's run. */
+  readonly run_id: string;
+  /** The collection, exactly as `azathoth run annotations` prints it. */
+  readonly collection: Readonly<Record<string, unknown>>;
+  /** Its annotations, in the order the run's steps checked them. */
+  readonly items: readonly Readonly<Record<string, unknown>>[];
+  readonly command: string;
+}
+
+/** How a child run ended, or that no finished run is kept for it yet. */
+export type ChildStatus = "succeeded" | "failed" | "unfinished";
+
+const CHILD_STATUSES: readonly unknown[] = ["succeeded", "failed", "unfinished"];
+
+/** One run a step of another run started, and how it ended. */
+export interface RunChildSummary {
+  readonly child_run_id: string;
+  readonly child_workflow_id: string;
+  /** The invocation the child executed, when it was started by invoking one. */
+  readonly child_invocation_id: string | null;
+  readonly parent_run_id: string;
+  readonly parent_step_id: string;
+  /** The attempt of that step that started it, from 1. */
+  readonly parent_attempt: number;
+  /** How far below the run that started the whole tree it is: 1 for a child. */
+  readonly depth: number;
+  readonly started_at: string;
+  readonly status: ChildStatus;
+  /** The command that shows the child, once it finished. */
+  readonly command: string | null;
+}
+
+/** A run that started and never finished, as its journal records it. */
+export interface InterruptedRun {
+  readonly run_id: string;
+  readonly workflow_id: string;
+  /** The workflow's name in the revision the run started from. */
+  readonly workflow_name: string;
+  readonly workflow_revision: number | null;
+  /** The production invocation it executes, when it executes one. */
+  readonly invocation_id: string | null;
+  readonly started_at: string;
+  /** When its journal last recorded anything: how far it got. */
+  readonly last_recorded_at: string;
+  /** How often it was resumed and stopped again. */
+  readonly resumes: number;
+  /** The command that resumes it: its invocation's, when it has one. */
+  readonly command: string;
+}
+
+/** Returns whether a value is one judge of the rotation. */
+export function isJudgeSummary(value: unknown): value is JudgeSummary {
+  return (
+    isRecord(value) &&
+    typeof value.identifier === "string" &&
+    typeof value.provider === "string" &&
+    typeof value.model === "string" &&
+    isWholeNumber(value.position) &&
+    value.position >= 1 &&
+    typeof value.authorized === "boolean" &&
+    typeof value.command === "string"
+  );
+}
+
+/** Returns whether a value is one judgment of a run. */
+export function isRunFeedback(value: unknown): value is RunFeedback {
+  return (
+    isRecord(value) &&
+    typeof value.feedback_id === "string" &&
+    typeof value.run_id === "string" &&
+    isFeedbackDisposition(value.disposition) &&
+    isTextOrNull(value.reason) &&
+    "corrected_output" in value &&
+    typeof value.created_at === "string" &&
+    typeof value.command === "string"
+  );
+}
+
+/** Returns whether a value is a run's citations. */
+export function isAnnotations(value: unknown): value is Annotations {
+  return (
+    isRecord(value) &&
+    typeof value.subject_id === "string" &&
+    typeof value.run_id === "string" &&
+    isRecord(value.collection) &&
+    Array.isArray(value.items) &&
+    value.items.every(isRecord) &&
+    typeof value.command === "string"
+  );
+}
+
+/** Returns whether a value is one run another run started. */
+export function isRunChildSummary(value: unknown): value is RunChildSummary {
+  return (
+    isRecord(value) &&
+    typeof value.child_run_id === "string" &&
+    typeof value.child_workflow_id === "string" &&
+    isTextOrNull(value.child_invocation_id) &&
+    typeof value.parent_run_id === "string" &&
+    typeof value.parent_step_id === "string" &&
+    isWholeNumber(value.parent_attempt) &&
+    value.parent_attempt >= 1 &&
+    isWholeNumber(value.depth) &&
+    value.depth >= 1 &&
+    typeof value.started_at === "string" &&
+    CHILD_STATUSES.includes(value.status) &&
+    isTextOrNull(value.command)
+  );
+}
+
+/** Returns whether a value is one interrupted run. */
+export function isInterruptedRun(value: unknown): value is InterruptedRun {
+  return (
+    isRecord(value) &&
+    typeof value.run_id === "string" &&
+    typeof value.workflow_id === "string" &&
+    typeof value.workflow_name === "string" &&
+    isNumberOrNullWhole(value.workflow_revision) &&
+    isTextOrNull(value.invocation_id) &&
+    typeof value.started_at === "string" &&
+    typeof value.last_recorded_at === "string" &&
+    isWholeNumber(value.resumes) &&
+    value.resumes >= 0 &&
+    typeof value.command === "string"
   );
 }

@@ -55,22 +55,32 @@ The table names each at the editor's own instance.
 | `GET /api/local/portfolio` | The models the local portfolio authorizes, oldest first |
 | `POST /api/local/portfolio` | Authorizes one model locally, from `{"identifier"}`: 201 |
 | `POST /api/local/portfolio/remove` | Stops authorizing one model locally, from `{"identifier", "force"}` |
+| `GET /api/judges` | The judge rotation, in the order judges are tried, each with its position and whether the portfolio still authorizes it ([ADR 0012](0012-judges-and-a-runs-evidence-in-the-editor.md)) |
+| `POST /api/judges` | Appends one served model the portfolio authorizes to the rotation, from `{"identifier"}`: 201 |
+| `POST /api/judges/remove` | Takes one model out of the rotation, from `{"identifier"}`; those after it move up |
 | `POST /api/local/portfolio/policy` | Declares what one authorized model's provider does with data, from `{"identifier", "retains_data", "trains_on_data"}`, each `yes`, `no` or `unknown`, and answers with its entry, who declared it and when ([ADR 0011](0011-sensitivity-and-model-policy-in-the-editor.md)) |
 | `POST /api/workflows/check` | Every reason importing a workflow document would refuse it, saving nothing ([ADR 0007](0007-running-and-watching-workflows.md)) |
 | `POST /api/workflows/readiness?sensitivity=` | Whether each step of a workflow document could run here now, asking the providers; with a label, for input so labelled |
 | `GET /api/workflows/{id}/runs?limit=` | A workflow's kept runs, newest first |
-| `GET /api/runs/{run_id}` | One kept run, with its input, its result and its steps |
+| `GET /api/runs/{run_id}` | One kept run, with its input, its result, its steps and its latest judgment |
+| `GET /api/runs/{run_id}/feedback` | Every judgment of a run, newest first ([ADR 0012](0012-judges-and-a-runs-evidence-in-the-editor.md)) |
+| `POST /api/runs/{run_id}/feedback` | Records one judgment, from `{"disposition", "reason", "corrected_output"}`, the last two optional; any other field is refused: 201 |
+| `GET /api/runs/{run_id}/annotations` | A run's verified citations, as Azathoth's Web Annotation collection |
+| `GET /api/runs/{run_id}/children` | The runs a run's steps started, oldest first, each with how it ended |
+| `GET /api/workflows/{id}/interrupted?limit=` | A workflow's runs that started and never finished, newest first, each with the command that resumes it |
 | `GET /api/workflows/{id}/production` | `{"production"}`: what production runs now, or `null` ([ADR 0010](0010-production-in-the-editor.md)) |
 | `GET /api/workflows/{id}/production/revisions?limit=` | Its production revisions, newest first, the active one marked |
 | `POST /api/workflows/{id}/promote` | Promotes its latest revision, or an experiment's winner from `{"experiment_id"}`: 201 |
 | `POST /api/workflows/{id}/rollback` | Restores an earlier production revision, the previous one or `{"to"}`: 201 |
 | `GET /api/workflows/{id}/invocations?limit=` | Its invocations, newest first |
 | `GET /api/invocations/{id}` | One invocation, with its input, its outcome and its run |
+| `GET /api/invocations/{id}/annotations` | Its run's verified citations |
 | `POST /api/models/matching` | The local portfolio's models that meet `{"requirements", "sensitivity"}`, in the order a run tries them; with a label, only those that may receive input so labelled |
 | `POST /api/live/steps` | Starts trying one step of a document alone, from `{"document", "step_id", "inputs", "files", "input" \| "file", "sensitivity"}`: 201 |
 | `POST /api/live/runs` | Starts a live run of a workflow, from `{"workflow_id", "input" \| "file", "sensitivity"}`: 201 ([ADR 0007](0007-running-and-watching-workflows.md)) |
 | `POST /api/live/invocations` | Invokes a workflow in production as a live run, from `{"workflow_id", "input" \| "file", "idempotency_key", "sensitivity"}`, the key and the label optional: 201 ([ADR 0010](0010-production-in-the-editor.md)) |
 | `POST /api/live/invocations/{id}/resume` | Resumes an incomplete invocation as a live run: 201, or 409 once it has completed |
+| `POST /api/live/runs/{run_id}/resume` | Resumes an interrupted run of `{"workflow_id"}` from its journal as a live run: 201; 409 `run_not_resumable` for a finished run or an invocation's, 404 for any other the workflow does not list as interrupted |
 | `GET /api/live` | Every live run the editor remembers, newest first |
 | `GET /api/live/{handle}` | One live run: where it is, and how it ended |
 | `GET /api/live/{handle}/events?after=` | Its events as a server-sent event stream, then its end |
@@ -106,6 +116,10 @@ The table names each at the editor's own instance.
   Azathoth is asked, and a run given a label but no input is refused with
   Azathoth's own message. A live run describes the label it was given, or
   `null` ([ADR 0011](0011-sensitivity-and-model-policy-in-the-editor.md)).
+- **A resume names what it resumes.** A live run describes the interrupted
+  run it picks up as `resumes_run_id`, or `null`. A content store that fails
+  as citations are exported is `content_unavailable`, 502, since it failed
+  the editor, not the person ([ADR 0012](0012-judges-and-a-runs-evidence-in-the-editor.md)).
 - **Tool versions live under `/versions/`,** so that no version name, such as
   `history`, can be mistaken for another endpoint.
 - **Commands name the editor's database.** `GET /api/commands` gives the

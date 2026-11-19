@@ -1,0 +1,107 @@
+/* A run's citations and the runs it started (ADR 0012). */
+
+.section {
+  display: grid;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.title {
+  font-size: 1.3rem;
+  font-weight: 450;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--raised);
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.8rem 1rem;
+}
+
+.item + .item {
+  border-top: 1px solid var(--line);
+}
+
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  min-width: 0;
+}
+
+.quote {
+  margin: 0;
+  padding-left: 0.85rem;
+  border-left: 3px solid var(--orbit);
+  font-family: var(--display);
+  font-size: 1.05rem;
+  line-height: 1.45;
+}
+
+.source {
+  overflow-wrap: anywhere;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.status::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.status[data-status="succeeded"] {
+  background: var(--tide-wash);
+  color: var(--tide-strong);
+}
+
+.status[data-status="failed"] {
+  background: var(--rose-wash);
+  color: var(--rose);
+}
+
+.status[data-status="unfinished"] {
+  background: var(--amber-wash);
+  color: var(--amber);
+}
+
+.depth {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}

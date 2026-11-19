@@ -17,6 +17,7 @@ from starlette.routing import BaseRoute, Route
 
 from azathoth_ui.browsing import browsing_routes
 from azathoth_ui.catalog import catalog_routes
+from azathoth_ui.evidence import evidence_routes
 from azathoth_ui.live import live_routes
 from azathoth_ui.production import production_routes
 from azathoth_ui.scoping import INSTANCE_SCOPE_KEY, InstanceContext, context_of
@@ -57,6 +58,7 @@ def instance_endpoints() -> list[Route]:
         *catalog_routes(),
         *live_routes(),
         *production_routes(),
+        *evidence_routes(),
     ]
 
 

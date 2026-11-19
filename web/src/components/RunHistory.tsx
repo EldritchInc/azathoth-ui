@@ -1,5 +1,6 @@
 import { RUNS_LISTED } from "../api/client";
 import type { RunSummary } from "../api/types";
+import { DISPOSITION_NAMES } from "../feedback";
 import { useWorkflowRuns } from "../queries";
 import { duration } from "../running";
 import { InstanceLink } from "./InstanceLink";
@@ -13,8 +14,8 @@ function outcome(run: RunSummary): string {
 
 /**
  * A workflow's kept runs, newest first: how each ended, when, how long it
- * took, whether it ran for production, and its input's label (ADR 0011).
- * Each opens the run (ADR 0007).
+ * took, whether it ran for production, its input's label (ADR 0011), and
+ * how it was last judged (ADR 0012). Each opens the run (ADR 0007).
  */
 export function RunHistory({ workflowId }: { readonly workflowId: string }) {
   const runs = useWorkflowRuns(workflowId);
@@ -57,6 +58,11 @@ export function RunHistory({ workflowId }: { readonly workflowId: string }) {
                 </span>
                 {run.invocation_id !== null && <span className={styles.badge}>Production</span>}
                 <SensitivityLabel sensitivity={run.sensitivity} />
+                {run.feedback !== null && (
+                  <span className={styles.judged} data-feedback={run.feedback}>
+                    Judged {DISPOSITION_NAMES[run.feedback].toLowerCase()}
+                  </span>
+                )}
                 {run.error !== null && <span className={styles.error}>{run.error.message}</span>}
               </InstanceLink>
             </li>

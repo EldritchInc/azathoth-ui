@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { App } from "./App";
 import { THEME_KEY } from "./theme";
+import { JUDGES } from "./test/evidence";
 import { SERVER } from "./test/instances";
 import { FINISHED_RUN, LIVE_RUN } from "./test/runs";
 import { renderAt } from "./test/render";
@@ -46,6 +47,22 @@ describe("App", () => {
     fireEvent.click(models);
 
     expect(await screen.findByRole("heading", { level: 1, name: "Models" })).toBeVisible();
+  });
+
+  it("offers the judges, with how many the rotation holds", async () => {
+    renderAt(<App />, {
+      answers: { ...SERVER, "/api/judges": [200, { items: JUDGES }] },
+    });
+    const judges = within(screen.getByRole("navigation", { name: "Editor" })).getByRole("link", {
+      name: /^Judges/,
+    });
+
+    expect(judges).toHaveAttribute("href", "/judges");
+    expect(await within(judges).findByText("2")).toBeVisible();
+
+    fireEvent.click(judges);
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Judges" })).toBeVisible();
   });
 
   it("opens the page its address names, and marks it in the rail", async () => {

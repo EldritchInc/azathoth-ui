@@ -35,6 +35,7 @@ export const LIVE_RUN: LiveRun = {
   step_id: null,
   invocation_id: null,
   sensitivity: null,
+  resumes_run_id: null,
   state: "running",
   started_at: "2026-11-10T10:00:00Z",
   finished_at: null,
@@ -96,6 +97,7 @@ export const RUN_SUMMARY: RunSummary = {
   started_at: RUN_RESULT.started_at,
   completed_at: RUN_RESULT.completed_at,
   command: RUN_RESULT.command,
+  feedback: null,
 };
 
 /** The kept run's first step: done, its text selected. */

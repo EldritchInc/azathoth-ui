@@ -56,6 +56,7 @@ ERROR_STATUSES: Final[tuple[tuple[type[api.ApiError], int], ...]] = (
     (api.RunNotStartedError, 409),
     (api.CandidateUnavailableError, 409),
     (api.ProviderUnavailableError, 502),
+    (api.ContentUnavailableError, 502),
     (api.RemoteUnreachableError, 502),
     (api.RemoteProtocolError, 502),
     (api.RemoteRefusedError, 403),

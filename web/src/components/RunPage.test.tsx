@@ -2,6 +2,7 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import { Route, Routes } from "react-router";
 import { describe, expect, it } from "vitest";
 
+import { ANNOTATIONS } from "../test/evidence";
 import { SERVER, WORKFLOW, type Answers } from "../test/instances";
 import { renderAt } from "../test/render";
 import { RUN_DETAIL, RUN_WORKFLOW, SUMMARIZE } from "../test/runs";
@@ -11,6 +12,12 @@ import { RunPage } from "./RunPage";
 const ANSWERS: Answers = {
   ...SERVER,
   [`/api/runs/${RUN_DETAIL.run_id}`]: [200, RUN_DETAIL],
+  [`/api/runs/${RUN_DETAIL.run_id}/feedback`]: [200, { items: [] }],
+  [`/api/runs/${RUN_DETAIL.run_id}/annotations`]: [
+    200,
+    { ...ANNOTATIONS, collection: { label: "Citations of run x: 0 verified." }, items: [] },
+  ],
+  [`/api/runs/${RUN_DETAIL.run_id}/children`]: [200, { items: [] }],
   [`/api/workflows/${WORKFLOW.id}?revision=3`]: [200, RUN_WORKFLOW],
 };
 

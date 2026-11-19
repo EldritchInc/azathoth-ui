@@ -1,0 +1,98 @@
+/* A workflow's runs that stopped before they finished (ADR 0012). */
+
+.section {
+  display: grid;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.header {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.title {
+  font-size: 1.4rem;
+  font-weight: 450;
+}
+
+.quiet {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--amber) 35%, var(--line));
+  border-radius: var(--radius);
+  background: var(--raised);
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr auto auto;
+  align-items: center;
+  gap: 0.35rem 1rem;
+  padding: 0.7rem 1rem;
+}
+
+.item + .item {
+  border-top: 1px solid var(--line);
+}
+
+.state {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 0.4rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: var(--amber-wash);
+  color: var(--amber);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.state::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.facts {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.production {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.badge {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--orbit) 40%, var(--line));
+  border-radius: 999px;
+  color: var(--orbit);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+@media (max-width: 40rem) {
+  .item {
+    grid-template-columns: auto 1fr;
+  }
+
+  .facts {
+    grid-column: 1 / -1;
+  }
+}

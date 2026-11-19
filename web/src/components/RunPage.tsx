@@ -13,7 +13,10 @@ import { JsonBlock } from "./JsonBlock";
 import styles from "./LiveRun.module.css";
 import { Notice } from "./Notice";
 import { RelativeTime } from "./RelativeTime";
-import { Restricted } from "./Restricted";
+import { Restricted, RestrictedScope } from "./Restricted";
+import { ChildRuns } from "./ChildRuns";
+import { RunCitations } from "./RunCitations";
+import { RunJudgment } from "./RunJudgment";
 import { RunningContext } from "./runningContext";
 import { SensitivityLabel } from "./SensitivityLabel";
 import { WorkflowSteps } from "./WorkflowSteps";
@@ -36,7 +39,11 @@ function Crumbs({ run }: { readonly run: RunDetail | undefined }) {
   );
 }
 
-/** One kept run, once it has loaded: how it ended, what it was given, and each step. */
+/**
+ * One kept run, once it has loaded: how it ended, what it was given, each
+ * step, how it was judged, what it cited, and the runs it started. Showing any of its restricted data shows all
+ * of it (ADR 0011).
+ */
 function KeptRun({ run }: { readonly run: RunDetail }) {
   const detail = useDetail("workflows", { id: run.workflow_id }, run.workflow_revision);
   const workflow = detail.data?.document as JsonObject | undefined;
@@ -53,82 +60,91 @@ function KeptRun({ run }: { readonly run: RunDetail }) {
   const failedStep = run.error?.step_id ?? null;
 
   return (
-    <div className={styles.page}>
-      <Crumbs run={run} />
-      <header className={styles.header}>
-        <div className={styles.titles}>
-          <p className={styles.eyebrow}>{run.invocation_id === null ? "Run" : "Production run"}</p>
-          <h1 className={styles.title}>{run.workflow_name}</h1>
-          <p className={styles.status}>
-            <span className={styles.pill} data-state={outcome.toLowerCase()}>
-              {outcome}
-            </span>
-            <SensitivityLabel sensitivity={run.sensitivity} />
-            <span className={styles.facts}>
-              <RelativeTime iso={run.started_at} /> · {duration(run.started_at, run.completed_at)}
-              {run.workflow_revision !== null && ` · revision ${String(run.workflow_revision)}`}
-              {run.resumes > 0 &&
-                ` · resumed ${run.resumes === 1 ? "once" : `${String(run.resumes)} times`}`}
-            </span>
-          </p>
-        </div>
-        <div className={styles.actions}>
-          <InstanceLink className={buttons.primary} to={`/workflows/${run.workflow_id}/run`}>
-            Run again
-          </InstanceLink>
-        </div>
-      </header>
-      <Command command={run.command} />
-      {run.error !== null && (
-        <Notice
-          title={
-            failedStep === null ? "The run failed" : `${titles.get(failedStep) ?? "A step"} failed`
-          }
-        >
-          <p>{run.error.message}</p>
-        </Notice>
-      )}
-      <Restricted
-        sensitivity={run.sensitivity}
-        what="the run's input, result and steps"
-        subject={run.run_id}
-      >
-        <div className={styles.pair}>
-          <section className={styles.outcome} aria-labelledby="input-heading">
-            <h2 id="input-heading" className={styles.sectionTitle}>
-              Input
-            </h2>
-            {run.has_input ? (
-              <JsonBlock value={run.input} label="The run's input, as JSON" />
-            ) : (
-              <p className={styles.quiet}>It was given no input.</p>
-            )}
-          </section>
-          <section className={styles.outcome} aria-labelledby="result-heading">
-            <h2 id="result-heading" className={styles.sectionTitle}>
-              Result
-            </h2>
-            {run.has_result ? (
-              <JsonBlock value={run.result} label="The run's result, as JSON" />
-            ) : (
-              <p className={styles.quiet}>
-                {run.succeeded ? "The workflow declares no result." : "It produced none."}
-              </p>
-            )}
-          </section>
-        </div>
-        {detail.isError && (
-          <Notice title="Couldn't load the revision it ran" tone="note">
-            <p>{detail.error.message}</p>
+    <RestrictedScope>
+      <div className={styles.page}>
+        <Crumbs run={run} />
+        <header className={styles.header}>
+          <div className={styles.titles}>
+            <p className={styles.eyebrow}>
+              {run.invocation_id === null ? "Run" : "Production run"}
+            </p>
+            <h1 className={styles.title}>{run.workflow_name}</h1>
+            <p className={styles.status}>
+              <span className={styles.pill} data-state={outcome.toLowerCase()}>
+                {outcome}
+              </span>
+              <SensitivityLabel sensitivity={run.sensitivity} />
+              <span className={styles.facts}>
+                <RelativeTime iso={run.started_at} /> · {duration(run.started_at, run.completed_at)}
+                {run.workflow_revision !== null && ` · revision ${String(run.workflow_revision)}`}
+                {run.resumes > 0 &&
+                  ` · resumed ${run.resumes === 1 ? "once" : `${String(run.resumes)} times`}`}
+              </span>
+            </p>
+          </div>
+          <div className={styles.actions}>
+            <InstanceLink className={buttons.primary} to={`/workflows/${run.workflow_id}/run`}>
+              Run again
+            </InstanceLink>
+          </div>
+        </header>
+        <Command command={run.command} />
+        {run.error !== null && (
+          <Notice
+            title={
+              failedStep === null
+                ? "The run failed"
+                : `${titles.get(failedStep) ?? "A step"} failed`
+            }
+          >
+            <p>{run.error.message}</p>
           </Notice>
         )}
-        {workflow !== undefined && (
-          <RunningContext value={states}>
-            <WorkflowSteps document={workflow} />
-          </RunningContext>
-        )}
-      </Restricted>
-    </div>
+        <Restricted
+          sensitivity={run.sensitivity}
+          what="the run's input, result and steps"
+          subject={run.run_id}
+        >
+          <div className={styles.pair}>
+            <section className={styles.outcome} aria-labelledby="input-heading">
+              <h2 id="input-heading" className={styles.sectionTitle}>
+                Input
+              </h2>
+              {run.has_input ? (
+                <JsonBlock value={run.input} label="The run's input, as JSON" />
+              ) : (
+                <p className={styles.quiet}>It was given no input.</p>
+              )}
+            </section>
+            <section className={styles.outcome} aria-labelledby="result-heading">
+              <h2 id="result-heading" className={styles.sectionTitle}>
+                Result
+              </h2>
+              {run.has_result ? (
+                <JsonBlock value={run.result} label="The run's result, as JSON" />
+              ) : (
+                <p className={styles.quiet}>
+                  {run.succeeded ? "The workflow declares no result." : "It produced none."}
+                </p>
+              )}
+            </section>
+          </div>
+          {detail.isError && (
+            <Notice title="Couldn't load the revision it ran" tone="note">
+              <p>{detail.error.message}</p>
+            </Notice>
+          )}
+          {workflow !== undefined && (
+            <RunningContext value={states}>
+              <WorkflowSteps document={workflow} />
+            </RunningContext>
+          )}
+        </Restricted>
+        <RunJudgment run={run} />
+        <RunCitations run={run} />
+        <ChildRuns runId={run.run_id} titles={titles} />
+      </div>
+    </RestrictedScope>
   );
 }
 
