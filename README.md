@@ -81,6 +81,13 @@ could be, and a model's page declares its policy, saying who declared it
 and when. Restricted data stays hidden until you choose to show it, every
 time a page is opened
 ([ADR 0011](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0011-sensitivity-and-model-policy-in-the-editor.md)).
+The Judges page keeps the models that judge a benchmark's semantic cases,
+in the order they are tried. A run's page records your judgment of it,
+good or bad, with why and what it should have produced, and shows what its
+steps cited and the runs they started. A run that stopped part way, from a
+crash or a closed editor, is listed on its workflow's Runs tab, and Resume
+finishes it from where it stopped
+([ADR 0012](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0012-judges-and-a-runs-evidence-in-the-editor.md)).
 [ADR 0001](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0001-local-server-security.md) explains how the server
 keeps other sites and other users out.
 

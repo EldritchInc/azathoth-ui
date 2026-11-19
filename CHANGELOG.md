@@ -70,6 +70,35 @@ editor to everything the command line does, on its own instance.
   `/live/steps`, `/workflows/readiness?sensitivity=` and `/models/matching`,
   refusing any other value as `invalid_argument`, and declares a model's
   policy at `/local/portfolio/policy` (ADR 0003).
+- ADR 0012 records how the editor keeps judges and shows a run's evidence,
+  on Azathoth 1.5.0a2's judges, feedback, annotations, children and
+  interrupted runs (its ADR 0129).
+- `/judges`, in the rail with its count, lists the judge rotation in the
+  order judges are tried and marks a judge the portfolio no longer
+  authorizes. Add judge offers the authorized models that are not judges
+  yet; Remove asks first, naming the instance. Both are the
+  `manage_judges` action.
+- A run's page has a Judgment section: the latest judgment, every
+  judgment newest first with its reason and corrected output, and Good or
+  Bad to record another, a bad one only with a reason and, if given, a
+  corrected output that reads as JSON. Recording is the `annotate_run`
+  action. A workflow's runs say how each was last judged.
+- A run's page shows its citations, each quote with where it was found and
+  how many checks were left out, with the command that exports them, and
+  its child runs, each with the step and attempt that started it, how it
+  ended, and a link to it once it finished or to its invocation. A
+  restricted run's judgments and citations are hidden with its other data.
+- A workflow's Runs tab lists its interrupted runs above its finished
+  ones, with when each started, when its journal last recorded anything
+  and how often it was resumed. Resume, the `run_workflow` action, opens it
+  as a live run that names the run it picks up; an invocation's run is
+  resumed as its invocation, the `invoke` action.
+- The server serves `/judges`, `/judges/remove`, `/runs/{id}/feedback`,
+  `/runs/{id}/annotations`, `/invocations/{id}/annotations`,
+  `/runs/{id}/children`, `/workflows/{id}/interrupted` and
+  `/live/runs/{id}/resume`, which refuses any run its workflow does not
+  list as interrupted before anything runs (ADR 0003).
+  `content_unavailable` answers 502, and `run_not_resumable` 409.
 
 ## 1.4.0
 

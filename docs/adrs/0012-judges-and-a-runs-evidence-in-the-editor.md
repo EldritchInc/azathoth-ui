@@ -80,7 +80,9 @@ so that in Azathoth 1.6 the same pages act on a remote.
   lists its interrupted runs above its finished ones, each with when it
   started, how often it was resumed, and Resume, the `run_workflow`
   action, which opens it as a live run. A run that executes an invocation
-  is resumed as its invocation (ADR 0010). A run's page, asked for a run
+  is resumed as its invocation (ADR 0010), the `invoke` action, as that
+  invocation's own page resumes it. A resumed live run says so, naming the
+  run it picks up. A run's page, asked for a run
   that has not finished, says so in Azathoth's words; Azathoth names no
   workflow for such a run, so Resume is offered from the workflow's Runs
   tab, where the run is listed.
