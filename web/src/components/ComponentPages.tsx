@@ -7,6 +7,8 @@ import { browserStorage } from "../theme";
 import buttons from "./Buttons.module.css";
 
 import { BenchmarkCases } from "./BenchmarkCases";
+import { BenchmarkTabs, type BenchmarkTab } from "./BenchmarkTabs";
+import { CaseList } from "./CaseList";
 import { DetailPage } from "./DetailPage";
 import { InstanceLink } from "./InstanceLink";
 import { ProductionTab } from "./ProductionTab";
@@ -95,12 +97,20 @@ export function ToolPage() {
   );
 }
 
-/** `/benchmarks/:id`: one benchmark's page. */
-export function BenchmarkPage() {
+/**
+ * `/benchmarks/:id`: one benchmark's page, with its tabs (ADR 0012): its
+ * cases here, and its document, with its revisions, at `/document`.
+ */
+export function BenchmarkPage({ tab = "cases" }: { readonly tab?: BenchmarkTab }) {
   const { id = "" } = useParams();
 
   return (
-    <DetailPage kind="benchmarks" component={{ id }}>
+    <DetailPage
+      kind="benchmarks"
+      component={{ id }}
+      tabs={<BenchmarkTabs benchmarkId={id} />}
+      section={tab === "cases" ? (detail) => <CaseList detail={detail} /> : undefined}
+    >
       {(detail) => (
         <BenchmarkCases
           document={detail.document}

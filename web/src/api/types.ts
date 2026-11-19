@@ -1629,7 +1629,8 @@ function isCount(value: unknown): value is number {
   return isWholeNumber(value) && value >= 0;
 }
 
-function isCaseCitations(value: unknown): value is CaseCitations {
+/** Returns whether a value is what a case's run must cite. */
+export function isCaseCitations(value: unknown): value is CaseCitations {
   return (
     isRecord(value) &&
     Array.isArray(value.require) &&

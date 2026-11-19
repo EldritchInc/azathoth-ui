@@ -1,0 +1,133 @@
+/* A benchmark's cases: listing, adding, reading and editing them (ADR 0012). */
+
+.section {
+  display: grid;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.heading {
+  font-size: 1.2rem;
+  font-weight: 450;
+}
+
+.quiet {
+  color: var(--muted);
+}
+
+.link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 0.2em;
+}
+
+.link:hover {
+  text-decoration-color: currentColor;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.field > label {
+  font-weight: 550;
+}
+
+.input,
+.select,
+.text,
+.code {
+  width: 100%;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--raised);
+  color: var(--ink);
+  font: inherit;
+}
+
+.select {
+  width: auto;
+  max-width: 100%;
+}
+
+.code {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+}
+
+.input:focus,
+.select:focus,
+.text:focus,
+.code:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.code[aria-invalid="true"] {
+  border-color: var(--rose);
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.hint[data-invalid="true"] {
+  color: var(--rose);
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--faint);
+  font-size: 0.8rem;
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.panel {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--raised);
+}
+
+.confirm {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--rose);
+  border-radius: var(--radius);
+  background: var(--rose-wash);
+}
+
+.question {
+  font-weight: 550;
+}
+
+.citations {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding-left: 1.2rem;
+}
