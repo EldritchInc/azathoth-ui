@@ -10,6 +10,7 @@ import { BenchmarkCases } from "./BenchmarkCases";
 import { BenchmarkTabs, type BenchmarkTab } from "./BenchmarkTabs";
 import { CaseList } from "./CaseList";
 import { ExecutionList } from "./ExecutionList";
+import { ExperimentList } from "./ExperimentList";
 import { DetailPage } from "./DetailPage";
 import { InstanceLink } from "./InstanceLink";
 import { ProductionTab } from "./ProductionTab";
@@ -22,8 +23,8 @@ import { WorkflowTabs, type WorkflowTab } from "./WorkflowTabs";
 /**
  * `/workflows/:id`: one workflow's page, with a way to edit it, or go on
  * editing it, and its tabs (ADR 0010): its revisions here, its runs at
- * `/runs`, interrupted ones first (ADR 0012), and its production at
- * `/production`.
+ * `/runs`, interrupted ones first (ADR 0012), its production at
+ * `/production`, and its experiments at `/experiments` (ADR 0013).
  */
 export function WorkflowPage({ tab = "revisions" }: { readonly tab?: WorkflowTab }) {
   const { id = "" } = useParams();
@@ -46,7 +47,9 @@ export function WorkflowPage({ tab = "revisions" }: { readonly tab?: WorkflowTab
             ? (detail) => (
                 <ProductionTab workflowId={id} name={detail.name} latest={detail.latest_number} />
               )
-            : undefined
+            : tab === "experiments"
+              ? () => <ExperimentList workflowId={id} />
+              : undefined
       }
       actions={
         <>

@@ -8,6 +8,7 @@ import { LiveRunPage } from "./components/LiveRun";
 import { AddCase } from "./components/AddCase";
 import { CasePage } from "./components/CasePage";
 import { ExecutionPage } from "./components/ExecutionPage";
+import { ExperimentPage } from "./components/ExperimentPage";
 import { BenchmarkPage, ToolPage, WorkflowPage } from "./components/ComponentPages";
 import { ModelList } from "./components/ModelList";
 import { RunBenchmark } from "./components/RunBenchmark";
@@ -51,6 +52,8 @@ export function App() {
           <Route path="/workflows/:id" element={<WorkflowPage />} />
           <Route path="/workflows/:id/runs" element={<WorkflowPage tab="runs" />} />
           <Route path="/workflows/:id/production" element={<WorkflowPage tab="production" />} />
+          <Route path="/workflows/:id/experiments" element={<WorkflowPage tab="experiments" />} />
+          <Route path="/experiments/:id" element={<ExperimentPage />} />
           <Route path="/workflows/:id/edit" element={<WorkflowEditor />} />
           <Route path="/workflows/:id/run" element={<RunWorkflow />} />
           <Route path="/workflows/:id/invoke" element={<InvokeWorkflow />} />
