@@ -88,6 +88,14 @@ steps cited and the runs they started. A run that stopped part way, from a
 crash or a closed editor, is listed on its workflow's Runs tab, and Resume
 finishes it from where it stopped
 ([ADR 0012](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0012-judges-and-a-runs-evidence-in-the-editor.md)).
+A benchmark's page lists its cases and adds them from text, JSON or a
+file, and a run judged bad becomes a case from its own page, expecting its
+correction. Each case's page edits or removes it. Run and Compare run one
+workflow against a benchmark, or score several against latency and cost
+targets, showing each case as it finishes; Cancel stops between cases.
+Every run and comparison is kept on the benchmark's Executions tab, its
+workflows ranked and each case's result linked to its run
+([ADR 0012](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0012-judges-and-a-runs-evidence-in-the-editor.md)).
 [ADR 0001](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0001-local-server-security.md) explains how the server
 keeps other sites and other users out.
 
