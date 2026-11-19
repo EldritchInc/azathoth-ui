@@ -47,10 +47,13 @@ so that in Azathoth 1.6 the same pages act on a remote.
   | `GET /invocations/{id}/annotations` | Its run's |
   | `GET /runs/{id}/children` | The runs its steps started, oldest first |
   | `GET /workflows/{id}/interrupted?limit=` | Its runs that started and never finished, newest first |
-  | `POST /live/runs/{id}/resume` | Resumes an interrupted run as a live run: 201 |
+  | `POST /live/runs/{id}/resume` | Resumes an interrupted run of `{"workflow_id"}` as a live run: 201 |
 
   A resumed run is a live run as any other (ADR 0007), whose description
-  names the run it resumes. Azathoth's new refusals keep their codes:
+  names the run it resumes as `resumes_run_id`. The workflow is named
+  because only `runs.interrupted` says a run is interrupted, and it lists a
+  workflow's: a run that is not among them is refused before anything runs,
+  as 409 when it finished, and 404 otherwise. Azathoth's new refusals keep their codes:
   `run_not_resumable` is 409, and `content_unavailable` 502, since the
   content store failed the editor, not the person.
 
@@ -78,7 +81,9 @@ so that in Azathoth 1.6 the same pages act on a remote.
   started, how often it was resumed, and Resume, the `run_workflow`
   action, which opens it as a live run. A run that executes an invocation
   is resumed as its invocation (ADR 0010). A run's page, asked for a run
-  that has not finished, offers the same Resume in place of an error.
+  that has not finished, says so in Azathoth's words; Azathoth names no
+  workflow for such a run, so Resume is offered from the workflow's Runs
+  tab, where the run is listed.
 
 - **Restricted runs stay guarded.** A restricted run's corrected outputs
   and citation quotes are behind the same "This is restricted data" as its
@@ -91,7 +96,7 @@ so that in Azathoth 1.6 the same pages act on a remote.
 - A person's judgment of a run is recorded where they read the run, and
   the corrected outputs it records are what a case is made from later.
 - A run stopped by a crash or a closed editor is one click from finishing,
-  from its workflow's page or its own.
+  from its workflow's Runs tab.
 
 ## Alternatives Considered
 

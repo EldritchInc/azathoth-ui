@@ -42,7 +42,8 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
 
-from azathoth_ui.browsing import WHOLE_NUMBER, instance_of, refusal
+from azathoth_ui.browsing import WHOLE_NUMBER, identifier, instance_of, refusal
+from azathoth_ui.catalog import body_of
 from azathoth_ui.labels import sensitivity_of
 from azathoth_ui.scoping import context_of
 
@@ -114,6 +115,7 @@ class LiveRun:
     step_id: UUID | None
     started_at: datetime
     invocation_id: UUID | None = None
+    resumes_run_id: UUID | None = None
     sensitivity: api.Sensitivity | None = None
     token: api.CancellationToken = field(default_factory=api.CancellationToken)
     events: list[dict[str, object]] = field(default_factory=list)
@@ -168,7 +170,8 @@ class LiveRun:
 
         An invocation names its invocation once it is known: from the start
         when it resumes one, and from its outcome when it makes one. Its
-        `sensitivity` is the label it was given, or `None` (ADR 0011).
+        `sensitivity` is the label it was given, or `None` (ADR 0011). A run
+        resumed from its journal names the run it resumes (ADR 0012).
         """
 
         with self.lock:
@@ -181,6 +184,9 @@ class LiveRun:
                 "workflow_id": str(self.workflow_id),
                 "step_id": str(self.step_id) if self.step_id is not None else None,
                 "invocation_id": invocation,
+                "resumes_run_id": (
+                    str(self.resumes_run_id) if self.resumes_run_id is not None else None
+                ),
                 "sensitivity": self.sensitivity.value if self.sensitivity is not None else None,
                 "state": self.state,
                 "started_at": moment(self.started_at),
@@ -223,6 +229,7 @@ class LiveRuns:
         workflow_id: UUID,
         step_id: UUID | None = None,
         invocation_id: UUID | None = None,
+        resumes_run_id: UUID | None = None,
         sensitivity: api.Sensitivity | None = None,
     ) -> LiveRun:
         """Start one live run of `call` on a thread of its own, and return it.
@@ -244,6 +251,7 @@ class LiveRuns:
                 step_id=step_id,
                 started_at=datetime.now(UTC),
                 invocation_id=invocation_id,
+                resumes_run_id=resumes_run_id,
                 sensitivity=sensitivity,
             )
             self._runs[run.handle] = run
@@ -614,6 +622,84 @@ async def resume_invocation(
     return started(run)
 
 
+RESUME_MESSAGE: Final = 'Send {"workflow_id": "<WORKFLOW_ID>"}, the workflow the run is of.'
+"""What a resume is refused with when its body cannot be read."""
+
+
+async def resume_run(
+    request: Request,
+) -> Response:
+    """`POST /api/live/runs/{id}/resume` `{"workflow_id"}`: resume an interrupted run: 201.
+
+    The run must be one of the workflow's interrupted runs, so a run that
+    finished, one unknown, and one that executes an invocation, which
+    resumes as its invocation, are refused before anything runs (ADR 0012).
+    """
+
+    run_id = identifier(request, "run_id", "run")
+    body = await body_of(request, message=RESUME_MESSAGE)
+    unknown = sorted(name for name in body if name != "workflow_id")
+
+    if unknown:
+        raise api.InvalidArgumentError(f"A resume takes workflow_id, not {', '.join(unknown)}.")
+
+    workflow_id = uuid_field(body, "workflow_id", "workflow")
+    instance = instance_of(request)
+    listed = await run_in_threadpool(instance.runs.interrupted, workflow_id)
+    interrupted = next((run for run in listed if run.run_id == run_id), None)
+
+    if interrupted is None:
+        finished = await run_in_threadpool(_finished, instance, run_id)
+
+        if finished:
+            raise api.RunNotResumableError(f"Run {run_id} has already finished.")
+
+        raise api.NotFoundError(
+            f"Run {run_id} is not an interrupted run of workflow {workflow_id}."
+        )
+
+    if interrupted.invocation_id is not None:
+        raise api.RunNotResumableError(
+            f"Run {run_id} executes invocation {interrupted.invocation_id}; "
+            "resume it as its invocation."
+        )
+
+    def call(
+        on_event: api.EventCallback,
+        cancel: api.CancellationToken,
+    ) -> api.RunResult:
+        """Resume the run from its journal, reporting its events, until it ends."""
+
+        return instance.runs.resume(run_id, on_event=on_event, cancel=cancel)
+
+    try:
+        run = live_of(request).start(
+            "run",
+            call,
+            workflow_id=workflow_id,
+            resumes_run_id=run_id,
+            sensitivity=None,
+        )
+    except TooManyRunsError as exc:
+        return refusal(429, "too_many_runs", str(exc))
+
+    return started(run)
+
+
+def _finished(
+    instance: api.Azathoth,
+    run_id: UUID,
+) -> bool:
+    """Return whether Azathoth kept a run as finished."""
+
+    try:
+        instance.runs.get(run_id)
+    except api.NotFoundError:
+        return False
+
+    return True
+
+
 def document_field(
     body: dict[str, object],
 ) -> tuple[dict[str, Any], UUID]:
@@ -828,6 +914,7 @@ def live_routes() -> list[Route]:
     return [
         Route("/live", list_live, methods=["GET"]),
         Route("/live/runs", start_run, methods=["POST"]),
+        Route("/live/runs/{run_id}/resume", resume_run, methods=["POST"]),
         Route("/live/steps", start_step, methods=["POST"]),
         Route("/live/invocations", start_invocation, methods=["POST"]),
         Route(
@@ -845,6 +932,7 @@ __all__ = [
     "DOCUMENT_MESSAGE",
     "EDITOR_CALLER",
     "INVOKE_FIELDS",
+    "RESUME_MESSAGE",
     "KEEP_ALIVE_SECONDS",
     "KEEP_FINISHED",
     "MAX_RUNNING",
