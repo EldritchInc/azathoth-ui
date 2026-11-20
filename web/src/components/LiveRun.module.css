@@ -233,6 +233,14 @@
   background: var(--tide);
 }
 
+.event[data-type="generation_finished"]::before {
+  background: var(--tide);
+}
+
+.event[data-type="candidate_started"] {
+  color: var(--muted);
+}
+
 .event[data-type="context_changed"] {
   color: var(--muted);
 }

@@ -5,9 +5,11 @@ import { liveEventsPath } from "./api/client";
 import {
   isBenchmarkEvent,
   isLiveRun,
+  isOptimizationEvent,
   isRunEvent,
   type BenchmarkEvent,
   type LiveRun,
+  type OptimizationEvent,
   type RunEvent,
 } from "./api/types";
 import { queryKeys } from "./queries";
@@ -16,17 +18,24 @@ import { scoped, useScope } from "./scope";
 /**
  * A live run's events so far, how it ended once it has, and whether its
  * stream was lost. A benchmark run's or a comparison's events are its
- * cases, kept apart from a run's.
+ * cases, and an optimization's its generations, each kept apart from a run's.
  */
 export interface LiveEvents {
   readonly events: readonly RunEvent[];
   readonly cases: readonly BenchmarkEvent[];
+  readonly generations: readonly OptimizationEvent[];
   readonly end: LiveRun | null;
   /** Whether the stream closed before the run's end, and will not come back. */
   readonly lost: boolean;
 }
 
-const NOTHING_YET: LiveEvents = { events: [], cases: [], end: null, lost: false };
+const NOTHING_YET: LiveEvents = {
+  events: [],
+  cases: [],
+  generations: [],
+  end: null,
+  lost: false,
+};
 
 function parsed(data: unknown): unknown {
   try {
@@ -78,6 +87,13 @@ export function useLiveEvents(handle: string): LiveEvents {
             ? { handle, live: { ...last.live, cases: [...last.live.cases, event] } }
             : last,
         );
+      } else if (isOptimizationEvent(event)) {
+        seen = number;
+        setShown((last) =>
+          last.handle === handle
+            ? { handle, live: { ...last.live, generations: [...last.live.generations, event] } }
+            : last,
+        );
       }
     });
 
@@ -96,6 +112,7 @@ export function useLiveEvents(handle: string): LiveEvents {
       void client.invalidateQueries({ queryKey: scoped(scope, queryKeys.runs) });
       void client.invalidateQueries({ queryKey: scoped(scope, queryKeys.invocations) });
       void client.invalidateQueries({ queryKey: scoped(scope, queryKeys.executions) });
+      void client.invalidateQueries({ queryKey: scoped(scope, queryKeys.experiments) });
     });
 
     source.addEventListener("error", () => {

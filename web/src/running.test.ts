@@ -15,6 +15,7 @@ import {
   base64Of,
   cost,
   duration,
+  lengthOf,
   eventLine,
   fileProblem,
   keptStepRun,
@@ -441,5 +442,19 @@ describe("measured", () => {
     expect(cost(0.0042)).toBe("$0.0042");
     expect(cost(0.01)).toBe("$0.01");
     expect(cost(1.5)).toBe("$1.50");
+  });
+});
+
+describe("lengthOf", () => {
+  it("says a length of time as people say it", () => {
+    expect(lengthOf(0.04)).toBe("40 ms");
+    expect(lengthOf(2.5)).toBe("2.5 s");
+    expect(lengthOf(13)).toBe("13 s");
+    expect(lengthOf(300)).toBe("5 min");
+    expect(lengthOf(65)).toBe("1 min 5 s");
+  });
+
+  it("never says a length below nothing", () => {
+    expect(lengthOf(-3)).toBe("0 ms");
   });
 });

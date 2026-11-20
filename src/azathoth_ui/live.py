@@ -80,14 +80,14 @@ EDITOR_CALLER: Final[dict[str, str]] = {"client": "azathoth-ui"}
 
 DOCUMENT_MESSAGE: Final = "document must be a workflow document, as a JSON object."
 
-LiveKind = Literal["run", "step", "invocation", "benchmark", "comparison"]
-"""What a live run runs: a workflow, one step tried alone, an invocation, or a benchmark."""
+LiveKind = Literal["run", "step", "invocation", "benchmark", "comparison", "optimization"]
+"""What a live run runs: a workflow, a step, an invocation, a benchmark, or an optimization."""
 
 LiveState = Literal["running", "finished", "cancelled", "refused"]
 """Where a live run is: running, finished with its value, cancelled, or refused by Azathoth."""
 
-LiveEvent = api.RunEvent | api.BenchmarkEvent
-"""One event a live run reports: a run's, or a benchmark's case starting or finishing."""
+LiveEvent = api.RunEvent | api.BenchmarkEvent | api.OptimizationEvent
+"""One event a live run reports: a run's, a benchmark's case, or an optimization's generation."""
 
 LiveCall = Callable[[Callable[[LiveEvent], None], api.CancellationToken], api.ApiModel]
 """What a live run calls: given where to report events and a token, it returns its value."""

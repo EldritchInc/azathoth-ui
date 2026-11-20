@@ -58,6 +58,10 @@ The table names each at the editor's own instance.
 | `POST /api/benchmarks/{id}/cases/{case_id}/remove` | Leaves a case out of its next revision |
 | `GET /api/benchmarks/{id}/executions?limit=` | Its saved runs and comparisons, newest first |
 | `GET /api/benchmark-executions/{id}` | One execution, with every workflow, its scorecard, and each case's result |
+| `GET /api/workflows/{id}/experiments?limit=` | A workflow's experiments, newest first ([ADR 0013](0013-optimization-in-the-editor.md)) |
+| `GET /api/experiments/{id}` | One experiment, its candidates ranked, each with the model each step ran on |
+| `GET /api/experiments/{id}/compare` | Its winner beside its baseline, with what each run cost and took, the saving per run and the 30-day projection |
+| `GET /api/experiments/{id}/promotable` | Whether its winner can still be promoted, and why not, asking the providers; nothing is saved |
 | `GET /api/models?refresh=` | Every model the providers serve, marked by whether the local portfolio holds it, and when the providers were asked |
 | `GET /api/models/{identifier}` | One model, by its identifier, slashes and all |
 | `GET /api/local/portfolio` | The models the local portfolio authorizes, oldest first |
@@ -90,6 +94,7 @@ The table names each at the editor's own instance.
 | `POST /api/live/invocations/{id}/resume` | Resumes an incomplete invocation as a live run: 201, or 409 once it has completed |
 | `POST /api/live/benchmarks` | Runs a workflow against a benchmark as a live run, from `{"benchmark_id", "workflow_id"}`: 201, or 404 before anything starts for an unknown benchmark or workflow ([ADR 0012](0012-judges-and-a-runs-evidence-in-the-editor.md)) |
 | `POST /api/live/comparisons` | Compares workflows against a benchmark as a live run, from `{"benchmark_id", "workflow_ids", "target_latency_seconds", "target_cost_usd"}`, the targets numbers: 201, or 404 before anything starts |
+| `POST /api/live/optimizations` | Optimizes a workflow against a benchmark as a live run, from `{"workflow_id", "benchmark_id", "target_latency_seconds", "target_cost_usd", "generations"}`, the generations a whole number, 1 when left out: 201, or 404 before anything starts ([ADR 0013](0013-optimization-in-the-editor.md)) |
 | `POST /api/live/runs/{run_id}/resume` | Resumes an interrupted run of `{"workflow_id"}` from its journal as a live run: 201; 409 `run_not_resumable` for a finished run or an invocation's, 404 for any other the workflow does not list as interrupted |
 | `GET /api/live` | Every live run the editor remembers, newest first |
 | `GET /api/live/{handle}` | One live run: where it is, and how it ended |
@@ -139,6 +144,13 @@ The table names each at the editor's own instance.
   `comparison` that names its `benchmark_id`; its events are Azathoth's
   `case_started` and `case_finished`, its result the execution it saved,
   and `judge_unavailable` is 409 ([ADR 0012](0012-judges-and-a-runs-evidence-in-the-editor.md)).
+- **An optimization is a live run too.** It is of kind `optimization` and
+  names its `benchmark_id`; its events are Azathoth's `generation_started`,
+  `candidate_finished` and `generation_finished`, and its result the
+  session's summary, naming the winning experiment. Cancelled, it stops
+  between candidates and keeps every experiment it finished. Promoting a
+  winner is production's own `promote`, given `{"experiment_id"}`
+  ([ADR 0013](0013-optimization-in-the-editor.md)).
 - **Tool versions live under `/versions/`,** so that no version name, such as
   `history`, can be mistaken for another endpoint.
 - **Commands name the editor's database.** `GET /api/commands` gives the

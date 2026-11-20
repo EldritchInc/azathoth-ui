@@ -8,6 +8,7 @@ import { LiveRunPage } from "./components/LiveRun";
 import { AddCase } from "./components/AddCase";
 import { CasePage } from "./components/CasePage";
 import { ExecutionPage } from "./components/ExecutionPage";
+import { ExperimentPage } from "./components/ExperimentPage";
 import { BenchmarkPage, ToolPage, WorkflowPage } from "./components/ComponentPages";
 import { ModelList } from "./components/ModelList";
 import { RunBenchmark } from "./components/RunBenchmark";
@@ -21,6 +22,7 @@ import { RemotePage } from "./components/RemotePage";
 import { RunPage } from "./components/RunPage";
 import { InvocationPage } from "./components/InvocationPage";
 import { InvokeWorkflow } from "./components/InvokeWorkflow";
+import { OptimizeWorkflow } from "./components/OptimizeWorkflow";
 import { RunWorkflow } from "./components/RunWorkflow";
 import { NewWorkflow, WorkflowEditor } from "./components/WorkflowEditor";
 import { applyTheme, browserStorage, readTheme, saveTheme, type ThemeChoice } from "./theme";
@@ -51,9 +53,12 @@ export function App() {
           <Route path="/workflows/:id" element={<WorkflowPage />} />
           <Route path="/workflows/:id/runs" element={<WorkflowPage tab="runs" />} />
           <Route path="/workflows/:id/production" element={<WorkflowPage tab="production" />} />
+          <Route path="/workflows/:id/experiments" element={<WorkflowPage tab="experiments" />} />
+          <Route path="/experiments/:id" element={<ExperimentPage />} />
           <Route path="/workflows/:id/edit" element={<WorkflowEditor />} />
           <Route path="/workflows/:id/run" element={<RunWorkflow />} />
           <Route path="/workflows/:id/invoke" element={<InvokeWorkflow />} />
+          <Route path="/workflows/:id/optimize" element={<OptimizeWorkflow />} />
           <Route path="/live/:handle" element={<LiveRunPage />} />
           <Route path="/runs/:runId" element={<RunPage />} />
           <Route path="/invocations/:invocationId" element={<InvocationPage />} />

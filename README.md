@@ -96,6 +96,16 @@ targets, showing each case as it finishes; Cancel stops between cases.
 Every run and comparison is kept on the benchmark's Executions tab, its
 workflows ranked and each case's result linked to its run
 ([ADR 0012](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0012-judges-and-a-runs-evidence-in-the-editor.md)).
+Optimize, on a workflow's page, scores candidate models for its steps
+against a benchmark and latency and cost targets, generation by
+generation, showing each candidate's score as it finishes; Cancel stops
+between candidates. Each generation is kept on the workflow's Experiments
+tab. An experiment's page ranks its candidates, compares the winner with
+what production runs, step by step and case by case, says what it saves
+per run and projects that over production's last 30 days, labelled as a
+projection, and promotes the winner once you confirm, if it can still be
+promoted
+([ADR 0013](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0013-optimization-in-the-editor.md)).
 [ADR 0001](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0001-local-server-security.md) explains how the server
 keeps other sites and other users out.
 

@@ -10,6 +10,7 @@ import { BenchmarkCases } from "./BenchmarkCases";
 import { BenchmarkTabs, type BenchmarkTab } from "./BenchmarkTabs";
 import { CaseList } from "./CaseList";
 import { ExecutionList } from "./ExecutionList";
+import { ExperimentList } from "./ExperimentList";
 import { DetailPage } from "./DetailPage";
 import { InstanceLink } from "./InstanceLink";
 import { ProductionTab } from "./ProductionTab";
@@ -22,8 +23,9 @@ import { WorkflowTabs, type WorkflowTab } from "./WorkflowTabs";
 /**
  * `/workflows/:id`: one workflow's page, with a way to edit it, or go on
  * editing it, and its tabs (ADR 0010): its revisions here, its runs at
- * `/runs`, interrupted ones first (ADR 0012), and its production at
- * `/production`.
+ * `/runs`, interrupted ones first (ADR 0012), its production at
+ * `/production`, and its experiments at `/experiments` (ADR 0013). Beside
+ * Run, Optimize opens `/optimize`.
  */
 export function WorkflowPage({ tab = "revisions" }: { readonly tab?: WorkflowTab }) {
   const { id = "" } = useParams();
@@ -46,7 +48,9 @@ export function WorkflowPage({ tab = "revisions" }: { readonly tab?: WorkflowTab
             ? (detail) => (
                 <ProductionTab workflowId={id} name={detail.name} latest={detail.latest_number} />
               )
-            : undefined
+            : tab === "experiments"
+              ? () => <ExperimentList workflowId={id} />
+              : undefined
       }
       actions={
         <>
@@ -61,6 +65,22 @@ export function WorkflowPage({ tab = "revisions" }: { readonly tab?: WorkflowTab
               <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" />
             </svg>
             Run
+          </InstanceLink>
+          <InstanceLink className={buttons.quiet} to={`/workflows/${id}/optimize`}>
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              focusable="false"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M4 17 9.5 11.5l3.5 3.5L20 8" />
+              <path d="M15 8h5v5" />
+            </svg>
+            Optimize
           </InstanceLink>
           <InstanceLink className={buttons.quiet} to={`/workflows/${id}/edit`}>
             <svg
