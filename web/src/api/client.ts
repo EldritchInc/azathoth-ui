@@ -24,6 +24,7 @@ import {
   isExperimentDetail,
   isExperimentSummary,
   isPromotability,
+  isSpendReport,
   isInterruptedRun,
   isJudgeSummary,
   isRunChildSummary,
@@ -66,6 +67,9 @@ import {
   type ExperimentDetail,
   type ExperimentSummary,
   type Promotability,
+  type SpendGroup,
+  type SpendPeriod,
+  type SpendReport,
   type CaseComparison,
   type FeedbackDisposition,
   type InterruptedRun,
@@ -1449,4 +1453,44 @@ export function startOptimization(
     }),
     options,
   );
+}
+
+/** What a spend report is asked of: its range, each time with its offset, and its choices. */
+export interface SpendQuery {
+  readonly since: string;
+  readonly until: string;
+  readonly period: SpendPeriod;
+  readonly group: SpendGroup;
+  readonly timeZone: string;
+  readonly workflowId: string | null;
+}
+
+/**
+ * Returns the query string that asks for a spend report, every value
+ * encoded, so an offset's `+` never reaches the server as a space.
+ */
+export function spendSearch(query: SpendQuery): string {
+  const search = new URLSearchParams({
+    since: query.since,
+    until: query.until,
+    period: query.period,
+    group: query.group,
+    time_zone: query.timeZone,
+  });
+
+  if (query.workflowId !== null) {
+    search.set("workflow_id", query.workflowId);
+  }
+
+  return `?${search.toString()}`;
+}
+
+/** Returns what an instance spent: `GET {base}/spend?...` (ADR 0014). */
+export function fetchSpend(query: SpendQuery, options: RequestOptions = {}): Promise<SpendReport> {
+  return oneOf(`/spend${spendSearch(query)}`, isSpendReport, options);
+}
+
+/** Returns where the same report is, as Azathoth writes it as CSV: `{base}/spend.csv?...`. */
+export function spendCsvPath(query: SpendQuery, base: string = API_BASE): string {
+  return `${base}/spend.csv${spendSearch(query)}`;
 }
