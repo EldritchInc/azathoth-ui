@@ -12,6 +12,11 @@ says whether a revision was made: 201 when one was, and 200 when the
 document is the latest revision's, which then is the one returned.
 Checking a workflow document, and asking whether it could run here, take
 one the same way and save nothing (ADR 0003, ADR 0007).
+
+An export answers with Azathoth's own text, as a download named as
+Azathoth suggests, so the editor's download and the command line's
+`export` are the same bytes; a comparison of two revisions is Azathoth's
+`RevisionComparison`, both revision numbers required (ADR 0015).
 """
 
 import re
@@ -96,6 +101,54 @@ def whole_number(
         raise api.InvalidArgumentError(f"{name} must be a whole number, not {text!r}.")
 
     return int(text)
+
+
+def revision_number(
+    request: Request,
+    name: str,
+) -> int:
+    """Return the revision number one query parameter must give.
+
+    Raises:
+        InvalidArgumentError: It is absent, not a whole number, or below 1.
+    """
+
+    number = whole_number(request, name)
+
+    if number is None:
+        raise api.InvalidArgumentError(f"{name} must name a revision.")
+
+    if number < 1:
+        raise api.InvalidArgumentError(f"{name} must be a revision number, from 1.")
+
+    return number
+
+
+def may_read_restricted(
+    request: Request,
+) -> bool:
+    """Return whether the person may read restricted data on the instance a request acts on.
+
+    On the editor's own instance, and on a core remote, its owner may, so
+    the answer is always yes; Azathoth 1.6 asks a remote's policy for
+    `read_restricted` instead (ADR 0009).
+    """
+
+    context_of(request)
+
+    return True
+
+
+def download(
+    exported: api.DocumentExport,
+) -> Response:
+    """Answer with an export's text exactly, as a file named as Azathoth suggests."""
+
+    return Response(
+        exported.text,
+        media_type="application/json; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{exported.file_name}"'},
+    )
 
 
 def refusal(
@@ -211,6 +264,29 @@ def workflow_history(
     return items(instance_of(request).workflows.history(workflow_id, limit=limit))
 
 
+def export_workflow(
+    request: Request,
+) -> Response:
+    """`GET /api/workflows/{id}/export?revision=`: a revision as `workflow export` prints it."""
+
+    workflow_id = identifier(request, "workflow_id", "workflow")
+    revision = whole_number(request, "revision")
+
+    return download(instance_of(request).workflows.export(workflow_id, revision=revision))
+
+
+def workflow_diff(
+    request: Request,
+) -> Response:
+    """`GET /api/workflows/{id}/diff?before=&after=`: what differs between two revisions."""
+
+    workflow_id = identifier(request, "workflow_id", "workflow")
+    before = revision_number(request, "before")
+    after = revision_number(request, "after")
+
+    return one(instance_of(request).workflows.compare_revisions(workflow_id, before, after))
+
+
 async def import_workflow(
     request: Request,
 ) -> Response:
@@ -287,6 +363,41 @@ def get_tool(
     return one(instance_of(request).tools.get(tool_id, version, revision=revision))
 
 
+def tool_versions(
+    request: Request,
+) -> Response:
+    """`GET /api/tools/{id}/versions`: each version of one tool at its latest revision."""
+
+    tool_id = identifier(request, "tool_id", "tool")
+
+    return items(instance_of(request).tools.versions(tool_id))
+
+
+def export_tool(
+    request: Request,
+) -> Response:
+    """`GET /api/tools/{id}/versions/{version}/export?revision=`: one version's revision."""
+
+    tool_id = identifier(request, "tool_id", "tool")
+    version: str = request.path_params["version"]
+    revision = whole_number(request, "revision")
+
+    return download(instance_of(request).tools.export(tool_id, version, revision=revision))
+
+
+def tool_diff(
+    request: Request,
+) -> Response:
+    """`GET /api/tools/{id}/versions/{version}/diff?before=&after=`: two revisions compared."""
+
+    tool_id = identifier(request, "tool_id", "tool")
+    version: str = request.path_params["version"]
+    before = revision_number(request, "before")
+    after = revision_number(request, "after")
+
+    return one(instance_of(request).tools.compare_revisions(tool_id, version, before, after))
+
+
 def tool_history(
     request: Request,
 ) -> Response:
@@ -337,6 +448,37 @@ def benchmark_history(
     return items(instance_of(request).benchmarks.history(benchmark_id, limit=limit))
 
 
+def export_benchmark(
+    request: Request,
+) -> Response:
+    """`GET /api/benchmarks/{id}/export?revision=`: a revision as `benchmark export` prints it."""
+
+    benchmark_id = identifier(request, "benchmark_id", "benchmark")
+    revision = whole_number(request, "revision")
+
+    return download(instance_of(request).benchmarks.export(benchmark_id, revision=revision))
+
+
+def benchmark_diff(
+    request: Request,
+) -> Response:
+    """`GET /api/benchmarks/{id}/diff?before=&after=`: what differs between two revisions.
+
+    A restricted case's values are asked for only where they may be read;
+    otherwise Azathoth leaves them out, saying so (ADR 0015).
+    """
+
+    benchmark_id = identifier(request, "benchmark_id", "benchmark")
+    before = revision_number(request, "before")
+    after = revision_number(request, "after")
+
+    return one(
+        instance_of(request).benchmarks.compare_revisions(
+            benchmark_id, before, after, include_restricted=may_read_restricted(request)
+        )
+    )
+
+
 async def import_benchmark(
     request: Request,
 ) -> Response:
@@ -355,16 +497,23 @@ def browsing_routes() -> list[Route]:
         Route("/workflows/readiness", workflow_readiness, methods=["POST"]),
         Route("/workflows/{workflow_id}", get_workflow, methods=["GET"]),
         Route("/workflows/{workflow_id}/history", workflow_history, methods=["GET"]),
+        Route("/workflows/{workflow_id}/export", export_workflow, methods=["GET"]),
+        Route("/workflows/{workflow_id}/diff", workflow_diff, methods=["GET"]),
         Route("/workflows/{workflow_id}/runs", workflow_runs, methods=["GET"]),
         Route("/runs/{run_id}", get_run, methods=["GET"]),
         Route("/tools", list_tools, methods=["GET"]),
         Route("/tools/import", import_tool, methods=["POST"]),
         Route("/tools/{tool_id}/history", tool_history, methods=["GET"]),
+        Route("/tools/{tool_id}/versions", tool_versions, methods=["GET"]),
         Route("/tools/{tool_id}/versions/{version}", get_tool, methods=["GET"]),
+        Route("/tools/{tool_id}/versions/{version}/export", export_tool, methods=["GET"]),
+        Route("/tools/{tool_id}/versions/{version}/diff", tool_diff, methods=["GET"]),
         Route("/benchmarks", list_benchmarks, methods=["GET"]),
         Route("/benchmarks/import", import_benchmark, methods=["POST"]),
         Route("/benchmarks/{benchmark_id}", get_benchmark, methods=["GET"]),
         Route("/benchmarks/{benchmark_id}/history", benchmark_history, methods=["GET"]),
+        Route("/benchmarks/{benchmark_id}/export", export_benchmark, methods=["GET"]),
+        Route("/benchmarks/{benchmark_id}/diff", benchmark_diff, methods=["GET"]),
     ]
 
 
@@ -374,6 +523,9 @@ __all__ = [
     "NOT_UTF8_MESSAGE",
     "TOO_LARGE_MESSAGE",
     "browsing_routes",
+    "download",
     "identifier",
+    "may_read_restricted",
+    "revision_number",
     "whole_number",
 ]
