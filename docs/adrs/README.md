@@ -20,3 +20,4 @@ the editor follows them, and the one it rests on is
 | [0011](0011-sensitivity-and-model-policy-in-the-editor.md) | Sensitivity and Model Policy in the Editor | Accepted |
 | [0012](0012-judges-and-a-runs-evidence-in-the-editor.md) | Judges and a Run's Evidence in the Editor | Accepted |
 | [0013](0013-optimization-in-the-editor.md) | Optimization in the Editor | Accepted |
+| [0014](0014-spend-in-the-editor.md) | Spend in the Editor | Accepted |
