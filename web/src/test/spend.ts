@@ -82,3 +82,34 @@ export const SPEND_REPORT: SpendReport = {
   command:
     "azathoth spend --since 2026-11-18T00:00:00-05:00 --until 2026-11-20T00:00:00-05:00 --by day --group workflow --time-zone America/New_York",
 };
+
+/** The large model's billed call, as a report grouped by model has it. */
+export const LARGE_SPENT: SpendGroupTotals = {
+  key: "openrouter/acme/large",
+  label: "openrouter/acme/large",
+  billed_usd: 0.25,
+  estimated_usd: 0,
+  calls: 1,
+  unpriced_calls: 0,
+};
+
+/** Bedrock's estimated and unpriced calls, as a report grouped by model has them. */
+export const BEDROCK_SPENT: SpendGroupTotals = {
+  key: "bedrock/amazon.nova-pro-v1:0",
+  label: "bedrock/amazon.nova-pro-v1:0",
+  billed_usd: 0,
+  estimated_usd: 0.5,
+  calls: 2,
+  unpriced_calls: 1,
+};
+
+/** The same two days, grouped by model. */
+export const MODEL_SPEND: SpendReport = {
+  ...SPEND_REPORT,
+  group: "model",
+  periods: SPEND_REPORT.periods.map((period) => ({
+    ...period,
+    groups: period.groups.length === 0 ? [] : [BEDROCK_SPENT, LARGE_SPENT],
+  })),
+  groups: [BEDROCK_SPENT, LARGE_SPENT],
+};

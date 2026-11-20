@@ -16,6 +16,7 @@ import { InstanceLink } from "./InstanceLink";
 import { ProductionTab } from "./ProductionTab";
 import { InterruptedRuns } from "./InterruptedRuns";
 import { RunHistory } from "./RunHistory";
+import { WorkflowSpend } from "./SpendTabs";
 import { ToolStructure } from "./ToolStructure";
 import { WorkflowSteps } from "./WorkflowSteps";
 import { WorkflowTabs, type WorkflowTab } from "./WorkflowTabs";
@@ -24,7 +25,8 @@ import { WorkflowTabs, type WorkflowTab } from "./WorkflowTabs";
  * `/workflows/:id`: one workflow's page, with a way to edit it, or go on
  * editing it, and its tabs (ADR 0010): its revisions here, its runs at
  * `/runs`, interrupted ones first (ADR 0012), its production at
- * `/production`, and its experiments at `/experiments` (ADR 0013). Beside
+ * `/production`, its experiments at `/experiments` (ADR 0013), and its
+ * spend at `/spend` (ADR 0014). Beside
  * Run, Optimize opens `/optimize`.
  */
 export function WorkflowPage({ tab = "revisions" }: { readonly tab?: WorkflowTab }) {
@@ -50,7 +52,9 @@ export function WorkflowPage({ tab = "revisions" }: { readonly tab?: WorkflowTab
               )
             : tab === "experiments"
               ? () => <ExperimentList workflowId={id} />
-              : undefined
+              : tab === "spend"
+                ? () => <WorkflowSpend workflowId={id} />
+                : undefined
       }
       actions={
         <>

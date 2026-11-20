@@ -55,6 +55,7 @@ export function App() {
           <Route path="/workflows/:id/runs" element={<WorkflowPage tab="runs" />} />
           <Route path="/workflows/:id/production" element={<WorkflowPage tab="production" />} />
           <Route path="/workflows/:id/experiments" element={<WorkflowPage tab="experiments" />} />
+          <Route path="/workflows/:id/spend" element={<WorkflowPage tab="spend" />} />
           <Route path="/experiments/:id" element={<ExperimentPage />} />
           <Route path="/workflows/:id/edit" element={<WorkflowEditor />} />
           <Route path="/workflows/:id/run" element={<RunWorkflow />} />

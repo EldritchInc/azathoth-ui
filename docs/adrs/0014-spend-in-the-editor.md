@@ -64,8 +64,10 @@ person who wants that leaves the editor for `azathoth spend`.
 
 - **Spend has two other places.** A workflow's page has a **Spend** tab,
   `/workflows/:id/spend`, its last 30 days by model; a model's page has a
-  **Spend** section, its last 30 days by workflow. Each links to `/spend`
-  with the same choices filled in.
+  **Spend** section, what every workflow spent on it in the last 30 days,
+  billed and estimated apart, from the report by model, since a report is
+  grouped one way at a time. Each links to `/spend` with the same choices
+  filled in.
 
 - **Spend is seen only where it may be read.** The editor asks
   `read_spend` before it shows spend anywhere. Where the answer is no, the

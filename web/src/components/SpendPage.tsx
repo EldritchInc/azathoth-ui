@@ -81,7 +81,7 @@ function GroupName({ group, by }: { readonly group: SpendGroupTotals; readonly b
 }
 
 /** The report's totals, billed and estimated apart, and how many calls had no price. */
-function Totals({ totals }: { readonly totals: SpendTotals }) {
+export function Totals({ totals }: { readonly totals: SpendTotals }) {
   return (
     <>
       <ul className={styles.totals} aria-label="Totals">
@@ -124,7 +124,7 @@ function spentLine(totals: SpendTotals): string {
  * Each period as a bar, billed and estimated each its own colour and its
  * own length, and in words beside it.
  */
-function OverTime({ report }: { readonly report: SpendReport }) {
+export function OverTime({ report }: { readonly report: SpendReport }) {
   const largest = Math.max(
     ...report.periods.map((period) => period.totals.billed_usd + period.totals.estimated_usd),
     0,
@@ -170,7 +170,7 @@ function OverTime({ report }: { readonly report: SpendReport }) {
 }
 
 /** Each group's spend over the whole range. */
-function Groups({ report }: { readonly report: SpendReport }) {
+export function Groups({ report }: { readonly report: SpendReport }) {
   const [column, heading] = GROUP_NAMES[report.group];
 
   return (
