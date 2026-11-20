@@ -48,6 +48,7 @@ import {
   fetchWorkflowInvocations,
   fetchEditor,
   fetchHistory,
+  fetchRevisionComparison,
   fetchToolVersions,
   fetchLiveRun,
   fetchLiveRuns,
@@ -133,6 +134,7 @@ import type {
   RunFeedback,
   RunSummary,
   Sensitivity,
+  RevisionComparison,
   Summary,
   ToolSummary,
   WorkflowCheck,
@@ -144,6 +146,7 @@ import {
   DESCRIPTIONS,
   KINDS,
   detailApiPath,
+  diffApiPath,
   historyApiPath,
   type ComponentRef,
   type Kind,
@@ -161,6 +164,8 @@ export const queryKeys = {
   history: (kind: Kind, ref: ComponentRef) =>
     [kind, "history", ref.id, ref.version ?? null] as const,
   toolVersions: (toolId: string) => ["tools", "versions", toolId] as const,
+  revisionComparison: (kind: Kind, ref: ComponentRef, before: number, after: number) =>
+    [kind, "diff", ref.id, ref.version ?? null, before, after] as const,
   models: ["models"] as const,
   modelList: ["models", "list"] as const,
   portfolio: ["models", "portfolio"] as const,
@@ -297,6 +302,23 @@ export function useHistory(kind: Kind, ref: ComponentRef): UseQueryResult<Summar
   return useQuery<Summary[], ApiFailure>({
     queryKey: scoped(scope, queryKeys.history(kind, ref)),
     queryFn: ({ signal }) => fetchHistory(historyApiPath(kind, ref, scope.api), { signal }),
+  });
+}
+
+/** Returns what differs between two revisions of a component, as Azathoth compares them. */
+export function useRevisionComparison(
+  kind: Kind,
+  ref: ComponentRef,
+  before: number,
+  after: number,
+): UseQueryResult<RevisionComparison, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<RevisionComparison, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.revisionComparison(kind, ref, before, after)),
+    queryFn: ({ signal }) =>
+      fetchRevisionComparison(diffApiPath(kind, ref, before, after, scope.api), { signal }),
+    placeholderData: keepPreviousData,
   });
 }
 

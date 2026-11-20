@@ -195,6 +195,12 @@ editor to everything the command line does, on its own instance.
   the instance, under the file name Azathoth suggests, so importing it
   again makes no revision; a restricted benchmark's says the file holds
   restricted data.
+- Two revisions of a workflow, a tool version or a benchmark are compared
+  at `…/diff?before=&after=`: each value added, removed or changed, by its
+  path, with its value before and after, or that the two are identical; a
+  restricted case's values withheld where they may not be read; and the
+  `azathoth … diff` command that prints the same. A revision's list links
+  to its comparison with the one before it.
 
 ## 1.4.0
 

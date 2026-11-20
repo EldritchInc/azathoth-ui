@@ -107,6 +107,27 @@ function componentApiPath(kind: Kind, ref: ComponentRef, base: string): string {
 }
 
 /**
+ * Returns where an instance's endpoints, at `base`, compare two revisions of
+ * a component, as Azathoth compares them (ADR 0015).
+ */
+export function diffApiPath(
+  kind: Kind,
+  ref: ComponentRef,
+  before: number,
+  after: number,
+  base: string = API_BASE,
+): string {
+  return `${componentApiPath(kind, ref, base)}/diff?before=${String(before)}&after=${String(after)}`;
+}
+
+/** Returns the editor's page that compares two revisions of a component. */
+export function diffPath(kind: Kind, ref: ComponentRef, before: number, after: number): string {
+  const page = detailPath(kind, { id: ref.id, version: ref.version ?? "" });
+
+  return `${page}/diff?before=${String(before)}&after=${String(after)}`;
+}
+
+/**
  * Returns where an instance's endpoints, at `base`, serve one revision of a
  * component exactly as Azathoth exports it, as a download (ADR 0015).
  */

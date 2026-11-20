@@ -2344,3 +2344,48 @@ export function isSpendReport(value: unknown): value is SpendReport {
     typeof value.command === "string"
   );
 }
+
+/** How one value differs between two revisions (Azathoth's ADR 0133). */
+export type RevisionChangeKind = "added" | "removed" | "changed";
+
+const REVISION_CHANGE_KINDS: readonly unknown[] = ["added", "removed", "changed"];
+
+/** One value that differs between two revisions' documents, by its JSON Pointer. */
+export interface RevisionChange {
+  readonly kind: RevisionChangeKind;
+  readonly pointer: string;
+  readonly before: unknown;
+  readonly after: unknown;
+  readonly withheld: boolean;
+}
+
+/** What differs between two revisions of one workflow, tool version or benchmark. */
+export interface RevisionComparison {
+  readonly before: Revision;
+  readonly after: Revision;
+  readonly identical: boolean;
+  readonly changes: readonly RevisionChange[];
+}
+
+function isRevisionChange(value: unknown): value is RevisionChange {
+  return (
+    isRecord(value) &&
+    REVISION_CHANGE_KINDS.includes(value.kind) &&
+    typeof value.pointer === "string" &&
+    "before" in value &&
+    "after" in value &&
+    typeof value.withheld === "boolean"
+  );
+}
+
+/** Returns whether a value is a comparison of two revisions, as the server writes one. */
+export function isRevisionComparison(value: unknown): value is RevisionComparison {
+  return (
+    isRecord(value) &&
+    isRevision(value.before) &&
+    isRevision(value.after) &&
+    typeof value.identical === "boolean" &&
+    Array.isArray(value.changes) &&
+    value.changes.every(isRevisionChange)
+  );
+}

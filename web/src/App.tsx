@@ -19,6 +19,7 @@ import { Overview } from "./components/Overview";
 import { Rail } from "./components/Rail";
 import { RemoteList } from "./components/RemoteList";
 import { RemotePage } from "./components/RemotePage";
+import { RevisionDiffPage } from "./components/RevisionDiff";
 import { RunPage } from "./components/RunPage";
 import { SpendPage } from "./components/SpendPage";
 import { InvocationPage } from "./components/InvocationPage";
@@ -56,6 +57,7 @@ export function App() {
           <Route path="/workflows/:id/production" element={<WorkflowPage tab="production" />} />
           <Route path="/workflows/:id/experiments" element={<WorkflowPage tab="experiments" />} />
           <Route path="/workflows/:id/spend" element={<WorkflowPage tab="spend" />} />
+          <Route path="/workflows/:id/diff" element={<RevisionDiffPage kind="workflows" />} />
           <Route path="/experiments/:id" element={<ExperimentPage />} />
           <Route path="/workflows/:id/edit" element={<WorkflowEditor />} />
           <Route path="/workflows/:id/run" element={<RunWorkflow />} />
@@ -66,10 +68,15 @@ export function App() {
           <Route path="/invocations/:invocationId" element={<InvocationPage />} />
           <Route path="/tools" element={<ComponentList kind="tools" />} />
           <Route path="/tools/:id/versions/:version" element={<ToolPage />} />
+          <Route
+            path="/tools/:id/versions/:version/diff"
+            element={<RevisionDiffPage kind="tools" />}
+          />
           <Route path="/benchmarks" element={<ComponentList kind="benchmarks" />} />
           <Route path="/benchmarks/new" element={<NewBenchmark />} />
           <Route path="/benchmarks/:id" element={<BenchmarkPage />} />
           <Route path="/benchmarks/:id/document" element={<BenchmarkPage tab="document" />} />
+          <Route path="/benchmarks/:id/diff" element={<RevisionDiffPage kind="benchmarks" />} />
           <Route path="/benchmarks/:id/executions" element={<BenchmarkPage tab="executions" />} />
           <Route path="/benchmark-executions/:id" element={<ExecutionPage />} />
           <Route path="/benchmarks/:id/run" element={<RunBenchmark />} />

@@ -2,7 +2,14 @@ import { useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import { isBenchmarkSummary, type ComponentDetail } from "../api/types";
-import { DESCRIPTIONS, exportApiPath, parseRevision, type ComponentRef, type Kind } from "../kinds";
+import {
+  DESCRIPTIONS,
+  diffPath,
+  exportApiPath,
+  parseRevision,
+  type ComponentRef,
+  type Kind,
+} from "../kinds";
 import { useDetail, useHistory } from "../queries";
 import { useScope } from "../scope";
 import buttons from "./Buttons.module.css";
@@ -99,6 +106,8 @@ export function DetailPage({
   const revision = shown.revision;
   const latest = revision.number === shown.latest_number;
   const exportPath = exportApiPath(kind, component, revision.number, scope.api);
+  const comparePath =
+    revision.number > 1 ? diffPath(kind, component, revision.number - 1, revision.number) : null;
 
   return (
     <div className={styles.page}>
@@ -173,6 +182,7 @@ export function DetailPage({
           shown={shown}
           latest={latest}
           exportPath={exportPath}
+          comparePath={comparePath}
           history={history}
           body={children}
         />
@@ -188,12 +198,14 @@ function RevisionBody({
   shown,
   latest,
   exportPath,
+  comparePath,
   history,
   body,
 }: {
   readonly shown: ComponentDetail;
   readonly latest: boolean;
   readonly exportPath: string;
+  readonly comparePath: string | null;
   readonly history: ReturnType<typeof useHistory>;
   readonly body: (detail: ComponentDetail) => ReactNode;
 }) {
@@ -232,6 +244,7 @@ function RevisionBody({
             history={history}
             current={revision.number}
             latest={shown.latest_number}
+            comparePath={comparePath}
           />
         </aside>
       </div>

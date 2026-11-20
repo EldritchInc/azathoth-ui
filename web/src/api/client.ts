@@ -40,6 +40,7 @@ import {
   isProductionAnswer,
   isProductionRevisionSummary,
   isLiveRun,
+  isRevisionComparison,
   isRunDetail,
   isRunSummary,
   isWorkflowCheck,
@@ -62,6 +63,7 @@ import {
   type BenchmarkExecutionDetail,
   type BenchmarkExecutionSummary,
   type BenchmarkSummary,
+  type RevisionComparison,
   type CaseCitations,
   type ExperimentComparison,
   type ExperimentDetail,
@@ -277,6 +279,20 @@ export function fetchToolVersions(
     isToolSummary,
     options,
   );
+}
+
+/** Returns what differs between two revisions, from the comparison's path in the API. */
+export async function fetchRevisionComparison(
+  path: string,
+  options: RequestOptions = {},
+): Promise<RevisionComparison> {
+  const body = await getJson(path, options);
+
+  if (!isRevisionComparison(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
 }
 
 /** Returns every benchmark in the editor's instance, at its latest revision. */

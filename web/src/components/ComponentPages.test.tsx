@@ -220,7 +220,7 @@ describe("a workflow's page", () => {
   it("lists every revision, marking the one shown and the latest", async () => {
     workflowPage();
     const history = await screen.findByRole("navigation", { name: "Revisions" });
-    const links = await within(history).findAllByRole("link");
+    const links = within(await within(history).findByRole("list")).getAllByRole("link");
 
     expect(links.map((link) => link.textContent)).toEqual([
       expect.stringContaining("Revision 3latest"),

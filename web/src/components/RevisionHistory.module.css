@@ -9,6 +9,12 @@
   font-weight: 450;
 }
 
+.compare {
+  color: var(--tide-strong);
+  font-size: 0.875rem;
+  text-underline-offset: 0.2em;
+}
+
 .quiet {
   color: var(--muted);
   font-size: 0.875rem;
