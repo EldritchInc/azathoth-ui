@@ -20,11 +20,14 @@ from azathoth_ui.benchmarks import benchmark_routes
 from azathoth_ui.browsing import browsing_routes
 from azathoth_ui.catalog import catalog_routes
 from azathoth_ui.evidence import evidence_routes
+from azathoth_ui.goals import goal_routes
 from azathoth_ui.live import live_routes
+from azathoth_ui.mcp_tools import mcp_tool_routes
 from azathoth_ui.optimization import optimization_routes
 from azathoth_ui.production import production_routes
 from azathoth_ui.scoping import INSTANCE_SCOPE_KEY, InstanceContext, context_of
 from azathoth_ui.spend import spend_routes
+from azathoth_ui.usage import usage_routes
 
 Endpoint = Callable[[Request], Response | Awaitable[Response]]
 """What a route answers a request with, now or once awaited."""
@@ -59,6 +62,9 @@ def instance_endpoints() -> list[Route]:
         Route("/instance", describe_instance, methods=["GET"]),
         Route("/commands", describe_commands, methods=["GET"]),
         *browsing_routes(),
+        *mcp_tool_routes(),
+        *usage_routes(),
+        *goal_routes(),
         *benchmark_routes(),
         *optimization_routes(),
         *spend_routes(),

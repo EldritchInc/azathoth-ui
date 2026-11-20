@@ -210,7 +210,7 @@ async def judged_by(
     return one(await run_in_threadpool(judge, document), status=status)
 
 
-Imported = api.WorkflowImport | api.ToolImport | api.BenchmarkImport
+Imported = api.WorkflowImport | api.ToolImport | api.BenchmarkImport | api.GoalImport
 """What importing one document did, as Azathoth says."""
 
 

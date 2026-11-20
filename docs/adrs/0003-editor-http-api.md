@@ -51,6 +51,12 @@ The table names each at the editor's own instance.
 | `GET /api/tools/{id}/versions/{version}/diff?before=&after=` | What differs between two revisions of one exact version |
 | `GET /api/tools/{id}/history?version=&limit=` | Its revisions, of one version when named |
 | `POST /api/tools/import` | Imports a document as its version's next revision: 201 |
+| `POST /api/tools/from-mcp` | The document of a tool an MCP server serves, from `{"tool"}` and exactly one of `"url"` and `"command"`, with `"authorization"`, `"grants"` and `"timeout_seconds"` optional; nothing is imported ([ADR 0015](0015-the-catalog-in-the-editor.md)) |
+| `GET /api/tools/{id}/usage` | Where a tool, in any of its versions, is configured, in production and in runs |
+| `GET /api/model-usage?identifier=` | Where one exact model is configured, in production and in runs |
+| `GET /api/goals` | Every goal, in import order |
+| `GET /api/goals/{id}` | One goal, with its success criteria, constraints and document |
+| `POST /api/goals/import` | Imports a goal document: 201, or 200 for the goal already kept, unchanged |
 | `GET /api/benchmarks` | Every benchmark at its latest revision |
 | `GET /api/benchmarks/{id}?revision=` | One revision with its document |
 | `GET /api/benchmarks/{id}/history?limit=` | Its revisions, newest first |
@@ -178,6 +184,14 @@ The table names each at the editor's own instance.
   or `invalid_argument` (422) before Azathoth is asked; it is `diff`, since
   a benchmark's `/compare` compares workflows on it
   ([ADR 0015](0015-the-catalog-in-the-editor.md)).
+- **A model's usage is asked by query,** since its identifier holds
+  slashes and `/models/{identifier}` takes the rest of the path.
+- **Making a tool from an MCP server imports nothing.** Its body is
+  checked before Azathoth is asked: `tool` is required text, `url` and
+  `authorization` text, `command` and `grants` lists of text, and
+  `timeout_seconds` a number above 0; naming the server both ways or
+  neither is Azathoth's own refusal. A server that cannot be reached or
+  listed is `mcp_unavailable` (502), the instance unable to use it.
 - **Commands name the editor's database.** `GET /api/commands` gives the
   prefix the web app puts before every command it shows, quoted for this
   computer's shell: `AZATHOTH_DATABASE='/path/ui.db' ` in POSIX shells,
