@@ -27,6 +27,7 @@ export const ACTIONS = [
   "import_benchmark",
   "import_tool",
   "import_process_tool",
+  "import_goal",
   "tool_from_mcp",
   "install_standard_tools",
   "run_workflow",

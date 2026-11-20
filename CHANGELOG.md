@@ -5,8 +5,8 @@
 The first pre-release of the editor for Azathoth 1.5, which brings the
 editor to everything the command line does, on its own instance.
 
-- The editor needs Azathoth 1.5, and builds on its pre-release 1.5.0a5,
-  the first with spend in the service API: `make install` and CI
+- The editor needs Azathoth 1.5, and builds on its pre-release 1.5.0b1,
+  the first with its whole catalog in the service API: `make install` and CI
   name it, so pip takes Azathoth's pre-releases and no other package's.
 - ADR 0009 records how the editor works on any instance. Every endpoint
   that acts on an instance is built once, for one instance, and mounted at
@@ -181,8 +181,12 @@ editor to everything the command line does, on its own instance.
 - The server serves `/spend` and `/spend.csv`, its range required as exact
   times with their offsets, refusing what Azathoth could not use before it
   is asked (ADR 0003).
-- On Windows, which keeps no IANA time zone database, the editor installs
+- On Windows, which keeps no IANA time zone database, Azathoth installs
   `tzdata`, so spend can be read in any time zone, UTC included.
+- ADR 0015 records how the editor brings that catalog to its pages: tool
+  versions, downloads that are Azathoth's exports, where a model or a tool
+  is used, a comparison of two revisions, goals, and a tool made from an
+  MCP server.
 
 ## 1.4.0
 
