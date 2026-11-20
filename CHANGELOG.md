@@ -131,6 +131,34 @@ editor to everything the command line does, on its own instance.
   `/benchmark-executions/{id}`, `/live/benchmarks` and
   `/live/comparisons`, telling a left-out key from `null` as Azathoth does
   (ADR 0003). `judge_unavailable` answers 409.
+- ADR 0013 records how the editor optimizes workflows and reads, compares
+  and promotes what they measured, on Azathoth 1.5.0a4's optimization in
+  the service API (its ADR 0131).
+- Optimize, beside Run on a workflow's page, is the `optimize` action: a
+  benchmark, latency and cost targets, and generations, 1 by default. Its
+  live page shows each generation, and the final evaluation, as it starts,
+  each candidate's passes and score as it finishes, and each generation's
+  winner, how many candidates it proposes and its experiment. Cancel stops
+  it between candidates and keeps the experiments that finished; once it
+  ends, it links to the winning experiment.
+- A workflow's page has an Experiments tab, at
+  `/workflows/:id/experiments`, listing each experiment newest first with
+  its benchmark revision, candidates, cases, winner's score and label.
+- An experiment's page, `/experiments/:id`, ranks its candidates, each with
+  its steps' models, its scorecard and its cases linked to their runs. It
+  compares the winner with what production runs, or else the workflow as
+  configured, or says why nothing is: each step whose model changes, each
+  case on both sides, each side's cost and time per run, and what the
+  winner saves, a negative saving said as a cost, with the saving over
+  production's last 30 days labelled as a projection. A restricted
+  experiment's cases are hidden until shown.
+- Promote the winner asks first whether it can still be promoted, and says
+  why when it can't; when it can, it asks to be confirmed, naming the
+  instance and the model each step will be pinned to, promotes it as the
+  `promote` action, and links to the Production tab.
+- The server serves a workflow's `/experiments`, `/experiments/{id}`, its
+  `/compare` and `/promotable`, and `/live/optimizations`, whose
+  `generations` must be a whole number (ADR 0003).
 
 ## 1.4.0
 

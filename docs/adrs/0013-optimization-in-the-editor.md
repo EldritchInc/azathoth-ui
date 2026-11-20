@@ -50,7 +50,7 @@ change. A person deciding whether to promote has to leave the editor for
   against the editor's live-run limit as any live run does.
 
 - **A workflow's page gains two places.**
-  - **Optimize**, beside Run and Invoke, opens `/workflows/:id/optimize`:
+  - **Optimize**, beside Run, opens `/workflows/:id/optimize`:
     a benchmark, latency and cost targets, and generations, 1 by default,
     any whole number from 1 as the command line takes. Its live page shows
     each generation as it starts, each candidate's passes and score as it
