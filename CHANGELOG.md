@@ -201,6 +201,11 @@ editor to everything the command line does, on its own instance.
   restricted case's values withheld where they may not be read; and the
   `azathoth … diff` command that prints the same. A revision's list links
   to its comparison with the one before it.
+- A model's page and a tool's page say where it is used: each workflow
+  whose latest revision names it, whether production uses it, a model's
+  steps and role there, and the newest kept runs that used it, each opening
+  its page. Where the catalog and the runs may not both be read, the
+  section isn't there and nothing is asked.
 
 ## 1.4.0
 

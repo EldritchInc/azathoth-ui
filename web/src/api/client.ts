@@ -40,7 +40,9 @@ import {
   isProductionAnswer,
   isProductionRevisionSummary,
   isLiveRun,
+  isModelUsage,
   isRevisionComparison,
+  isToolUsage,
   isRunDetail,
   isRunSummary,
   isWorkflowCheck,
@@ -63,7 +65,9 @@ import {
   type BenchmarkExecutionDetail,
   type BenchmarkExecutionSummary,
   type BenchmarkSummary,
+  type ModelUsage,
   type RevisionComparison,
+  type ToolUsage,
   type CaseCitations,
   type ExperimentComparison,
   type ExperimentDetail,
@@ -279,6 +283,23 @@ export function fetchToolVersions(
     isToolSummary,
     options,
   );
+}
+
+/** Returns where one exact model is used: `GET {base}/model-usage?identifier=` (ADR 0015). */
+export function fetchModelUsage(
+  identifier: string,
+  options: RequestOptions = {},
+): Promise<ModelUsage> {
+  return oneOf(
+    `/model-usage?${new URLSearchParams({ identifier }).toString()}`,
+    isModelUsage,
+    options,
+  );
+}
+
+/** Returns where one tool, in any of its versions, is used: `GET {base}/tools/{id}/usage`. */
+export function fetchToolUsage(toolId: string, options: RequestOptions = {}): Promise<ToolUsage> {
+  return oneOf(`/tools/${encodeURIComponent(toolId)}/usage`, isToolUsage, options);
 }
 
 /** Returns what differs between two revisions, from the comparison's path in the API. */

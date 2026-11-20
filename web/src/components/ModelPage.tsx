@@ -16,6 +16,7 @@ import { ModelPolicy } from "./ModelPolicy";
 import { Notice } from "./Notice";
 import { PortfolioOutcome, type Change } from "./Portfolio";
 import { ModelSpend } from "./SpendTabs";
+import { ModelUsageSection } from "./Usage";
 
 function Crumbs({ name }: { readonly name: string }) {
   return (
@@ -258,6 +259,7 @@ export function ModelPage() {
             <PortfolioOutcome change={change} models={[]} />
             <PortfolioPanel identifier={identifier} held change={change} />
             <ModelPolicy identifier={identifier} entry={entry} />
+            <ModelUsageSection identifier={identifier} />
           </>
         )}
       </div>
@@ -299,6 +301,7 @@ export function ModelPage() {
         failed={documents.failed}
         held={model.authorized}
       />
+      <ModelUsageSection identifier={model.identifier} />
       <ModelSpend identifier={model.identifier} />
     </div>
   );

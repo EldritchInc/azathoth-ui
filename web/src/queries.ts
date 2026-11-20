@@ -48,7 +48,9 @@ import {
   fetchWorkflowInvocations,
   fetchEditor,
   fetchHistory,
+  fetchModelUsage,
   fetchRevisionComparison,
+  fetchToolUsage,
   fetchToolVersions,
   fetchLiveRun,
   fetchLiveRuns,
@@ -134,9 +136,11 @@ import type {
   RunFeedback,
   RunSummary,
   Sensitivity,
+  ModelUsage,
   RevisionComparison,
   Summary,
   ToolSummary,
+  ToolUsage,
   WorkflowCheck,
   WorkflowReadiness,
 } from "./api/types";
@@ -164,6 +168,8 @@ export const queryKeys = {
   history: (kind: Kind, ref: ComponentRef) =>
     [kind, "history", ref.id, ref.version ?? null] as const,
   toolVersions: (toolId: string) => ["tools", "versions", toolId] as const,
+  toolUsage: (toolId: string) => ["runs", "tool-usage", toolId] as const,
+  modelUsage: (identifier: string) => ["runs", "model-usage", identifier] as const,
   revisionComparison: (kind: Kind, ref: ComponentRef, before: number, after: number) =>
     [kind, "diff", ref.id, ref.version ?? null, before, after] as const,
   models: ["models"] as const,
@@ -302,6 +308,29 @@ export function useHistory(kind: Kind, ref: ComponentRef): UseQueryResult<Summar
   return useQuery<Summary[], ApiFailure>({
     queryKey: scoped(scope, queryKeys.history(kind, ref)),
     queryFn: ({ signal }) => fetchHistory(historyApiPath(kind, ref, scope.api), { signal }),
+  });
+}
+
+/**
+ * Returns where one exact model is used: configured, in production and in
+ * kept runs (ADR 0015). Kept under the runs, so a new run refreshes it.
+ */
+export function useModelUsage(identifier: string): UseQueryResult<ModelUsage, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<ModelUsage, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.modelUsage(identifier)),
+    queryFn: ({ signal }) => fetchModelUsage(identifier, { signal, base: scope.api }),
+  });
+}
+
+/** Returns where one tool, in any of its versions, is used (ADR 0015). */
+export function useToolUsage(toolId: string): UseQueryResult<ToolUsage, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<ToolUsage, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.toolUsage(toolId)),
+    queryFn: ({ signal }) => fetchToolUsage(toolId, { signal, base: scope.api }),
   });
 }
 

@@ -19,6 +19,7 @@ import { RunHistory } from "./RunHistory";
 import { WorkflowSpend } from "./SpendTabs";
 import { ToolStructure } from "./ToolStructure";
 import { ToolVersions } from "./ToolVersions";
+import { ToolUsageSection } from "./Usage";
 import { WorkflowSteps } from "./WorkflowSteps";
 import { WorkflowTabs, type WorkflowTab } from "./WorkflowTabs";
 
@@ -121,7 +122,12 @@ export function ToolPage() {
 
   return (
     <DetailPage kind="tools" component={{ id, version }} tabs={<ToolVersions toolId={id} />}>
-      {(detail) => <ToolStructure document={detail.document} />}
+      {(detail) => (
+        <>
+          <ToolStructure document={detail.document} />
+          <ToolUsageSection toolId={id} />
+        </>
+      )}
     </DetailPage>
   );
 }
