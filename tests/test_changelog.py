@@ -20,4 +20,7 @@ def test_the_first_entry_is_this_release() -> None:
 
 
 def test_the_first_release_says_nothing_of_pre_releases() -> None:
-    assert "1.4.0b" not in CHANGELOG.read_text(encoding="utf-8")
+    text = CHANGELOG.read_text(encoding="utf-8")
+
+    for prerelease in ("1.4.0b", "1.5.0a", "1.5.0b"):
+        assert prerelease not in text, prerelease

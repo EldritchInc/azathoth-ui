@@ -20,7 +20,7 @@ SOURCE = PROJECT_ROOT / "src" / "azathoth_ui"
 PUBLIC_API = "azathoth.api"
 """The only part of Azathoth the editor may import."""
 
-AZATHOTH_PRERELEASE: Final[str | None] = "1.5.0b1"
+AZATHOTH_PRERELEASE: Final[str | None] = None
 """The Azathoth pre-release this pre-release of the editor needs, or None for a final release.
 
 pip takes a pre-release only when one is named, so while the editor builds

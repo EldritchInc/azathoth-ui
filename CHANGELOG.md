@@ -1,13 +1,12 @@
 # Changelog
 
-## 1.5.0b1
+## 1.5.0
 
-The first pre-release of the editor for Azathoth 1.5, which brings the
-editor to everything the command line does, on its own instance.
+The editor for Azathoth 1.5, which brings it to everything the command
+line does, on its own instance.
 
-- The editor needs Azathoth 1.5, and builds on its pre-release 1.5.0b1,
-  the first with its whole catalog in the service API: `make install` and CI
-  name it, so pip takes Azathoth's pre-releases and no other package's.
+- The editor needs Azathoth 1.5, from PyPI, with its whole catalog in the
+  service API.
 - ADR 0009 records how the editor works on any instance. Every endpoint
   that acts on an instance is built once, for one instance, and mounted at
   `/api` for the editor's own; every call, query and link in the web app
@@ -70,7 +69,7 @@ editor to everything the command line does, on its own instance.
   refusing any other value as `invalid_argument`, and declares a model's
   policy at `/local/portfolio/policy` (ADR 0003).
 - ADR 0012 records how the editor keeps judges and shows a run's evidence,
-  on Azathoth 1.5.0a2's judges, feedback, annotations, children and
+  on Azathoth 1.5's judges, feedback, annotations, children and
   interrupted runs (its ADR 0129).
 - `/judges`, in the rail with its count, lists the judge rotation in the
   order judges are tried and marks a judge the portfolio no longer
@@ -99,7 +98,7 @@ editor to everything the command line does, on its own instance.
   list as interrupted before anything runs (ADR 0003).
   `content_unavailable` answers 502, and `run_not_resumable` 409.
 - ADR 0012's amendment records how the editor builds, runs and reads
-  benchmarks, on Azathoth 1.5.0a3's benchmarks in the service API (its
+  benchmarks, on Azathoth 1.5's benchmarks in the service API (its
   ADR 0130).
 - A benchmark's page has tabs: Cases at `/benchmarks/:id`, its document
   and revisions at `/benchmarks/:id/document`, and Executions at
@@ -132,7 +131,7 @@ editor to everything the command line does, on its own instance.
   `/live/comparisons`, telling a left-out key from `null` as Azathoth does
   (ADR 0003). `judge_unavailable` answers 409.
 - ADR 0013 records how the editor optimizes workflows and reads, compares
-  and promotes what they measured, on Azathoth 1.5.0a4's optimization in
+  and promotes what they measured, on Azathoth 1.5's optimization in
   the service API (its ADR 0131).
 - Optimize, beside Run on a workflow's page, is the `optimize` action: a
   benchmark, latency and cost targets, and generations, 1 by default. Its
@@ -160,7 +159,7 @@ editor to everything the command line does, on its own instance.
   `/compare` and `/promotable`, and `/live/optimizations`, whose
   `generations` must be a whole number (ADR 0003).
 - ADR 0014 records how the editor shows what an instance spent, on
-  Azathoth 1.5.0a5's spend report (its ADR 0132), and that spend is shown
+  Azathoth 1.5's spend report (its ADR 0132), and that spend is shown
   only where it may be read.
 - `/spend`, in the rail, reports what the instance spent: the last 7 or 30
   days, this month, last month or two dates, read in the browser's time
