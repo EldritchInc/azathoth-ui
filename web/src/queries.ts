@@ -48,6 +48,14 @@ import {
   fetchWorkflowInvocations,
   fetchEditor,
   fetchHistory,
+  fetchGoal,
+  importDocument,
+  makeToolFromMcp,
+  fetchGoals,
+  fetchModelUsage,
+  fetchRevisionComparison,
+  fetchToolUsage,
+  fetchToolVersions,
   fetchLiveRun,
   fetchLiveRuns,
   fetchModels,
@@ -132,16 +140,25 @@ import type {
   RunFeedback,
   RunSummary,
   Sensitivity,
+  DocumentExport,
+  GoalDetail,
+  GoalSummary,
+  ModelUsage,
+  RevisionComparison,
   Summary,
+  ToolSummary,
+  ToolUsage,
   WorkflowCheck,
   WorkflowReadiness,
 } from "./api/types";
 import type { JsonObject } from "./editing";
+import type { McpToolRequest } from "./mcpTools";
 import type { WorkflowDocument } from "./selection";
 import {
   DESCRIPTIONS,
   KINDS,
   detailApiPath,
+  diffApiPath,
   historyApiPath,
   type ComponentRef,
   type Kind,
@@ -158,6 +175,14 @@ export const queryKeys = {
     [kind, "detail", ref.id, ref.version ?? null, revision] as const,
   history: (kind: Kind, ref: ComponentRef) =>
     [kind, "history", ref.id, ref.version ?? null] as const,
+  toolVersions: (toolId: string) => ["tools", "versions", toolId] as const,
+  goals: ["goals"] as const,
+  goalList: ["goals", "list"] as const,
+  goal: (goalId: string) => ["goals", "one", goalId] as const,
+  toolUsage: (toolId: string) => ["runs", "tool-usage", toolId] as const,
+  modelUsage: (identifier: string) => ["runs", "model-usage", identifier] as const,
+  revisionComparison: (kind: Kind, ref: ComponentRef, before: number, after: number) =>
+    [kind, "diff", ref.id, ref.version ?? null, before, after] as const,
   models: ["models"] as const,
   modelList: ["models", "list"] as const,
   portfolio: ["models", "portfolio"] as const,
@@ -294,6 +319,99 @@ export function useHistory(kind: Kind, ref: ComponentRef): UseQueryResult<Summar
   return useQuery<Summary[], ApiFailure>({
     queryKey: scoped(scope, queryKeys.history(kind, ref)),
     queryFn: ({ signal }) => fetchHistory(historyApiPath(kind, ref, scope.api), { signal }),
+  });
+}
+
+/**
+ * Returns the document of a tool an MCP server serves, made as it is asked
+ * for; nothing is imported, so nothing is fetched again (ADR 0015).
+ */
+export function useMakeMcpTool(): UseMutationResult<DocumentExport, ApiFailure, McpToolRequest> {
+  const scope = useScope();
+
+  return useMutation<DocumentExport, ApiFailure, McpToolRequest>({
+    mutationFn: (request) => makeToolFromMcp(request, { base: scope.api }),
+  });
+}
+
+/** Returns a tool document imported as its version's next revision, refetching the tools. */
+export function useImportToolDocument(): UseMutationResult<ComponentImport, ApiFailure, string> {
+  const client = useQueryClient();
+  const scope = useScope();
+
+  return useMutation<ComponentImport, ApiFailure, string>({
+    mutationFn: (document) => importDocument("tools", document, { base: scope.api }),
+    onSettled: () => client.invalidateQueries({ queryKey: scoped(scope, ["tools"]) }),
+  });
+}
+
+/** Returns every goal, in import order (ADR 0015). */
+export function useGoals(): UseQueryResult<GoalSummary[], ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<GoalSummary[], ApiFailure>({
+    queryKey: scoped(scope, queryKeys.goalList),
+    queryFn: ({ signal }) => fetchGoals({ signal, base: scope.api }),
+  });
+}
+
+/** Returns one goal, with its success criteria, constraints and document. */
+export function useGoal(goalId: string): UseQueryResult<GoalDetail, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<GoalDetail, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.goal(goalId)),
+    queryFn: ({ signal }) => fetchGoal(goalId, { signal, base: scope.api }),
+  });
+}
+
+/**
+ * Returns where one exact model is used: configured, in production and in
+ * kept runs (ADR 0015). Kept under the runs, so a new run refreshes it.
+ */
+export function useModelUsage(identifier: string): UseQueryResult<ModelUsage, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<ModelUsage, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.modelUsage(identifier)),
+    queryFn: ({ signal }) => fetchModelUsage(identifier, { signal, base: scope.api }),
+  });
+}
+
+/** Returns where one tool, in any of its versions, is used (ADR 0015). */
+export function useToolUsage(toolId: string): UseQueryResult<ToolUsage, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<ToolUsage, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.toolUsage(toolId)),
+    queryFn: ({ signal }) => fetchToolUsage(toolId, { signal, base: scope.api }),
+  });
+}
+
+/** Returns what differs between two revisions of a component, as Azathoth compares them. */
+export function useRevisionComparison(
+  kind: Kind,
+  ref: ComponentRef,
+  before: number,
+  after: number,
+): UseQueryResult<RevisionComparison, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<RevisionComparison, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.revisionComparison(kind, ref, before, after)),
+    queryFn: ({ signal }) =>
+      fetchRevisionComparison(diffApiPath(kind, ref, before, after, scope.api), { signal }),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** Returns each version of one tool at its latest revision, as Azathoth lists them (ADR 0015). */
+export function useToolVersions(toolId: string): UseQueryResult<ToolSummary[], ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<ToolSummary[], ApiFailure>({
+    queryKey: scoped(scope, queryKeys.toolVersions(toolId)),
+    queryFn: ({ signal }) => fetchToolVersions(toolId, { signal, base: scope.api }),
   });
 }
 

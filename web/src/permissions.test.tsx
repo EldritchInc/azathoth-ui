@@ -21,8 +21,9 @@ function refusing(refused: string): Permissions {
 describe("the action catalog", () => {
   it("names every action of Azathoth's ADR 0127, once each", () => {
     expect(new Set(ACTIONS).size).toBe(ACTIONS.length);
-    expect(ACTIONS).toHaveLength(26);
+    expect(ACTIONS).toHaveLength(27);
     expect(ACTIONS).toContain("promote");
+    expect(ACTIONS).toContain("import_goal");
     expect(ACTIONS).toContain("authorize_model");
   });
 

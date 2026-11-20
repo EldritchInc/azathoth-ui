@@ -1,0 +1,100 @@
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: end;
+}
+
+.field {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 9rem;
+}
+
+.field > label {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.select {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--raised);
+  color: var(--ink);
+  font: inherit;
+}
+
+.select:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.changes {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.heading {
+  font-size: 1.15rem;
+  font-weight: 450;
+}
+
+.quiet {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  list-style: none;
+}
+
+.change {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  gap: 0.25rem 0.5rem;
+  padding: 0.6rem 0.85rem;
+  border-top: 1px solid var(--line);
+}
+
+.change:first-child {
+  border-top: none;
+}
+
+.mark {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.change[data-kind="added"] .mark {
+  color: var(--tide-strong);
+}
+
+.change[data-kind="removed"] .mark {
+  color: var(--rose);
+}
+
+.pointer {
+  font-family: var(--mono);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.values {
+  grid-column: 2;
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.withheld {
+  font-family: inherit;
+  font-style: italic;
+}

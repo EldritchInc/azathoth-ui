@@ -4,7 +4,7 @@ import { NavLink } from "react-router";
 import { instanceStyle } from "../instanceColour";
 import { DESCRIPTIONS, KINDS, type Kind } from "../kinds";
 import { useAllowed } from "../permissions";
-import { useJudges, useList, useLiveRuns, usePortfolio, useRemotes } from "../queries";
+import { useGoals, useJudges, useList, useLiveRuns, usePortfolio, useRemotes } from "../queries";
 import { LOCAL_SCOPE, useScope } from "../scope";
 import type { ThemeChoice } from "../theme";
 import type { Connection } from "../useInstance";
@@ -15,7 +15,7 @@ import { Mark } from "./Mark";
 import styles from "./Rail.module.css";
 import { ThemeSwitch } from "./ThemeSwitch";
 
-type IconName = Kind | "overview" | "models" | "judges" | "spend" | "remotes";
+type IconName = Kind | "overview" | "goals" | "models" | "judges" | "spend" | "remotes";
 
 const ICONS: Record<IconName, ReactNode> = {
   overview: (
@@ -39,6 +39,13 @@ const ICONS: Record<IconName, ReactNode> = {
     <>
       <path d="M4 19h16" />
       <path d="M7 19v-5M12 19V8M17 19v-9" />
+    </>
+  ),
+  goals: (
+    <>
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="12" cy="12" r="0.75" />
     </>
   ),
   models: (
@@ -99,6 +106,23 @@ function KindLink({ kind }: { readonly kind: Kind }) {
       {list.data !== undefined && (
         <span className={styles.count} aria-hidden="true">
           {list.data.length}
+        </span>
+      )}
+    </InstanceNavLink>
+  );
+}
+
+/** The goals link, counting the goals the instance keeps (ADR 0015). */
+function GoalsLink() {
+  const goals = useGoals();
+
+  return (
+    <InstanceNavLink className={styles.item} to="/goals">
+      <Icon name="goals" />
+      <span className={styles.label}>Goals</span>
+      {goals.data !== undefined && (
+        <span className={styles.count} aria-hidden="true">
+          {goals.data.length}
         </span>
       )}
     </InstanceNavLink>
@@ -225,6 +249,7 @@ export function Rail({
         {KINDS.map((kind) => (
           <KindLink key={kind} kind={kind} />
         ))}
+        <GoalsLink />
         <ModelsLink />
         <JudgesLink />
         <SpendLink />

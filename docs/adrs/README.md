@@ -21,3 +21,4 @@ the editor follows them, and the one it rests on is
 | [0012](0012-judges-and-a-runs-evidence-in-the-editor.md) | Judges and a Run's Evidence in the Editor | Accepted |
 | [0013](0013-optimization-in-the-editor.md) | Optimization in the Editor | Accepted |
 | [0014](0014-spend-in-the-editor.md) | Spend in the Editor | Accepted |
+| [0015](0015-the-catalog-in-the-editor.md) | The Catalog in the Editor | Accepted |

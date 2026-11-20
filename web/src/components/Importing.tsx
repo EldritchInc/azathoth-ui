@@ -1,7 +1,8 @@
 import { useId, useRef, useState, type DragEvent, type ReactNode } from "react";
 
-import type { Outcome } from "../importing";
-import { DESCRIPTIONS, detailPath, type Kind } from "../kinds";
+import type { ComponentDetail, GoalDetail } from "../api/types";
+import type { ImportKind, Outcome } from "../importing";
+import { DESCRIPTIONS, detailPath } from "../kinds";
 import type { Action } from "../permissions";
 import { ActionButton } from "./ActionButton";
 import styles from "./Importing.module.css";
@@ -15,12 +16,29 @@ function carriesFiles(event: DragEvent): boolean {
   return Array.from(event.dataTransfer.types).includes("Files");
 }
 
-/** The action importing each kind of document takes (ADR 0009). */
-const IMPORT_ACTIONS: Readonly<Record<Kind, Action>> = {
+/** The action importing each kind of document takes (ADR 0009, ADR 0015). */
+const IMPORT_ACTIONS: Readonly<Record<ImportKind, Action>> = {
   workflows: "import_workflow",
   tools: "import_tool",
   benchmarks: "import_benchmark",
+  goals: "import_goal",
 };
+
+/** What one document of a kind is called. */
+function singularOf(kind: ImportKind): string {
+  return kind === "goals" ? "goal" : DESCRIPTIONS[kind].singular;
+}
+
+function isGoal(detail: ComponentDetail | GoalDetail): detail is GoalDetail {
+  return "success_criteria" in detail;
+}
+
+/** Returns the page an imported document opens. */
+function importedPath(kind: ImportKind, detail: ComponentDetail | GoalDetail): string {
+  return kind === "goals" || isGoal(detail)
+    ? `/goals/${encodeURIComponent(detail.id)}`
+    : detailPath(kind, detail);
+}
 
 /** A button that chooses documents of one kind to import. */
 export function ImportButton({
@@ -29,14 +47,14 @@ export function ImportButton({
   onFiles,
   quiet = false,
 }: {
-  readonly kind: Kind;
+  readonly kind: ImportKind;
   readonly busy: boolean;
   readonly onFiles: (files: File[]) => void;
   readonly quiet?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const inputId = useId();
-  const singular = DESCRIPTIONS[kind].singular;
+  const singular = singularOf(kind);
 
   return (
     <>
@@ -92,12 +110,12 @@ export function DropZone({
   onFiles,
   children,
 }: {
-  readonly kind: Kind;
+  readonly kind: ImportKind;
   readonly onFiles: (files: File[]) => void;
   readonly children: ReactNode;
 }) {
   const [depth, setDepth] = useState(0);
-  const singular = DESCRIPTIONS[kind].singular;
+  const singular = singularOf(kind);
 
   return (
     <div
@@ -150,6 +168,13 @@ function outcomeText(outcome: Outcome, singular: string): ReactNode {
       return outcome.message;
     case "imported": {
       const { created, detail } = outcome;
+
+      if (isGoal(detail)) {
+        return created
+          ? `Imported the goal ${detail.name}.`
+          : `${detail.name} is unchanged: it is the goal already kept under its ID.`;
+      }
+
       const revision = detail.revision;
       const named = `${detail.name} ${detail.version}`;
 
@@ -171,7 +196,7 @@ export function ImportOutcomes({
   outcomes,
   onDismiss,
 }: {
-  readonly kind: Kind;
+  readonly kind: ImportKind;
   readonly outcomes: readonly Outcome[];
   readonly onDismiss: (id: number) => void;
 }) {
@@ -179,7 +204,7 @@ export function ImportOutcomes({
     return null;
   }
 
-  const singular = DESCRIPTIONS[kind].singular;
+  const singular = singularOf(kind);
 
   return (
     <ul className={styles.outcomes} aria-label="Imports" aria-live="polite">
@@ -193,7 +218,7 @@ export function ImportOutcomes({
             <p>{outcomeText(outcome, singular)}</p>
           </div>
           {outcome.state === "imported" && (
-            <InstanceLink className={styles.open} to={detailPath(kind, outcome.detail)}>
+            <InstanceLink className={styles.open} to={importedPath(kind, outcome.detail)}>
               Open it
             </InstanceLink>
           )}

@@ -41,14 +41,27 @@ The table names each at the editor's own instance.
 | `GET /api/workflows` | Every workflow at its latest revision |
 | `GET /api/workflows/{id}?revision=` | One revision with its document, the latest by default |
 | `GET /api/workflows/{id}/history?limit=` | Its revisions, newest first |
+| `GET /api/workflows/{id}/export?revision=` | A revision exactly as `azathoth workflow export` prints it, as a download named as Azathoth suggests ([ADR 0015](0015-the-catalog-in-the-editor.md)) |
+| `GET /api/workflows/{id}/diff?before=&after=` | What differs between two revisions, as Azathoth compares them |
 | `POST /api/workflows/import` | Imports a document as its next revision: 201 |
 | `GET /api/tools` | Every tool version at its latest revision |
+| `GET /api/tools/{id}/versions` | Each version of a tool at its latest revision |
 | `GET /api/tools/{id}/versions/{version}?revision=` | One revision of one exact version |
+| `GET /api/tools/{id}/versions/{version}/export?revision=` | One version's revision as `azathoth tool export` prints it, as a download |
+| `GET /api/tools/{id}/versions/{version}/diff?before=&after=` | What differs between two revisions of one exact version |
 | `GET /api/tools/{id}/history?version=&limit=` | Its revisions, of one version when named |
 | `POST /api/tools/import` | Imports a document as its version's next revision: 201 |
+| `POST /api/tools/from-mcp` | The document of a tool an MCP server serves, from `{"tool"}` and exactly one of `"url"` and `"command"`, with `"authorization"`, `"grants"` and `"timeout_seconds"` optional; nothing is imported ([ADR 0015](0015-the-catalog-in-the-editor.md)) |
+| `GET /api/tools/{id}/usage` | Where a tool, in any of its versions, is configured, in production and in runs |
+| `GET /api/model-usage?identifier=` | Where one exact model is configured, in production and in runs |
+| `GET /api/goals` | Every goal, in import order |
+| `GET /api/goals/{id}` | One goal, with its success criteria, constraints and document |
+| `POST /api/goals/import` | Imports a goal document: 201, or 200 for the goal already kept, unchanged |
 | `GET /api/benchmarks` | Every benchmark at its latest revision |
 | `GET /api/benchmarks/{id}?revision=` | One revision with its document |
 | `GET /api/benchmarks/{id}/history?limit=` | Its revisions, newest first |
+| `GET /api/benchmarks/{id}/export?revision=` | A revision as `azathoth benchmark export` prints it, as a download |
+| `GET /api/benchmarks/{id}/diff?before=&after=` | What differs between two revisions, a restricted case's values withheld where they may not be read |
 | `POST /api/benchmarks/import` | Imports a document as its next revision: 201 |
 | `POST /api/benchmarks` | Creates an empty benchmark, from `{"name", "description", "version"}`, the version optional: 201 ([ADR 0012](0012-judges-and-a-runs-evidence-in-the-editor.md)) |
 | `GET /api/benchmarks/{id}/cases?revision=` | A revision's cases, in order, the latest by default |
@@ -163,6 +176,22 @@ The table names each at the editor's own instance.
   ([ADR 0014](0014-spend-in-the-editor.md)).
 - **Tool versions live under `/versions/`,** so that no version name, such as
   `history`, can be mistaken for another endpoint.
+- **An export is Azathoth's own bytes.** It answers `application/json`
+  with the export's text exactly, and a `Content-Disposition` naming the
+  file as Azathoth suggests, so the editor's download and the command
+  line's `export` are the same file. A comparison names both revisions
+  with `before` and `after`, each required and a revision number from 1,
+  or `invalid_argument` (422) before Azathoth is asked; it is `diff`, since
+  a benchmark's `/compare` compares workflows on it
+  ([ADR 0015](0015-the-catalog-in-the-editor.md)).
+- **A model's usage is asked by query,** since its identifier holds
+  slashes and `/models/{identifier}` takes the rest of the path.
+- **Making a tool from an MCP server imports nothing.** Its body is
+  checked before Azathoth is asked: `tool` is required text, `url` and
+  `authorization` text, `command` and `grants` lists of text, and
+  `timeout_seconds` a number above 0; naming the server both ways or
+  neither is Azathoth's own refusal. A server that cannot be reached or
+  listed is `mcp_unavailable` (502), the instance unable to use it.
 - **Commands name the editor's database.** `GET /api/commands` gives the
   prefix the web app puts before every command it shows, quoted for this
   computer's shell: `AZATHOTH_DATABASE='/path/ui.db' ` in POSIX shells,

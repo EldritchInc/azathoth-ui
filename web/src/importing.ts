@@ -2,16 +2,21 @@
  * Importing documents into the local instance, one file at a time.
  *
  * Each file becomes its component's next revision; nothing is ever changed in
- * place. Every file gets an outcome the person can read and dismiss, and the
- * kind's lists, pages and histories are refetched once it is in.
+ * place. A goal is not revised: a goal already kept, unchanged, keeps nothing,
+ * and another goal with its ID is refused (ADR 0015). Every file gets an
+ * outcome the person can read and dismiss, and the kind's lists, pages and
+ * histories are refetched once it is in.
  */
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useState } from "react";
 
-import { MAX_DOCUMENT_BYTES, importDocument } from "./api/client";
-import type { ComponentDetail } from "./api/types";
+import { MAX_DOCUMENT_BYTES, importDocument, importGoal } from "./api/client";
+import type { ComponentDetail, GoalDetail } from "./api/types";
 import type { Kind } from "./kinds";
+
+/** What can be imported: a kind of component, or goals. */
+export type ImportKind = Kind | "goals";
 import { scoped, useScope } from "./scope";
 
 /** What became of one file. */
@@ -22,7 +27,7 @@ export type Outcome =
       readonly fileName: string;
       readonly state: "imported";
       readonly created: boolean;
-      readonly detail: ComponentDetail;
+      readonly detail: ComponentDetail | GoalDetail;
     }
   | {
       readonly id: number;
@@ -63,7 +68,7 @@ export function refusal(file: { readonly size: number }): string | null {
 }
 
 /** Imports files of one kind into the local instance, keeping what became of each. */
-export function useImporter(kind: Kind): {
+export function useImporter(kind: ImportKind): {
   readonly outcomes: readonly Outcome[];
   readonly busy: boolean;
   readonly importFiles: (files: readonly File[]) => Promise<void>;
@@ -109,7 +114,10 @@ export function useImporter(kind: Kind): {
         }
 
         try {
-          const { created, detail } = await importDocument(kind, text, { base: scope.api });
+          const { created, detail } =
+            kind === "goals"
+              ? await importGoal(text, { base: scope.api })
+              : await importDocument(kind, text, { base: scope.api });
           settle({ id, fileName, state: "imported", created, detail });
         } catch (error) {
           const message = error instanceof Error ? error.message : FAILED_MESSAGE;

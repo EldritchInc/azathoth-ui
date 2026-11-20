@@ -3,24 +3,36 @@ import { Link } from "react-router";
 
 import type { ApiFailure } from "../api/client";
 import type { Summary } from "../api/types";
+import { InstanceLink } from "./InstanceLink";
 import { RelativeTime } from "./RelativeTime";
 import styles from "./RevisionHistory.module.css";
 
-/** A component's revisions, newest first, each opening its own page. */
+/**
+ * A component's revisions, newest first, each opening its own page, and,
+ * past the first, a link comparing the revision shown with the one before
+ * it (ADR 0015).
+ */
 export function RevisionHistory({
   history,
   current,
   latest,
+  comparePath = null,
 }: {
   readonly history: UseQueryResult<Summary[], ApiFailure>;
   readonly current: number;
   readonly latest: number;
+  readonly comparePath?: string | null;
 }) {
   return (
     <nav className={styles.history} aria-labelledby="history-heading">
       <h2 id="history-heading" className={styles.title}>
         Revisions
       </h2>
+      {comparePath !== null && (
+        <InstanceLink className={styles.compare} to={comparePath}>
+          Compare with revision {current - 1}
+        </InstanceLink>
+      )}
       {history.isPending && <p className={styles.quiet}>Loading revisions…</p>}
       {history.isError && <p className={styles.quiet}>{history.error.message}</p>}
       {history.isSuccess && (

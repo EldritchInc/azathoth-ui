@@ -5,6 +5,7 @@ import {
   KINDS,
   detailApiPath,
   detailPath,
+  exportApiPath,
   historyApiPath,
   matches,
   parseRevision,
@@ -66,6 +67,20 @@ describe("detailApiPath", () => {
   it("asks for one exact tool version", () => {
     expect(detailApiPath("tools", { id: TOOL.id, version: "1.0/beta" }, 2)).toBe(
       `/api/tools/${TOOL.id}/versions/1.0%2Fbeta?revision=2`,
+    );
+  });
+});
+
+describe("exportApiPath", () => {
+  it("asks for one revision's export, of one exact version for a tool", () => {
+    expect(exportApiPath("workflows", WORKFLOW, 2)).toBe(
+      `/api/workflows/${WORKFLOW.id}/export?revision=2`,
+    );
+    expect(exportApiPath("tools", { id: TOOL.id, version: "1.0/beta" }, 1)).toBe(
+      `/api/tools/${TOOL.id}/versions/1.0%2Fbeta/export?revision=1`,
+    );
+    expect(exportApiPath("benchmarks", BENCHMARK, 3, "/api/remotes/staging")).toBe(
+      `/api/remotes/staging/benchmarks/${BENCHMARK.id}/export?revision=3`,
     );
   });
 });

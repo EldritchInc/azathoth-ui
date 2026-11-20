@@ -28,3 +28,6 @@ src/azathoth_ui/static/
 
 # macOS
 .DS_Store
+
+# TypeScript build state, written by tsc -b
+*.tsbuildinfo

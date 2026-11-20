@@ -1,12 +1,12 @@
 # Changelog
 
-## 1.5.0a1
+## 1.5.0b1
 
 The first pre-release of the editor for Azathoth 1.5, which brings the
 editor to everything the command line does, on its own instance.
 
-- The editor needs Azathoth 1.5, and builds on its pre-release 1.5.0a5,
-  the first with spend in the service API: `make install` and CI
+- The editor needs Azathoth 1.5, and builds on its pre-release 1.5.0b1,
+  the first with its whole catalog in the service API: `make install` and CI
   name it, so pip takes Azathoth's pre-releases and no other package's.
 - ADR 0009 records how the editor works on any instance. Every endpoint
   that acts on an instance is built once, for one instance, and mounted at
@@ -181,8 +181,42 @@ editor to everything the command line does, on its own instance.
 - The server serves `/spend` and `/spend.csv`, its range required as exact
   times with their offsets, refusing what Azathoth could not use before it
   is asked (ADR 0003).
-- On Windows, which keeps no IANA time zone database, the editor installs
+- On Windows, which keeps no IANA time zone database, Azathoth installs
   `tzdata`, so spend can be read in any time zone, UTC included.
+- ADR 0015 records how the editor brings that catalog to its pages: tool
+  versions, downloads that are Azathoth's exports, where a model or a tool
+  is used, a comparison of two revisions, goals, and a tool made from an
+  MCP server.
+- The editor requires Azathoth with its `mcp` extra, so a tool can be
+  made from an MCP server, and called, with nothing more to install.
+- A tool version's page names every version of the tool, each opening its
+  own page, the one shown marked.
+- Download saves a revision exactly as `azathoth … export` prints it, from
+  the instance, under the file name Azathoth suggests, so importing it
+  again makes no revision; a restricted benchmark's says the file holds
+  restricted data.
+- Two revisions of a workflow, a tool version or a benchmark are compared
+  at `…/diff?before=&after=`: each value added, removed or changed, by its
+  path, with its value before and after, or that the two are identical; a
+  restricted case's values withheld where they may not be read; and the
+  `azathoth … diff` command that prints the same. A revision's list links
+  to its comparison with the one before it.
+- A model's page and a tool's page say where it is used: each workflow
+  whose latest revision names it, whether production uses it, a model's
+  steps and role there, and the newest kept runs that used it, each opening
+  its page. Where the catalog and the runs may not both be read, the
+  section isn't there and nothing is asked.
+- Goals, in the rail, lists the instance's goals and imports goal
+  documents chosen or dropped on it, as the `import_goal` action; a goal
+  already kept, unchanged, is said to be unchanged, and another goal with
+  its ID is refused. `/goals/:id` shows a goal's success criteria,
+  constraints, document and command.
+- `/tools/from-mcp`, linked from Tools, makes a tool's document from a
+  tool an MCP server serves, reached at a URL with its token's variable or
+  started by a command with what it is granted, as the `tool_from_mcp`
+  action. The document is shown to read and download, and is imported only
+  when asked: `import_tool` for a URL server, `import_process_tool` for a
+  started one.
 
 ## 1.4.0
 

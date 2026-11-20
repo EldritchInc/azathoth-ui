@@ -18,6 +18,8 @@ import { InterruptedRuns } from "./InterruptedRuns";
 import { RunHistory } from "./RunHistory";
 import { WorkflowSpend } from "./SpendTabs";
 import { ToolStructure } from "./ToolStructure";
+import { ToolVersions } from "./ToolVersions";
+import { ToolUsageSection } from "./Usage";
 import { WorkflowSteps } from "./WorkflowSteps";
 import { WorkflowTabs, type WorkflowTab } from "./WorkflowTabs";
 
@@ -111,13 +113,21 @@ export function WorkflowPage({ tab = "revisions" }: { readonly tab?: WorkflowTab
   );
 }
 
-/** `/tools/:id/versions/:version`: one tool version's page. */
+/**
+ * `/tools/:id/versions/:version`: one tool version's page, naming every
+ * version of the tool, each opening its own (ADR 0015).
+ */
 export function ToolPage() {
   const { id = "", version = "" } = useParams();
 
   return (
-    <DetailPage kind="tools" component={{ id, version }}>
-      {(detail) => <ToolStructure document={detail.document} />}
+    <DetailPage kind="tools" component={{ id, version }} tabs={<ToolVersions toolId={id} />}>
+      {(detail) => (
+        <>
+          <ToolStructure document={detail.document} />
+          <ToolUsageSection toolId={id} />
+        </>
+      )}
     </DetailPage>
   );
 }

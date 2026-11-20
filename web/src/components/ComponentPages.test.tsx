@@ -32,6 +32,10 @@ const ANSWERS: Answers = {
   [`${WORKFLOW_PATH}/interrupted?limit=20`]: [200, { items: [] }],
   [`/api/tools/${TOOL_DETAIL.id}/versions/1.0.0`]: [200, TOOL_DETAIL],
   [`/api/tools/${TOOL_DETAIL.id}/history?limit=100&version=1.0.0`]: [200, { items: [TOOL_DETAIL] }],
+  [`/api/tools/${TOOL_DETAIL.id}/versions`]: [
+    200,
+    { items: [TOOL_DETAIL, { ...TOOL_DETAIL, version: "1.1.0" }] },
+  ],
   [`/api/benchmarks/${BENCHMARK_DETAIL.id}`]: [200, BENCHMARK_DETAIL],
   [`/api/benchmarks/${BENCHMARK_DETAIL.id}/history?limit=100`]: [
     200,
@@ -216,7 +220,7 @@ describe("a workflow's page", () => {
   it("lists every revision, marking the one shown and the latest", async () => {
     workflowPage();
     const history = await screen.findByRole("navigation", { name: "Revisions" });
-    const links = await within(history).findAllByRole("link");
+    const links = within(await within(history).findByRole("list")).getAllByRole("link");
 
     expect(links.map((link) => link.textContent)).toEqual([
       expect.stringContaining("Revision 3latest"),
@@ -275,6 +279,48 @@ describe("a workflow's page", () => {
   });
 });
 
+describe("a component's download", () => {
+  it("is Azathoth's export of the revision the page shows", async () => {
+    workflowPage("?revision=1");
+
+    expect(await screen.findByRole("link", { name: "Download" })).toHaveAttribute(
+      "href",
+      `${WORKFLOW_PATH}/export?revision=1`,
+    );
+  });
+
+  it("is of one exact tool version", async () => {
+    renderAt(<App />, { path: `/tools/${TOOL_DETAIL.id}/versions/1.0.0`, answers: ANSWERS });
+
+    expect(await screen.findByRole("link", { name: "Download" })).toHaveAttribute(
+      "href",
+      `/api/tools/${TOOL_DETAIL.id}/versions/1.0.0/export?revision=1`,
+    );
+  });
+
+  it("says a restricted benchmark's file holds restricted data", async () => {
+    const path = `/api/benchmarks/${BENCHMARK_DETAIL.id}`;
+
+    renderAt(<App />, {
+      path: `/benchmarks/${BENCHMARK_DETAIL.id}/document`,
+      answers: { ...ANSWERS, [path]: [200, { ...BENCHMARK_DETAIL, sensitivity: "restricted" }] },
+    });
+
+    expect(await screen.findByText(/This document holds restricted data/)).toBeVisible();
+    expect(screen.getByRole("link", { name: "Download" })).toHaveAttribute(
+      "href",
+      `${path}/export?revision=${String(BENCHMARK_DETAIL.revision.number)}`,
+    );
+  });
+
+  it("says nothing of restricted data for a benchmark without any", async () => {
+    renderAt(<App />, { path: `/benchmarks/${BENCHMARK_DETAIL.id}/document`, answers: ANSWERS });
+
+    expect(await screen.findByRole("link", { name: "Download" })).toBeVisible();
+    expect(screen.queryByText(/holds restricted data/)).toBeNull();
+  });
+});
+
 describe("a tool version's page", () => {
   it("shows its fields, implementation and tests", async () => {
     renderAt(<App />, {
@@ -291,6 +337,37 @@ describe("a tool version's page", () => {
       "Version 1.0.0, python, starts at run",
     );
     expect(screen.getByRole("region", { name: "Tests" })).toHaveTextContent("counts two words");
+  });
+
+  it("names every version of the tool, the one shown current", async () => {
+    renderAt(<App />, {
+      path: `/tools/${TOOL_DETAIL.id}/versions/1.0.0`,
+      answers: ANSWERS,
+    });
+
+    const versions = await screen.findByRole("navigation", { name: "Versions" });
+    const shown = within(versions).getByRole("link", { name: "1.0.0" });
+    const other = within(versions).getByRole("link", { name: "1.1.0" });
+
+    expect(shown).toHaveAttribute("aria-current", "page");
+    expect(other).not.toHaveAttribute("aria-current");
+    expect(other).toHaveAttribute("href", `/tools/${TOOL_DETAIL.id}/versions/1.1.0`);
+  });
+
+  it("still shows its own version when its versions can't be read", async () => {
+    renderAt(<App />, {
+      path: `/tools/${TOOL_DETAIL.id}/versions/1.0.0`,
+      answers: {
+        ...ANSWERS,
+        [`/api/tools/${TOOL_DETAIL.id}/versions`]: [
+          503,
+          { error: { code: "instance_closed", message: "Closed." } },
+        ],
+      },
+    });
+
+    expect(await screen.findByRole("heading", { level: 1, name: "count_words" })).toBeVisible();
+    expect(screen.queryByRole("navigation", { name: "Versions" })).toBeNull();
   });
 });
 

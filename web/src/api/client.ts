@@ -40,6 +40,12 @@ import {
   isProductionAnswer,
   isProductionRevisionSummary,
   isLiveRun,
+  isDocumentExport,
+  isGoalDetail,
+  isGoalSummary,
+  isModelUsage,
+  isRevisionComparison,
+  isToolUsage,
   isRunDetail,
   isRunSummary,
   isWorkflowCheck,
@@ -62,6 +68,12 @@ import {
   type BenchmarkExecutionDetail,
   type BenchmarkExecutionSummary,
   type BenchmarkSummary,
+  type DocumentExport,
+  type GoalDetail,
+  type GoalSummary,
+  type ModelUsage,
+  type RevisionComparison,
+  type ToolUsage,
   type CaseCitations,
   type ExperimentComparison,
   type ExperimentDetail,
@@ -104,6 +116,7 @@ import {
   type ToolSummary,
   type WorkflowSummary,
 } from "./types";
+import type { McpToolRequest } from "../mcpTools";
 
 export const UNREACHABLE_MESSAGE = "The editor's server isn't answering.";
 
@@ -265,6 +278,115 @@ export function fetchWorkflows(options: RequestOptions = {}): Promise<WorkflowSu
 /** Returns every tool version in the editor's instance, at its latest revision. */
 export function fetchTools(options: RequestOptions = {}): Promise<ToolSummary[]> {
   return fetchItems(at(options, "/tools"), isToolSummary, options);
+}
+
+/** Returns each version of one tool at its latest revision: `GET {base}/tools/{id}/versions`. */
+export function fetchToolVersions(
+  toolId: string,
+  options: RequestOptions = {},
+): Promise<ToolSummary[]> {
+  return fetchItems(
+    at(options, `/tools/${encodeURIComponent(toolId)}/versions`),
+    isToolSummary,
+    options,
+  );
+}
+
+/**
+ * Returns the document of a tool an MCP server serves, pinned as it serves
+ * it now: `POST {base}/tools/from-mcp`. Nothing is imported (ADR 0015).
+ */
+export async function makeToolFromMcp(
+  request: McpToolRequest,
+  options: RequestOptions = {},
+): Promise<DocumentExport> {
+  const body = await requestJson(
+    at(options, "/tools/from-mcp"),
+    { method: "POST", body: JSON.stringify(request) },
+    options,
+  );
+
+  if (!isDocumentExport(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/** Returns every goal, in import order: `GET {base}/goals` (ADR 0015). */
+export function fetchGoals(options: RequestOptions = {}): Promise<GoalSummary[]> {
+  return fetchItems(at(options, "/goals"), isGoalSummary, options);
+}
+
+/** Returns one goal, whole: `GET {base}/goals/{id}`. */
+export function fetchGoal(goalId: string, options: RequestOptions = {}): Promise<GoalDetail> {
+  return oneOf(`/goals/${encodeURIComponent(goalId)}`, isGoalDetail, options);
+}
+
+/** What importing one goal document did: whether the goal was kept, and the goal. */
+export interface GoalImported {
+  readonly created: boolean;
+  readonly detail: GoalDetail;
+}
+
+/**
+ * Imports one goal document: `POST {base}/goals/import`. A goal is never
+ * revised: a document identical to the goal kept under its ID keeps
+ * nothing, and another goal with that ID is refused.
+ */
+export async function importGoal(
+  document: string,
+  options: RequestOptions = {},
+): Promise<GoalImported> {
+  const body = await requestJson(
+    at(options, "/goals/import"),
+    { method: "POST", body: document },
+    options,
+  );
+
+  if (
+    typeof body !== "object" ||
+    body === null ||
+    !("created" in body) ||
+    typeof body.created !== "boolean" ||
+    !("goal" in body) ||
+    !isGoalDetail(body.goal)
+  ) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 201);
+  }
+
+  return { created: body.created, detail: body.goal };
+}
+
+/** Returns where one exact model is used: `GET {base}/model-usage?identifier=` (ADR 0015). */
+export function fetchModelUsage(
+  identifier: string,
+  options: RequestOptions = {},
+): Promise<ModelUsage> {
+  return oneOf(
+    `/model-usage?${new URLSearchParams({ identifier }).toString()}`,
+    isModelUsage,
+    options,
+  );
+}
+
+/** Returns where one tool, in any of its versions, is used: `GET {base}/tools/{id}/usage`. */
+export function fetchToolUsage(toolId: string, options: RequestOptions = {}): Promise<ToolUsage> {
+  return oneOf(`/tools/${encodeURIComponent(toolId)}/usage`, isToolUsage, options);
+}
+
+/** Returns what differs between two revisions, from the comparison's path in the API. */
+export async function fetchRevisionComparison(
+  path: string,
+  options: RequestOptions = {},
+): Promise<RevisionComparison> {
+  const body = await getJson(path, options);
+
+  if (!isRevisionComparison(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
 }
 
 /** Returns every benchmark in the editor's instance, at its latest revision. */

@@ -2344,3 +2344,246 @@ export function isSpendReport(value: unknown): value is SpendReport {
     typeof value.command === "string"
   );
 }
+
+/** How one value differs between two revisions (Azathoth's ADR 0133). */
+export type RevisionChangeKind = "added" | "removed" | "changed";
+
+const REVISION_CHANGE_KINDS: readonly unknown[] = ["added", "removed", "changed"];
+
+/** One value that differs between two revisions' documents, by its JSON Pointer. */
+export interface RevisionChange {
+  readonly kind: RevisionChangeKind;
+  readonly pointer: string;
+  readonly before: unknown;
+  readonly after: unknown;
+  readonly withheld: boolean;
+}
+
+/** What differs between two revisions of one workflow, tool version or benchmark. */
+export interface RevisionComparison {
+  readonly before: Revision;
+  readonly after: Revision;
+  readonly identical: boolean;
+  readonly changes: readonly RevisionChange[];
+}
+
+function isRevisionChange(value: unknown): value is RevisionChange {
+  return (
+    isRecord(value) &&
+    REVISION_CHANGE_KINDS.includes(value.kind) &&
+    typeof value.pointer === "string" &&
+    "before" in value &&
+    "after" in value &&
+    typeof value.withheld === "boolean"
+  );
+}
+
+/** Returns whether a value is a comparison of two revisions, as the server writes one. */
+export function isRevisionComparison(value: unknown): value is RevisionComparison {
+  return (
+    isRecord(value) &&
+    isRevision(value.before) &&
+    isRevision(value.after) &&
+    typeof value.identical === "boolean" &&
+    Array.isArray(value.changes) &&
+    value.changes.every(isRevisionChange)
+  );
+}
+
+/** One attempt of one step of a run, as a usage names it. */
+export interface StepAttemptUsage {
+  readonly step_id: string;
+  readonly attempt_number: number;
+}
+
+/** One kept run that called a model, and the step attempts that did. */
+export interface ModelRunUsage {
+  readonly run_id: string;
+  readonly started_at: string;
+  readonly steps: readonly StepAttemptUsage[];
+}
+
+/** One workflow that depends on a model: in its configuration, its production, its runs. */
+export interface ModelUsageWorkflow {
+  readonly workflow_id: string;
+  readonly workflow_name: string;
+  readonly configured: boolean;
+  readonly production: readonly ProductionStepUsage[];
+  readonly runs: readonly ModelRunUsage[];
+}
+
+/** Where one exact model is used (Azathoth's ADR 0133). */
+export interface ModelUsage {
+  readonly identifier: string;
+  readonly in_production: boolean;
+  readonly workflows: readonly ModelUsageWorkflow[];
+}
+
+/** One execution of a tool in a run: the step attempt, and what ran. */
+export interface ToolExecutionUsage {
+  readonly step_id: string;
+  readonly attempt_number: number;
+  readonly implementation_id: string;
+  readonly tool_version: string;
+  readonly runtime: string;
+}
+
+/** One kept run that executed a tool, and each execution. */
+export interface ToolRunUsage {
+  readonly run_id: string;
+  readonly started_at: string;
+  readonly executions: readonly ToolExecutionUsage[];
+}
+
+/** One workflow that depends on a tool: in its configuration, its production, its runs. */
+export interface ToolUsageWorkflow {
+  readonly workflow_id: string;
+  readonly workflow_name: string;
+  readonly configured: boolean;
+  readonly production: boolean;
+  readonly runs: readonly ToolRunUsage[];
+}
+
+/** Where one tool, in any of its versions, is used (Azathoth's ADR 0133). */
+export interface ToolUsage {
+  readonly tool_id: string;
+  readonly tool_names: readonly string[];
+  readonly in_production: boolean;
+  readonly workflows: readonly ToolUsageWorkflow[];
+}
+
+function isStepAttempt(value: unknown): value is StepAttemptUsage {
+  return (
+    isRecord(value) && typeof value.step_id === "string" && isWholeNumber(value.attempt_number)
+  );
+}
+
+function isUsageWorkflow(value: unknown): value is Record<string, unknown> {
+  return (
+    isRecord(value) &&
+    typeof value.workflow_id === "string" &&
+    typeof value.workflow_name === "string" &&
+    typeof value.configured === "boolean" &&
+    Array.isArray(value.runs) &&
+    value.runs.every(
+      (run) =>
+        isRecord(run) && typeof run.run_id === "string" && typeof run.started_at === "string",
+    )
+  );
+}
+
+function isModelUsageWorkflow(value: unknown): value is ModelUsageWorkflow {
+  return (
+    isUsageWorkflow(value) &&
+    Array.isArray(value.production) &&
+    value.production.every(
+      (step) => isRecord(step) && typeof step.step_id === "string" && typeof step.role === "string",
+    ) &&
+    Array.isArray(value.runs) &&
+    value.runs.every(
+      (run) => isRecord(run) && Array.isArray(run.steps) && run.steps.every(isStepAttempt),
+    )
+  );
+}
+
+function isToolUsageWorkflow(value: unknown): value is ToolUsageWorkflow {
+  return (
+    isUsageWorkflow(value) &&
+    typeof value.production === "boolean" &&
+    Array.isArray(value.runs) &&
+    value.runs.every(
+      (run) =>
+        isRecord(run) &&
+        Array.isArray(run.executions) &&
+        run.executions.every(
+          (execution) =>
+            isStepAttempt(execution) &&
+            isRecord(execution) &&
+            typeof execution.tool_version === "string" &&
+            typeof execution.runtime === "string",
+        ),
+    )
+  );
+}
+
+/** Returns whether a value is where a model is used, as the server writes it. */
+export function isModelUsage(value: unknown): value is ModelUsage {
+  return (
+    isRecord(value) &&
+    typeof value.identifier === "string" &&
+    typeof value.in_production === "boolean" &&
+    Array.isArray(value.workflows) &&
+    value.workflows.every(isModelUsageWorkflow)
+  );
+}
+
+/** Returns whether a value is where a tool is used, as the server writes it. */
+export function isToolUsage(value: unknown): value is ToolUsage {
+  return (
+    isRecord(value) &&
+    typeof value.tool_id === "string" &&
+    Array.isArray(value.tool_names) &&
+    value.tool_names.every((name) => typeof name === "string") &&
+    typeof value.in_production === "boolean" &&
+    Array.isArray(value.workflows) &&
+    value.workflows.every(isToolUsageWorkflow)
+  );
+}
+
+/** One reusable goal: what a strategy is trying to accomplish (Azathoth's ADR 0133). */
+export interface GoalSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly command: string;
+}
+
+/** One goal, with its success criteria, constraints and document. */
+export interface GoalDetail extends GoalSummary {
+  readonly success_criteria: readonly string[];
+  readonly constraints: readonly string[];
+  readonly document: Record<string, unknown>;
+}
+
+function areTexts(value: unknown): value is readonly string[] {
+  return Array.isArray(value) && value.every((each) => typeof each === "string");
+}
+
+/** Returns whether a value is a goal, as the server lists one. */
+export function isGoalSummary(value: unknown): value is GoalSummary {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.name === "string" &&
+    typeof value.description === "string" &&
+    typeof value.command === "string"
+  );
+}
+
+/** Returns whether a value is a goal, whole, as the server shows one. */
+export function isGoalDetail(value: unknown): value is GoalDetail {
+  return (
+    isGoalSummary(value) &&
+    isRecord(value) &&
+    areTexts(value.success_criteria) &&
+    areTexts(value.constraints) &&
+    isRecord(value.document)
+  );
+}
+
+/** A document exactly as Azathoth exports it, and the file name it suggests (ADR 0133). */
+export interface DocumentExport {
+  readonly text: string;
+  readonly file_name: string;
+  readonly sensitivity: Sensitivity | null;
+}
+
+/** Returns whether a value is a document as Azathoth exports it. */
+export function isDocumentExport(value: unknown): value is DocumentExport {
+  return (
+    isRecord(value) &&
+    typeof value.text === "string" &&
+    typeof value.file_name === "string" &&
+    (value.sensitivity === null || isSensitivity(value.sensitivity))
+  );
+}
