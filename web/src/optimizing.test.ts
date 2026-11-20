@@ -2,12 +2,21 @@ import { describe, expect, it } from "vitest";
 
 import {
   candidateLine,
+  comparedResult,
+  costSaving,
   generationCountOf,
   generationEndLine,
   generationProgressOf,
   generationTitle,
+  projectionLine,
+  timeSaving,
 } from "./optimizing";
-import { EARLIER_EXPERIMENT_ID, EXPERIMENT_ID, OPTIMIZATION_EVENTS } from "./test/optimization";
+import {
+  COMPARED,
+  EARLIER_EXPERIMENT_ID,
+  EXPERIMENT_ID,
+  OPTIMIZATION_EVENTS,
+} from "./test/optimization";
 
 function at<T>(entries: readonly T[], index: number): T {
   const found = entries[index];
@@ -100,5 +109,55 @@ describe("how many generations to run", () => {
       value: null,
       problem: "Give a whole number, 1 or more.",
     });
+  });
+});
+
+describe("a comparison said in words", () => {
+  it("says how a candidate did on a case, or that it didn't run it", () => {
+    expect(comparedResult(true, 1)).toBe("Passed, scoring 1.00");
+    expect(comparedResult(false, 0.25)).toBe("Failed, scoring 0.25");
+    expect(comparedResult(false, null)).toBe("Failed");
+    expect(comparedResult(null, null)).toBe("—");
+  });
+
+  it("says what the winner saves per run, or what it costs more", () => {
+    expect(costSaving(0.04, 80)).toBe("Saves $0.04 (80%)");
+    expect(costSaving(0.04, null)).toBe("Saves $0.04");
+    expect(costSaving(-0.01, -25)).toBe("Costs $0.01 more (25%)");
+    expect(costSaving(0, 0)).toBe("Costs the same");
+    expect(costSaving(null, null)).toBe("—");
+  });
+
+  it("says how much faster the winner is per run, or how much slower", () => {
+    expect(timeSaving(2.5, 50)).toBe("Saves 2.5 s (50%)");
+    expect(timeSaving(-1.2, -20.4)).toBe("Takes 1.2 s longer (20%)");
+    expect(timeSaving(0, null)).toBe("Takes as long");
+    expect(timeSaving(null, null)).toBe("—");
+  });
+
+  it("projects the saving over production's recent invocations", () => {
+    const projection = COMPARED.projection;
+
+    if (projection === null) {
+      throw new Error("The comparison has no projection.");
+    }
+
+    expect(projectionLine(projection)).toBe(
+      "Over production’s 120 invocations in the last 30 days, the winner would have saved $4.80 and 5 min of waiting.",
+    );
+    expect(
+      projectionLine({ ...projection, invocations: 1, cost_usd: -0.5, latency_seconds: null }),
+    ).toBe(
+      "Over production’s 1 invocation in the last 30 days, the winner would have cost $0.50 more.",
+    );
+    expect(projectionLine({ ...projection, cost_usd: 0.1, latency_seconds: -12 })).toBe(
+      "Over production’s 120 invocations in the last 30 days, the winner would have saved $0.10 and added 12 s of waiting.",
+    );
+    expect(projectionLine({ ...projection, cost_usd: null, latency_seconds: null })).toBe(
+      "Over production’s 120 invocations in the last 30 days, nothing was measured to project.",
+    );
+    expect(projectionLine({ ...projection, invocations: 0 })).toBe(
+      "Production wasn’t invoked in the last 30 days, so there is nothing to project.",
+    );
   });
 });

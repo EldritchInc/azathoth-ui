@@ -167,10 +167,9 @@ export function eventLine(event: RunEvent, titleOf: (step: string) => string): s
   }
 }
 
-/** Returns how long passed between two moments, as people say it: "40 ms", "0.4 s", "1 min 5 s". */
-export function duration(from: string, to: string | null, now: Date = new Date()): string {
-  const end = to === null ? now.getTime() : new Date(to).getTime();
-  const seconds = Math.max(0, (end - new Date(from).getTime()) / 1000);
+/** Returns a length of time, as people say it: "40 ms", "0.4 s", "1 min 5 s". */
+export function lengthOf(length: number): string {
+  const seconds = Math.max(0, length);
 
   if (seconds < 0.1) {
     return `${String(Math.round(seconds * 1000))} ms`;
@@ -186,6 +185,13 @@ export function duration(from: string, to: string | null, now: Date = new Date()
   const rest = Math.round(seconds - minutes * 60);
 
   return rest === 0 ? `${String(minutes)} min` : `${String(minutes)} min ${String(rest)} s`;
+}
+
+/** Returns how long passed between two moments, as people say it. */
+export function duration(from: string, to: string | null, now: Date = new Date()): string {
+  const end = to === null ? now.getTime() : new Date(to).getTime();
+
+  return lengthOf((end - new Date(from).getTime()) / 1000);
 }
 
 /** How a person gives a run its input. */

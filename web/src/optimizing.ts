@@ -4,7 +4,14 @@
  * ends, which won and how many it proposes next.
  */
 
-import type { CandidateFinished, GenerationFinished, OptimizationEvent } from "./api/types";
+import type {
+  CandidateFinished,
+  GenerationFinished,
+  OptimizationEvent,
+  SavingsProjection,
+} from "./api/types";
+import { dollarsOf } from "./benchmarking";
+import { lengthOf } from "./running";
 
 /** One generation of an optimization, so far. */
 export interface GenerationProgress {
@@ -121,4 +128,84 @@ export function generationCountOf(text: string): {
   const value = /^\d+$/.test(trimmed) ? Number(trimmed) : 0;
 
   return value >= 1 ? { value, problem: null } : { value: null, problem: COUNT_PROBLEM };
+}
+
+/** Returns how one side of a comparison did on a case, or a dash when it didn't run it. */
+export function comparedResult(passed: boolean | null, score: number | null): string {
+  if (passed === null && score === null) {
+    return "—";
+  }
+
+  const result = passed === null ? "Unknown" : passed ? "Passed" : "Failed";
+
+  return score === null ? result : `${result}, scoring ${score.toFixed(2)}`;
+}
+
+function percentNote(percent: number | null): string {
+  return percent === null ? "" : ` (${String(Math.round(Math.abs(percent)))}%)`;
+}
+
+/** Returns what the winner saves per run in cost, or what it costs more. */
+export function costSaving(amount: number | null, percent: number | null): string {
+  if (amount === null) {
+    return "—";
+  }
+  if (amount === 0) {
+    return "Costs the same";
+  }
+
+  return amount > 0
+    ? `Saves ${dollarsOf(amount)}${percentNote(percent)}`
+    : `Costs ${dollarsOf(-amount)} more${percentNote(percent)}`;
+}
+
+/** Returns how much time the winner saves per run, or how much longer it takes. */
+export function timeSaving(seconds: number | null, percent: number | null): string {
+  if (seconds === null) {
+    return "—";
+  }
+  if (seconds === 0) {
+    return "Takes as long";
+  }
+
+  return seconds > 0
+    ? `Saves ${lengthOf(seconds)}${percentNote(percent)}`
+    : `Takes ${lengthOf(-seconds)} longer${percentNote(percent)}`;
+}
+
+/**
+ * Returns what the winner would have saved over production's recent
+ * invocations, said as what would have been: a projection, never a
+ * measurement.
+ */
+export function projectionLine(projection: SavingsProjection): string {
+  const days = String(projection.window_days);
+
+  if (projection.invocations === 0) {
+    return `Production wasn’t invoked in the last ${days} days, so there is nothing to project.`;
+  }
+
+  const count = projection.invocations;
+  const over = `Over production’s ${String(count)} invocation${count === 1 ? "" : "s"} in the last ${days} days`;
+  const parts: string[] = [];
+  const costSaved = projection.cost_usd !== null && projection.cost_usd >= 0;
+
+  if (projection.cost_usd !== null) {
+    parts.push(
+      projection.cost_usd >= 0
+        ? `saved ${dollarsOf(projection.cost_usd)}`
+        : `cost ${dollarsOf(-projection.cost_usd)} more`,
+    );
+  }
+  if (projection.latency_seconds !== null) {
+    parts.push(
+      projection.latency_seconds >= 0
+        ? `${costSaved ? "" : "saved "}${lengthOf(projection.latency_seconds)} of waiting`
+        : `added ${lengthOf(-projection.latency_seconds)} of waiting`,
+    );
+  }
+
+  return parts.length === 0
+    ? `${over}, nothing was measured to project.`
+    : `${over}, the winner would have ${parts.join(" and ")}.`;
 }

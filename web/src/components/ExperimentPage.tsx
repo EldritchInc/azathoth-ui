@@ -12,6 +12,7 @@ import { Restricted, RestrictedScope } from "./Restricted";
 import layout from "./RunWorkflow.module.css";
 import { SensitivityLabel } from "./SensitivityLabel";
 import structure from "./Structure.module.css";
+import { WinnerComparison } from "./WinnerComparison";
 
 const MISSING_CODES = new Set(["not_found", "experiment_not_found", "invalid_argument"]);
 
@@ -178,6 +179,7 @@ function Experiment({ experiment }: { readonly experiment: ExperimentDetail }) {
         </div>
       </dl>
       <Command command={experiment.command} />
+      <WinnerComparison experiment={experiment} />
       <section className={styles.section} aria-label="Candidates">
         <h2 className={styles.heading}>Candidates</h2>
         {experiment.candidates.map((candidate) => (
@@ -190,9 +192,10 @@ function Experiment({ experiment }: { readonly experiment: ExperimentDetail }) {
 
 /**
  * `/experiments/:id`: one experiment an optimization recorded (ADR 0013):
- * what it ran, and every candidate ranked, with the model each step ran on,
- * its scorecard, and each case linking to its run. A restricted
- * experiment's cases stay hidden until shown (ADR 0011).
+ * what it ran, its winner compared with what promoting it would replace,
+ * and every candidate ranked, with the model each step ran on, its
+ * scorecard, and each case linking to its run. A restricted experiment's
+ * cases stay hidden until shown (ADR 0011).
  */
 export function ExperimentPage() {
   const { id = "" } = useParams();
