@@ -20,6 +20,7 @@ import { Rail } from "./components/Rail";
 import { RemoteList } from "./components/RemoteList";
 import { RemotePage } from "./components/RemotePage";
 import { RunPage } from "./components/RunPage";
+import { SpendPage } from "./components/SpendPage";
 import { InvocationPage } from "./components/InvocationPage";
 import { InvokeWorkflow } from "./components/InvokeWorkflow";
 import { OptimizeWorkflow } from "./components/OptimizeWorkflow";
@@ -54,6 +55,7 @@ export function App() {
           <Route path="/workflows/:id/runs" element={<WorkflowPage tab="runs" />} />
           <Route path="/workflows/:id/production" element={<WorkflowPage tab="production" />} />
           <Route path="/workflows/:id/experiments" element={<WorkflowPage tab="experiments" />} />
+          <Route path="/workflows/:id/spend" element={<WorkflowPage tab="spend" />} />
           <Route path="/experiments/:id" element={<ExperimentPage />} />
           <Route path="/workflows/:id/edit" element={<WorkflowEditor />} />
           <Route path="/workflows/:id/run" element={<RunWorkflow />} />
@@ -77,6 +79,7 @@ export function App() {
           <Route path="/models" element={<ModelList />} />
           <Route path="/models/*" element={<ModelPage />} />
           <Route path="/judges" element={<JudgeList />} />
+          <Route path="/spend" element={<SpendPage />} />
           <Route path="/remotes" element={<RemoteList />} />
           <Route path="/remotes/:name" element={<RemotePage />} />
           <Route path="*" element={<NotFound />} />

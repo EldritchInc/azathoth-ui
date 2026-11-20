@@ -1,10 +1,11 @@
 """Every endpoint that acts on an instance, built once and mounted for each (ADR 0009).
 
 `instance_routes(context, prefix=...)` returns the browsing, models,
-portfolio, benchmark, optimization and live-run endpoints, and the instance's own description and
-command prefix, under one prefix, each bound to one instance. The editor
-mounts them at `/api` for its own instance; Azathoth 1.6's remotes are
-mounted the same way, under `/api/remotes/{name}`, with nothing rebuilt.
+portfolio, benchmark, optimization, spend and live-run endpoints, and the
+instance's own description and command prefix, under one prefix, each bound
+to one instance. The editor mounts them at `/api` for its own instance;
+Azathoth 1.6's remotes are mounted the same way, under
+`/api/remotes/{name}`, with nothing rebuilt.
 """
 
 import inspect
@@ -23,6 +24,7 @@ from azathoth_ui.live import live_routes
 from azathoth_ui.optimization import optimization_routes
 from azathoth_ui.production import production_routes
 from azathoth_ui.scoping import INSTANCE_SCOPE_KEY, InstanceContext, context_of
+from azathoth_ui.spend import spend_routes
 
 Endpoint = Callable[[Request], Response | Awaitable[Response]]
 """What a route answers a request with, now or once awaited."""
@@ -59,6 +61,7 @@ def instance_endpoints() -> list[Route]:
         *browsing_routes(),
         *benchmark_routes(),
         *optimization_routes(),
+        *spend_routes(),
         *catalog_routes(),
         *live_routes(),
         *production_routes(),

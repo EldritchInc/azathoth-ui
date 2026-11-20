@@ -3,6 +3,7 @@ import { NavLink } from "react-router";
 
 import { instanceStyle } from "../instanceColour";
 import { DESCRIPTIONS, KINDS, type Kind } from "../kinds";
+import { useAllowed } from "../permissions";
 import { useJudges, useList, useLiveRuns, usePortfolio, useRemotes } from "../queries";
 import { LOCAL_SCOPE, useScope } from "../scope";
 import type { ThemeChoice } from "../theme";
@@ -14,7 +15,7 @@ import { Mark } from "./Mark";
 import styles from "./Rail.module.css";
 import { ThemeSwitch } from "./ThemeSwitch";
 
-type IconName = Kind | "overview" | "models" | "judges" | "remotes";
+type IconName = Kind | "overview" | "models" | "judges" | "spend" | "remotes";
 
 const ICONS: Record<IconName, ReactNode> = {
   overview: (
@@ -51,6 +52,13 @@ const ICONS: Record<IconName, ReactNode> = {
       <path d="M12 4v16M8 20h8M5 7h14" />
       <path d="M7 7l-3 6a3 3 0 0 0 6 0Z" />
       <path d="M17 7l-3 6a3 3 0 0 0 6 0Z" />
+    </>
+  ),
+  spend: (
+    <>
+      <ellipse cx="12" cy="7" rx="7" ry="3" />
+      <path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7" />
+      <path d="M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5" />
     </>
   ),
   remotes: (
@@ -131,6 +139,22 @@ function JudgesLink() {
   );
 }
 
+/** The spend link, only where spend may be read (ADR 0014). */
+function SpendLink() {
+  const allowance = useAllowed("read_spend");
+
+  if (!allowance.allowed) {
+    return null;
+  }
+
+  return (
+    <InstanceNavLink className={styles.item} to="/spend">
+      <Icon name="spend" />
+      <span className={styles.label}>Spend</span>
+    </InstanceNavLink>
+  );
+}
+
 /** The remotes link, counting the remotes the editor's instance names. */
 function RemotesLink() {
   const remotes = useRemotes();
@@ -203,6 +227,7 @@ export function Rail({
         ))}
         <ModelsLink />
         <JudgesLink />
+        <SpendLink />
         <RunningLink />
         <p className={styles.section}>Sharing</p>
         <RemotesLink />

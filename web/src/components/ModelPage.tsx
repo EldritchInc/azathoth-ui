@@ -15,6 +15,7 @@ import styles from "./ModelPage.module.css";
 import { ModelPolicy } from "./ModelPolicy";
 import { Notice } from "./Notice";
 import { PortfolioOutcome, type Change } from "./Portfolio";
+import { ModelSpend } from "./SpendTabs";
 
 function Crumbs({ name }: { readonly name: string }) {
   return (
@@ -205,7 +206,8 @@ function Facts({ model }: { readonly model: ModelSummary }) {
 /**
  * One model the providers serve: everything known of it, whether the local
  * portfolio holds it, and the steps of local workflows that could run on
- * it, and its declared data policy (ADR 0011). A model the providers no longer serve still shows, while the local
+ * it, its declared data policy (ADR 0011), and, where spend may be read,
+ * what was spent on it in the last 30 days (ADR 0014). A model the providers no longer serve still shows, while the local
  * portfolio holds it, so it can be removed.
  */
 export function ModelPage() {
@@ -297,6 +299,7 @@ export function ModelPage() {
         failed={documents.failed}
         held={model.authorized}
       />
+      <ModelSpend identifier={model.identifier} />
     </div>
   );
 }

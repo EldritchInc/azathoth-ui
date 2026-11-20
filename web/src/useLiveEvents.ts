@@ -113,6 +113,7 @@ export function useLiveEvents(handle: string): LiveEvents {
       void client.invalidateQueries({ queryKey: scoped(scope, queryKeys.invocations) });
       void client.invalidateQueries({ queryKey: scoped(scope, queryKeys.executions) });
       void client.invalidateQueries({ queryKey: scoped(scope, queryKeys.experiments) });
+      void client.invalidateQueries({ queryKey: scoped(scope, queryKeys.spending) });
     });
 
     source.addEventListener("error", () => {

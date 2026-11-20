@@ -18,7 +18,7 @@ SOURCE = PROJECT_ROOT / "src" / "azathoth_ui"
 PUBLIC_API = "azathoth.api"
 """The only part of Azathoth the editor may import."""
 
-AZATHOTH_PRERELEASE: Final[str | None] = "1.5.0a4"
+AZATHOTH_PRERELEASE: Final[str | None] = "1.5.0a5"
 """The Azathoth pre-release this pre-release of the editor needs, or None for a final release.
 
 pip takes a pre-release only when one is named, so while the editor builds
@@ -97,6 +97,17 @@ def test_the_package_and_its_metadata_declare_one_version() -> None:
     assert project()["version"] == __version__
 
 
+WINDOWS_TIME_ZONES: Final = "tzdata>=2024.1; sys_platform == 'win32'"
+"""Windows keeps no IANA time zone database, so spend reads one from `tzdata` (ADR 0014)."""
+
+
+def test_windows_is_given_the_time_zones_spend_is_read_in() -> None:
+    dependencies = project()["dependencies"]
+
+    assert isinstance(dependencies, list)
+    assert WINDOWS_TIME_ZONES in dependencies
+
+
 def test_it_requires_exactly_its_own_minor_release_of_azathoth() -> None:
     dependencies = project()["dependencies"]
 
@@ -119,6 +130,7 @@ def test_its_server_is_starlette_on_uvicorn() -> None:
         f"azathoth-ai=={minor_release(__version__)}.*",
         "starlette>=0.40",
         "uvicorn>=0.30",
+        WINDOWS_TIME_ZONES,
     ]
     assert project()["scripts"] == {"azathoth-ui": "azathoth_ui.cli:main"}
 

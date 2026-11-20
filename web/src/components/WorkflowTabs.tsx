@@ -1,16 +1,18 @@
+import { useAllowed } from "../permissions";
 import { InstanceNavLink } from "./InstanceLink";
 import styles from "./WorkflowTabs.module.css";
 
 /** A workflow page's tabs (ADR 0010). */
-export type WorkflowTab = "revisions" | "runs" | "production" | "experiments";
+export type WorkflowTab = "revisions" | "runs" | "production" | "experiments" | "spend";
 
 /**
  * A workflow's tabs, each its own address: its revisions at its own, its
- * runs, its production, and its experiments (ADR 0013). The one the page
- * shows is marked current.
+ * runs, its production, its experiments (ADR 0013), and, where spend may
+ * be read, its spend (ADR 0014). The one the page shows is marked current.
  */
 export function WorkflowTabs({ workflowId }: { readonly workflowId: string }) {
   const base = `/workflows/${encodeURIComponent(workflowId)}`;
+  const spend = useAllowed("read_spend");
 
   return (
     <nav className={styles.tabs} aria-label="Workflow">
@@ -26,6 +28,11 @@ export function WorkflowTabs({ workflowId }: { readonly workflowId: string }) {
       <InstanceNavLink className={styles.tab} to={`${base}/experiments`}>
         Experiments
       </InstanceNavLink>
+      {spend.allowed && (
+        <InstanceNavLink className={styles.tab} to={`${base}/spend`}>
+          Spend
+        </InstanceNavLink>
+      )}
     </nav>
   );
 }

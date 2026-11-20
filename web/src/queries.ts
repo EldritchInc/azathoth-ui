@@ -61,6 +61,7 @@ import {
   addRemote,
   fetchRemoteStatus,
   fetchRemotes,
+  fetchSpend,
   matchModels,
   promoteWorkflow,
   pullFromRemote,
@@ -91,6 +92,7 @@ import {
   type RunResumption,
   type RunStart,
   type Selection,
+  type SpendQuery,
   type TrialStart,
 } from "./api/client";
 import type {
@@ -106,6 +108,7 @@ import type {
   ExperimentDetail,
   ExperimentSummary,
   Promotability,
+  SpendReport,
   DataPolicy,
   EditorDescription,
   InstanceCommands,
@@ -197,6 +200,17 @@ export const queryKeys = {
   experiment: (experimentId: string) => ["experiments", "one", experimentId] as const,
   comparison: (experimentId: string) => ["experiments", "compare", experimentId] as const,
   promotability: (experimentId: string) => ["experiments", "promotable", experimentId] as const,
+  spending: ["spend"] as const,
+  spend: (query: SpendQuery) =>
+    [
+      "spend",
+      query.since,
+      query.until,
+      query.period,
+      query.group,
+      query.timeZone,
+      query.workflowId,
+    ] as const,
 };
 
 /** How often the editor asks which live runs are running, while any is. */
@@ -1088,6 +1102,24 @@ export function usePromotability(
   return useQuery<Promotability, ApiFailure>({
     queryKey: scoped(scope, queryKeys.promotability(experimentId)),
     queryFn: ({ signal }) => fetchPromotability(experimentId, { signal, base: scope.api }),
+    enabled,
+  });
+}
+
+/**
+ * Returns what an instance spent, as a query asks (ADR 0014). A new choice
+ * keeps the last report showing until the next arrives.
+ */
+export function useSpend(
+  query: SpendQuery,
+  { enabled = true }: { readonly enabled?: boolean } = {},
+): UseQueryResult<SpendReport, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<SpendReport, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.spend(query)),
+    queryFn: ({ signal }) => fetchSpend(query, { signal, base: scope.api }),
+    placeholderData: keepPreviousData,
     enabled,
   });
 }

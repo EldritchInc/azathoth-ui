@@ -2236,3 +2236,111 @@ export function isOptimizationEvent(value: unknown): value is OptimizationEvent 
       return false;
   }
 }
+
+/** How long each period of a spend report is (Azathoth's ADR 0132). */
+export type SpendPeriod = "day" | "week" | "month";
+
+/** What a spend report's spend is grouped by within each period. */
+export type SpendGroup = "workflow" | "model" | "provider" | "source";
+
+/** Every period length, in the order the editor offers them. */
+export const SPEND_PERIODS: readonly SpendPeriod[] = ["day", "week", "month"];
+
+/** Every grouping, in the order the editor offers them. */
+export const SPEND_GROUPS: readonly SpendGroup[] = ["workflow", "model", "provider", "source"];
+
+/**
+ * What some model calls cost: billed by their providers and estimated from
+ * a configured price, never added into one, and how many had no price.
+ */
+export interface SpendTotals {
+  readonly billed_usd: number;
+  readonly estimated_usd: number;
+  readonly calls: number;
+  readonly unpriced_calls: number;
+}
+
+/** What one group's calls cost: a workflow's, a model's, a provider's or a source's. */
+export interface SpendGroupTotals extends SpendTotals {
+  /** A workflow's ID, `provider/model`, a provider, a source, or `unknown`. */
+  readonly key: string;
+  /** A workflow's name, or else the key. */
+  readonly label: string;
+}
+
+/** One period of a report, cut to its range at either end. */
+export interface SpendPeriodTotals {
+  readonly start: string;
+  readonly end: string;
+  readonly totals: SpendTotals;
+  readonly groups: readonly SpendGroupTotals[];
+}
+
+/** What an instance spent from `since` up to `until`, period by period, in a time zone. */
+export interface SpendReport {
+  readonly since: string;
+  readonly until: string;
+  readonly time_zone: string;
+  readonly period: SpendPeriod;
+  readonly group: SpendGroup;
+  readonly workflow_id: string | null;
+  readonly periods: readonly SpendPeriodTotals[];
+  /** Each group's spend over every period. */
+  readonly groups: readonly SpendGroupTotals[];
+  readonly totals: SpendTotals;
+  /** The `azathoth spend` command that prints this report. */
+  readonly command: string;
+}
+
+function isDollars(value: unknown): value is number {
+  return isNumber(value) && value >= 0;
+}
+
+function isSpendTotals(value: unknown): value is SpendTotals {
+  return (
+    isRecord(value) &&
+    isDollars(value.billed_usd) &&
+    isDollars(value.estimated_usd) &&
+    isCount(value.calls) &&
+    isCount(value.unpriced_calls)
+  );
+}
+
+function isSpendGroupTotals(value: unknown): value is SpendGroupTotals {
+  return (
+    isSpendTotals(value) &&
+    isRecord(value) &&
+    typeof value.key === "string" &&
+    typeof value.label === "string"
+  );
+}
+
+function isSpendPeriodTotals(value: unknown): value is SpendPeriodTotals {
+  return (
+    isRecord(value) &&
+    typeof value.start === "string" &&
+    typeof value.end === "string" &&
+    isSpendTotals(value.totals) &&
+    Array.isArray(value.groups) &&
+    value.groups.every(isSpendGroupTotals)
+  );
+}
+
+/** Returns whether a value is a spend report, as the server writes one. */
+export function isSpendReport(value: unknown): value is SpendReport {
+  return (
+    isRecord(value) &&
+    typeof value.since === "string" &&
+    typeof value.until === "string" &&
+    typeof value.time_zone === "string" &&
+    SPEND_PERIODS.some((period) => period === value.period) &&
+    SPEND_GROUPS.some((group) => group === value.group) &&
+    isTextOrNull(value.workflow_id) &&
+    Array.isArray(value.periods) &&
+    value.periods.every(isSpendPeriodTotals) &&
+    Array.isArray(value.groups) &&
+    value.groups.every(isSpendGroupTotals) &&
+    isSpendTotals(value.totals) &&
+    typeof value.command === "string"
+  );
+}

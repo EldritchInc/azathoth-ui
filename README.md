@@ -106,6 +106,15 @@ per run and projects that over production's last 30 days, labelled as a
 projection, and promotes the winner once you confirm, if it can still be
 promoted
 ([ADR 0013](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0013-optimization-in-the-editor.md)).
+Spend, in the rail, shows what the instance spent on models, by day, week
+or month in your browser's time zone or another, and by workflow, model,
+provider or source: billed dollars, what a provider charged, and estimated
+ones, what Azathoth priced, always apart, with calls that had no price
+counted and never taken as free. Download CSV takes the report to a
+spreadsheet. Each workflow has a Spend tab, and each model's page says what
+was spent on it. Where a team's policy does not let you read spend, it is
+not shown at all
+([ADR 0014](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0014-spend-in-the-editor.md)).
 [ADR 0001](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0001-local-server-security.md) explains how the server
 keeps other sites and other users out.
 
