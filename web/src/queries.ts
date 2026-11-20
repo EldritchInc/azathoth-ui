@@ -49,6 +49,8 @@ import {
   fetchEditor,
   fetchHistory,
   fetchGoal,
+  importDocument,
+  makeToolFromMcp,
   fetchGoals,
   fetchModelUsage,
   fetchRevisionComparison,
@@ -138,6 +140,7 @@ import type {
   RunFeedback,
   RunSummary,
   Sensitivity,
+  DocumentExport,
   GoalDetail,
   GoalSummary,
   ModelUsage,
@@ -149,6 +152,7 @@ import type {
   WorkflowReadiness,
 } from "./api/types";
 import type { JsonObject } from "./editing";
+import type { McpToolRequest } from "./mcpTools";
 import type { WorkflowDocument } from "./selection";
 import {
   DESCRIPTIONS,
@@ -315,6 +319,29 @@ export function useHistory(kind: Kind, ref: ComponentRef): UseQueryResult<Summar
   return useQuery<Summary[], ApiFailure>({
     queryKey: scoped(scope, queryKeys.history(kind, ref)),
     queryFn: ({ signal }) => fetchHistory(historyApiPath(kind, ref, scope.api), { signal }),
+  });
+}
+
+/**
+ * Returns the document of a tool an MCP server serves, made as it is asked
+ * for; nothing is imported, so nothing is fetched again (ADR 0015).
+ */
+export function useMakeMcpTool(): UseMutationResult<DocumentExport, ApiFailure, McpToolRequest> {
+  const scope = useScope();
+
+  return useMutation<DocumentExport, ApiFailure, McpToolRequest>({
+    mutationFn: (request) => makeToolFromMcp(request, { base: scope.api }),
+  });
+}
+
+/** Returns a tool document imported as its version's next revision, refetching the tools. */
+export function useImportToolDocument(): UseMutationResult<ComponentImport, ApiFailure, string> {
+  const client = useQueryClient();
+  const scope = useScope();
+
+  return useMutation<ComponentImport, ApiFailure, string>({
+    mutationFn: (document) => importDocument("tools", document, { base: scope.api }),
+    onSettled: () => client.invalidateQueries({ queryKey: scoped(scope, ["tools"]) }),
   });
 }
 

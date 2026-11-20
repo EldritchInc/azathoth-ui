@@ -40,6 +40,7 @@ import {
   isProductionAnswer,
   isProductionRevisionSummary,
   isLiveRun,
+  isDocumentExport,
   isGoalDetail,
   isGoalSummary,
   isModelUsage,
@@ -67,6 +68,7 @@ import {
   type BenchmarkExecutionDetail,
   type BenchmarkExecutionSummary,
   type BenchmarkSummary,
+  type DocumentExport,
   type GoalDetail,
   type GoalSummary,
   type ModelUsage,
@@ -114,6 +116,7 @@ import {
   type ToolSummary,
   type WorkflowSummary,
 } from "./types";
+import type { McpToolRequest } from "../mcpTools";
 
 export const UNREACHABLE_MESSAGE = "The editor's server isn't answering.";
 
@@ -287,6 +290,27 @@ export function fetchToolVersions(
     isToolSummary,
     options,
   );
+}
+
+/**
+ * Returns the document of a tool an MCP server serves, pinned as it serves
+ * it now: `POST {base}/tools/from-mcp`. Nothing is imported (ADR 0015).
+ */
+export async function makeToolFromMcp(
+  request: McpToolRequest,
+  options: RequestOptions = {},
+): Promise<DocumentExport> {
+  const body = await requestJson(
+    at(options, "/tools/from-mcp"),
+    { method: "POST", body: JSON.stringify(request) },
+    options,
+  );
+
+  if (!isDocumentExport(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
 }
 
 /** Returns every goal, in import order: `GET {base}/goals` (ADR 0015). */

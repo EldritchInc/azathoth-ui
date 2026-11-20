@@ -2570,3 +2570,20 @@ export function isGoalDetail(value: unknown): value is GoalDetail {
     isRecord(value.document)
   );
 }
+
+/** A document exactly as Azathoth exports it, and the file name it suggests (ADR 0133). */
+export interface DocumentExport {
+  readonly text: string;
+  readonly file_name: string;
+  readonly sensitivity: Sensitivity | null;
+}
+
+/** Returns whether a value is a document as Azathoth exports it. */
+export function isDocumentExport(value: unknown): value is DocumentExport {
+  return (
+    isRecord(value) &&
+    typeof value.text === "string" &&
+    typeof value.file_name === "string" &&
+    (value.sensitivity === null || isSensitivity(value.sensitivity))
+  );
+}

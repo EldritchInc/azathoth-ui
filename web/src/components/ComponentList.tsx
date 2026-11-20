@@ -182,12 +182,7 @@ export function ComponentList({ kind }: { readonly kind: Kind }) {
           </div>
           <div className={styles.actions}>
             {total > 0 && (
-              <ImportButton
-                kind={kind}
-                busy={importer.busy}
-                onFiles={importFiles}
-                quiet={kind === "workflows" || kind === "benchmarks"}
-              />
+              <ImportButton kind={kind} busy={importer.busy} onFiles={importFiles} quiet />
             )}
             {kind === "workflows" && (
               <InstanceLink className={buttons.primary} to="/workflows/new">
@@ -203,6 +198,11 @@ export function ComponentList({ kind }: { readonly kind: Kind }) {
                   <path d="M12 5v14M5 12h14" />
                 </svg>
                 New workflow
+              </InstanceLink>
+            )}
+            {kind === "tools" && (
+              <InstanceLink className={buttons.primary} to="/tools/from-mcp">
+                From an MCP server
               </InstanceLink>
             )}
             {kind === "benchmarks" && (

@@ -211,6 +211,12 @@ editor to everything the command line does, on its own instance.
   already kept, unchanged, is said to be unchanged, and another goal with
   its ID is refused. `/goals/:id` shows a goal's success criteria,
   constraints, document and command.
+- `/tools/from-mcp`, linked from Tools, makes a tool's document from a
+  tool an MCP server serves, reached at a URL with its token's variable or
+  started by a command with what it is granted, as the `tool_from_mcp`
+  action. The document is shown to read and download, and is imported only
+  when asked: `import_tool` for a URL server, `import_process_tool` for a
+  started one.
 
 ## 1.4.0
 

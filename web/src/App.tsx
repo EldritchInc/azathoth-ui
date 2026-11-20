@@ -5,6 +5,7 @@ import styles from "./App.module.css";
 import { ComponentList } from "./components/ComponentList";
 import { GoalList, GoalPage } from "./components/Goals";
 import { JudgeList } from "./components/JudgeList";
+import { McpTool } from "./components/McpTool";
 import { LiveRunPage } from "./components/LiveRun";
 import { AddCase } from "./components/AddCase";
 import { CasePage } from "./components/CasePage";
@@ -68,6 +69,7 @@ export function App() {
           <Route path="/runs/:runId" element={<RunPage />} />
           <Route path="/invocations/:invocationId" element={<InvocationPage />} />
           <Route path="/tools" element={<ComponentList kind="tools" />} />
+          <Route path="/tools/from-mcp" element={<McpTool />} />
           <Route path="/tools/:id/versions/:version" element={<ToolPage />} />
           <Route
             path="/tools/:id/versions/:version/diff"
