@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.5.0a1
+## 1.5.0b1
 
 The first pre-release of the editor for Azathoth 1.5, which brings the
 editor to everything the command line does, on its own instance.

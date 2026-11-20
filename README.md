@@ -16,7 +16,9 @@ shows for Azathoth, with Python 3.11 or newer:
 python -m pip install azathoth-ui
 ```
 
-pip brings Azathoth 1.5 with it, from PyPI.
+pip brings Azathoth 1.5 with it, from PyPI. It brings Azathoth's support for
+tools that MCP servers serve too, so the editor makes and calls them with
+nothing more to install.
 
 ## Running it
 
@@ -115,6 +117,19 @@ spreadsheet. Each workflow has a Spend tab, and each model's page says what
 was spent on it. Where a team's policy does not let you read spend, it is
 not shown at all
 ([ADR 0014](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0014-spend-in-the-editor.md)).
+A tool's page names every version of the tool. Download, on every
+workflow, tool and benchmark, saves a revision exactly as `azathoth …
+export` prints it, so importing it again changes nothing, and Compare,
+beside a revision's list, shows what changed since the revision before it:
+each value added, removed or changed, by where it is in the document, with
+a restricted case's values withheld where they may not be read. A model's
+page and a tool's page say where it is used: the workflows that name it,
+the production that runs it, and the runs that used it. Goals, in the
+rail, keeps the goals strategies are measured against, and imports goal
+documents. From an MCP server, on the Tools page, asks a server for one of
+its tools and shows the document Azathoth makes of it, to read before you
+import it
+([ADR 0015](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0015-the-catalog-in-the-editor.md)).
 [ADR 0001](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0001-local-server-security.md) explains how the server
 keeps other sites and other users out.
 
