@@ -62,6 +62,8 @@ The table names each at the editor's own instance.
 | `GET /api/experiments/{id}` | One experiment, its candidates ranked, each with the model each step ran on |
 | `GET /api/experiments/{id}/compare` | Its winner beside its baseline, with what each run cost and took, the saving per run and the 30-day projection |
 | `GET /api/experiments/{id}/promotable` | Whether its winner can still be promoted, and why not, asking the providers; nothing is saved |
+| `GET /api/spend?since=&until=&period=&group=&time_zone=&workflow_id=` | What the instance spent from `since` up to `until`, period by period, billed and estimated apart ([ADR 0014](0014-spend-in-the-editor.md)) |
+| `GET /api/spend.csv?...` | The same report as Azathoth writes it as CSV, as a `text/csv` download named for its range |
 | `GET /api/models?refresh=` | Every model the providers serve, marked by whether the local portfolio holds it, and when the providers were asked |
 | `GET /api/models/{identifier}` | One model, by its identifier, slashes and all |
 | `GET /api/local/portfolio` | The models the local portfolio authorizes, oldest first |
@@ -151,6 +153,14 @@ The table names each at the editor's own instance.
   between candidates and keeps every experiment it finished. Promoting a
   winner is production's own `promote`, given `{"experiment_id"}`
   ([ADR 0013](0013-optimization-in-the-editor.md)).
+- **Spend names its range exactly.** `since` and `until` are required, each
+  an ISO 8601 time with its offset, so the server never guesses a time
+  zone; the web app reads them in the browser's. A time that is missing or
+  says no offset, a `period` other than `day`, `week` or `month`, a
+  `group` other than `workflow`, `model`, `provider` or `source`, or a
+  `workflow_id` that is not a UUID is `invalid_argument` (422) before
+  Azathoth is asked; `time_zone` is UTC unless named
+  ([ADR 0014](0014-spend-in-the-editor.md)).
 - **Tool versions live under `/versions/`,** so that no version name, such as
   `history`, can be mistaken for another endpoint.
 - **Commands name the editor's database.** `GET /api/commands` gives the

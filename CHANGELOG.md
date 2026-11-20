@@ -159,6 +159,28 @@ editor to everything the command line does, on its own instance.
 - The server serves a workflow's `/experiments`, `/experiments/{id}`, its
   `/compare` and `/promotable`, and `/live/optimizations`, whose
   `generations` must be a whole number (ADR 0003).
+- ADR 0014 records how the editor shows what an instance spent, on
+  Azathoth 1.5.0a5's spend report (its ADR 0132), and that spend is shown
+  only where it may be read.
+- `/spend`, in the rail, reports what the instance spent: the last 7 or 30
+  days, this month, last month or two dates, read in the browser's time
+  zone unless another is named, by day, week or month, and by workflow,
+  model, provider or source, every choice kept in its address. It shows
+  the totals, billed and estimated apart and never added, and the calls
+  that had no price, counted and never taken as free; each period in words
+  and as a bar; each group over the range; and each period's groups.
+  Download CSV takes the same report as Azathoth writes it, and the
+  `azathoth spend` command that prints it is shown.
+- A workflow's page has a Spend tab, at `/workflows/:id/spend`, its last 30
+  days by model, and a model's page a Spend section, what was spent on it
+  in the last 30 days; each opens the Spend page with the same choices.
+- Where `read_spend` is refused, the rail has no Spend, a workflow no Spend
+  tab and a model no Spend section, and `/spend` is the page for an address
+  the editor does not have; nothing is asked and no refusal is shown. What
+  one run, execution or experiment cost is still shown with it.
+- The server serves `/spend` and `/spend.csv`, its range required as exact
+  times with their offsets, refusing what Azathoth could not use before it
+  is asked (ADR 0003).
 
 ## 1.4.0
 
