@@ -1,0 +1,48 @@
+.list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.goal {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.name {
+  color: var(--ink);
+  font-weight: 500;
+  text-underline-offset: 0.2em;
+}
+
+.description {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.section {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.heading {
+  font-family: var(--display);
+  font-size: 1.5rem;
+  font-weight: 400;
+}
+
+.items {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.quiet {
+  color: var(--muted);
+}

@@ -9,7 +9,8 @@ import styles from "./DocumentView.module.css";
  * download. Download takes the revision from the instance exactly as
  * `azathoth … export` prints it, under the file name Azathoth suggests, so
  * importing it again makes no revision (ADR 0015); a document holding
- * restricted data says so beside it.
+ * restricted data says so beside it. A document Azathoth exports no file
+ * of, such as a goal's, has no Download.
  */
 export function DocumentView({
   document: value,
@@ -19,7 +20,7 @@ export function DocumentView({
 }: {
   readonly document: unknown;
   readonly label: string;
-  readonly exportPath: string;
+  readonly exportPath?: string;
   readonly restricted?: boolean;
 }) {
   const json = useMemo(() => layOut(value), [value]);
@@ -33,9 +34,11 @@ export function DocumentView({
         </h2>
         <div className={styles.actions}>
           <CopyButton text={json} label="Copy document" />
-          <a className={styles.download} href={exportPath} download>
-            Download
-          </a>
+          {exportPath !== undefined && (
+            <a className={styles.download} href={exportPath} download>
+              Download
+            </a>
+          )}
         </div>
       </header>
       {restricted && (

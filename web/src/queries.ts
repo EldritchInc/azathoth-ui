@@ -48,6 +48,8 @@ import {
   fetchWorkflowInvocations,
   fetchEditor,
   fetchHistory,
+  fetchGoal,
+  fetchGoals,
   fetchModelUsage,
   fetchRevisionComparison,
   fetchToolUsage,
@@ -136,6 +138,8 @@ import type {
   RunFeedback,
   RunSummary,
   Sensitivity,
+  GoalDetail,
+  GoalSummary,
   ModelUsage,
   RevisionComparison,
   Summary,
@@ -168,6 +172,9 @@ export const queryKeys = {
   history: (kind: Kind, ref: ComponentRef) =>
     [kind, "history", ref.id, ref.version ?? null] as const,
   toolVersions: (toolId: string) => ["tools", "versions", toolId] as const,
+  goals: ["goals"] as const,
+  goalList: ["goals", "list"] as const,
+  goal: (goalId: string) => ["goals", "one", goalId] as const,
   toolUsage: (toolId: string) => ["runs", "tool-usage", toolId] as const,
   modelUsage: (identifier: string) => ["runs", "model-usage", identifier] as const,
   revisionComparison: (kind: Kind, ref: ComponentRef, before: number, after: number) =>
@@ -308,6 +315,26 @@ export function useHistory(kind: Kind, ref: ComponentRef): UseQueryResult<Summar
   return useQuery<Summary[], ApiFailure>({
     queryKey: scoped(scope, queryKeys.history(kind, ref)),
     queryFn: ({ signal }) => fetchHistory(historyApiPath(kind, ref, scope.api), { signal }),
+  });
+}
+
+/** Returns every goal, in import order (ADR 0015). */
+export function useGoals(): UseQueryResult<GoalSummary[], ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<GoalSummary[], ApiFailure>({
+    queryKey: scoped(scope, queryKeys.goalList),
+    queryFn: ({ signal }) => fetchGoals({ signal, base: scope.api }),
+  });
+}
+
+/** Returns one goal, with its success criteria, constraints and document. */
+export function useGoal(goalId: string): UseQueryResult<GoalDetail, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<GoalDetail, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.goal(goalId)),
+    queryFn: ({ signal }) => fetchGoal(goalId, { signal, base: scope.api }),
   });
 }
 

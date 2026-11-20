@@ -40,6 +40,8 @@ import {
   isProductionAnswer,
   isProductionRevisionSummary,
   isLiveRun,
+  isGoalDetail,
+  isGoalSummary,
   isModelUsage,
   isRevisionComparison,
   isToolUsage,
@@ -65,6 +67,8 @@ import {
   type BenchmarkExecutionDetail,
   type BenchmarkExecutionSummary,
   type BenchmarkSummary,
+  type GoalDetail,
+  type GoalSummary,
   type ModelUsage,
   type RevisionComparison,
   type ToolUsage,
@@ -283,6 +287,51 @@ export function fetchToolVersions(
     isToolSummary,
     options,
   );
+}
+
+/** Returns every goal, in import order: `GET {base}/goals` (ADR 0015). */
+export function fetchGoals(options: RequestOptions = {}): Promise<GoalSummary[]> {
+  return fetchItems(at(options, "/goals"), isGoalSummary, options);
+}
+
+/** Returns one goal, whole: `GET {base}/goals/{id}`. */
+export function fetchGoal(goalId: string, options: RequestOptions = {}): Promise<GoalDetail> {
+  return oneOf(`/goals/${encodeURIComponent(goalId)}`, isGoalDetail, options);
+}
+
+/** What importing one goal document did: whether the goal was kept, and the goal. */
+export interface GoalImported {
+  readonly created: boolean;
+  readonly detail: GoalDetail;
+}
+
+/**
+ * Imports one goal document: `POST {base}/goals/import`. A goal is never
+ * revised: a document identical to the goal kept under its ID keeps
+ * nothing, and another goal with that ID is refused.
+ */
+export async function importGoal(
+  document: string,
+  options: RequestOptions = {},
+): Promise<GoalImported> {
+  const body = await requestJson(
+    at(options, "/goals/import"),
+    { method: "POST", body: document },
+    options,
+  );
+
+  if (
+    typeof body !== "object" ||
+    body === null ||
+    !("created" in body) ||
+    typeof body.created !== "boolean" ||
+    !("goal" in body) ||
+    !isGoalDetail(body.goal)
+  ) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 201);
+  }
+
+  return { created: body.created, detail: body.goal };
 }
 
 /** Returns where one exact model is used: `GET {base}/model-usage?identifier=` (ADR 0015). */

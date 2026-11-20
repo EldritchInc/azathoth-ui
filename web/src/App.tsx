@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router";
 
 import styles from "./App.module.css";
 import { ComponentList } from "./components/ComponentList";
+import { GoalList, GoalPage } from "./components/Goals";
 import { JudgeList } from "./components/JudgeList";
 import { LiveRunPage } from "./components/LiveRun";
 import { AddCase } from "./components/AddCase";
@@ -83,6 +84,8 @@ export function App() {
           <Route path="/benchmarks/:id/compare" element={<RunBenchmark comparing />} />
           <Route path="/benchmarks/:id/cases/new" element={<AddCase />} />
           <Route path="/benchmarks/:id/cases/:caseId" element={<CasePage />} />
+          <Route path="/goals" element={<GoalList />} />
+          <Route path="/goals/:id" element={<GoalPage />} />
           <Route path="/models" element={<ModelList />} />
           <Route path="/models/*" element={<ModelPage />} />
           <Route path="/judges" element={<JudgeList />} />

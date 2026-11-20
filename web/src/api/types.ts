@@ -2529,3 +2529,44 @@ export function isToolUsage(value: unknown): value is ToolUsage {
     value.workflows.every(isToolUsageWorkflow)
   );
 }
+
+/** One reusable goal: what a strategy is trying to accomplish (Azathoth's ADR 0133). */
+export interface GoalSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly command: string;
+}
+
+/** One goal, with its success criteria, constraints and document. */
+export interface GoalDetail extends GoalSummary {
+  readonly success_criteria: readonly string[];
+  readonly constraints: readonly string[];
+  readonly document: Record<string, unknown>;
+}
+
+function areTexts(value: unknown): value is readonly string[] {
+  return Array.isArray(value) && value.every((each) => typeof each === "string");
+}
+
+/** Returns whether a value is a goal, as the server lists one. */
+export function isGoalSummary(value: unknown): value is GoalSummary {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.name === "string" &&
+    typeof value.description === "string" &&
+    typeof value.command === "string"
+  );
+}
+
+/** Returns whether a value is a goal, whole, as the server shows one. */
+export function isGoalDetail(value: unknown): value is GoalDetail {
+  return (
+    isGoalSummary(value) &&
+    isRecord(value) &&
+    areTexts(value.success_criteria) &&
+    areTexts(value.constraints) &&
+    isRecord(value.document)
+  );
+}

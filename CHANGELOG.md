@@ -206,6 +206,11 @@ editor to everything the command line does, on its own instance.
   steps and role there, and the newest kept runs that used it, each opening
   its page. Where the catalog and the runs may not both be read, the
   section isn't there and nothing is asked.
+- Goals, in the rail, lists the instance's goals and imports goal
+  documents chosen or dropped on it, as the `import_goal` action; a goal
+  already kept, unchanged, is said to be unchanged, and another goal with
+  its ID is refused. `/goals/:id` shows a goal's success criteria,
+  constraints, document and command.
 
 ## 1.4.0
 

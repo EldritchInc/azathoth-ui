@@ -188,6 +188,7 @@ export const SERVER: Answers = {
   "/api/live": [200, { items: [] }],
   "/api/remotes": [200, { items: [] }],
   "/api/judges": [200, { items: [] }],
+  "/api/goals": [200, { items: [] }],
 };
 
 /** Returns the URL one request asks for, on a stand-in for the editor's server. */
