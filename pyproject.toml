@@ -31,6 +31,7 @@ dependencies = [
     "azathoth-ai==1.5.*",
     "starlette>=0.40",
     "uvicorn>=0.30",
+    "tzdata>=2024.1; sys_platform == 'win32'",
 ]
 
 [project.scripts]

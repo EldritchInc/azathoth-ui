@@ -181,6 +181,8 @@ editor to everything the command line does, on its own instance.
 - The server serves `/spend` and `/spend.csv`, its range required as exact
   times with their offsets, refusing what Azathoth could not use before it
   is asked (ADR 0003).
+- On Windows, which keeps no IANA time zone database, the editor installs
+  `tzdata`, so spend can be read in any time zone, UTC included.
 
 ## 1.4.0
 
