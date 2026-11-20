@@ -12,8 +12,8 @@ import { InstanceLink } from "./InstanceLink";
 import { Notice } from "./Notice";
 import layout from "./RunWorkflow.module.css";
 
-/** A target a comparison scores against, as a person writes it. */
-function TargetField({
+/** A target a comparison or an optimization scores against, as a person writes it. */
+export function TargetField({
   label,
   hint,
   value,
