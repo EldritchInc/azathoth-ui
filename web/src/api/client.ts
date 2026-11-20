@@ -267,6 +267,18 @@ export function fetchTools(options: RequestOptions = {}): Promise<ToolSummary[]>
   return fetchItems(at(options, "/tools"), isToolSummary, options);
 }
 
+/** Returns each version of one tool at its latest revision: `GET {base}/tools/{id}/versions`. */
+export function fetchToolVersions(
+  toolId: string,
+  options: RequestOptions = {},
+): Promise<ToolSummary[]> {
+  return fetchItems(
+    at(options, `/tools/${encodeURIComponent(toolId)}/versions`),
+    isToolSummary,
+    options,
+  );
+}
+
 /** Returns every benchmark in the editor's instance, at its latest revision. */
 export function fetchBenchmarks(options: RequestOptions = {}): Promise<BenchmarkSummary[]> {
   return fetchItems(at(options, "/benchmarks"), isBenchmarkSummary, options);

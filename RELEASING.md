@@ -10,8 +10,8 @@ no API token is stored anywhere.
 The distribution is `azathoth-ui`, its import package `azathoth_ui`, and its
 command `azathoth-ui`.
 
-It requires exactly its own minor release of Azathoth,
-`azathoth-ai==<major>.<minor>.*`, from PyPI. A minor release of the editor is
+It requires exactly its own minor release of Azathoth, with its MCP
+support, `azathoth-ai[mcp]==<major>.<minor>.*`, from PyPI. A minor release of the editor is
 released after that Azathoth release is published, never before: until then,
 nothing could install it.
 

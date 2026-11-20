@@ -32,6 +32,10 @@ const ANSWERS: Answers = {
   [`${WORKFLOW_PATH}/interrupted?limit=20`]: [200, { items: [] }],
   [`/api/tools/${TOOL_DETAIL.id}/versions/1.0.0`]: [200, TOOL_DETAIL],
   [`/api/tools/${TOOL_DETAIL.id}/history?limit=100&version=1.0.0`]: [200, { items: [TOOL_DETAIL] }],
+  [`/api/tools/${TOOL_DETAIL.id}/versions`]: [
+    200,
+    { items: [TOOL_DETAIL, { ...TOOL_DETAIL, version: "1.1.0" }] },
+  ],
   [`/api/benchmarks/${BENCHMARK_DETAIL.id}`]: [200, BENCHMARK_DETAIL],
   [`/api/benchmarks/${BENCHMARK_DETAIL.id}/history?limit=100`]: [
     200,
@@ -291,6 +295,37 @@ describe("a tool version's page", () => {
       "Version 1.0.0, python, starts at run",
     );
     expect(screen.getByRole("region", { name: "Tests" })).toHaveTextContent("counts two words");
+  });
+
+  it("names every version of the tool, the one shown current", async () => {
+    renderAt(<App />, {
+      path: `/tools/${TOOL_DETAIL.id}/versions/1.0.0`,
+      answers: ANSWERS,
+    });
+
+    const versions = await screen.findByRole("navigation", { name: "Versions" });
+    const shown = within(versions).getByRole("link", { name: "1.0.0" });
+    const other = within(versions).getByRole("link", { name: "1.1.0" });
+
+    expect(shown).toHaveAttribute("aria-current", "page");
+    expect(other).not.toHaveAttribute("aria-current");
+    expect(other).toHaveAttribute("href", `/tools/${TOOL_DETAIL.id}/versions/1.1.0`);
+  });
+
+  it("still shows its own version when its versions can't be read", async () => {
+    renderAt(<App />, {
+      path: `/tools/${TOOL_DETAIL.id}/versions/1.0.0`,
+      answers: {
+        ...ANSWERS,
+        [`/api/tools/${TOOL_DETAIL.id}/versions`]: [
+          503,
+          { error: { code: "instance_closed", message: "Closed." } },
+        ],
+      },
+    });
+
+    expect(await screen.findByRole("heading", { level: 1, name: "count_words" })).toBeVisible();
+    expect(screen.queryByRole("navigation", { name: "Versions" })).toBeNull();
   });
 });
 

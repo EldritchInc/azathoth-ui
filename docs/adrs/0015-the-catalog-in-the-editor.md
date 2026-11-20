@@ -31,6 +31,9 @@ two revisions; goals and MCP servers are the command line's alone.
 - **The editor needs Azathoth 1.5.0b1,** the first with the whole catalog
   in the service API, and its own `tzdata` requirement goes, since
   Azathoth's brings it. `import_goal` joins the actions the web app knows.
+  It requires Azathoth with its `mcp` extra, `azathoth-ai[mcp]`, so a tool
+  can be made from an MCP server, and called, wherever the editor is
+  installed, with nothing more to install.
 
 - **The instance's endpoints reach each call.**
 

@@ -28,7 +28,7 @@ classifiers = [
     "Typing :: Typed"
 ]
 dependencies = [
-    "azathoth-ai==1.5.*",
+    "azathoth-ai[mcp]==1.5.*",
     "starlette>=0.40",
     "uvicorn>=0.30",
 ]

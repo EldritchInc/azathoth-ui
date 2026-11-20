@@ -48,6 +48,7 @@ import {
   fetchWorkflowInvocations,
   fetchEditor,
   fetchHistory,
+  fetchToolVersions,
   fetchLiveRun,
   fetchLiveRuns,
   fetchModels,
@@ -133,6 +134,7 @@ import type {
   RunSummary,
   Sensitivity,
   Summary,
+  ToolSummary,
   WorkflowCheck,
   WorkflowReadiness,
 } from "./api/types";
@@ -158,6 +160,7 @@ export const queryKeys = {
     [kind, "detail", ref.id, ref.version ?? null, revision] as const,
   history: (kind: Kind, ref: ComponentRef) =>
     [kind, "history", ref.id, ref.version ?? null] as const,
+  toolVersions: (toolId: string) => ["tools", "versions", toolId] as const,
   models: ["models"] as const,
   modelList: ["models", "list"] as const,
   portfolio: ["models", "portfolio"] as const,
@@ -294,6 +297,16 @@ export function useHistory(kind: Kind, ref: ComponentRef): UseQueryResult<Summar
   return useQuery<Summary[], ApiFailure>({
     queryKey: scoped(scope, queryKeys.history(kind, ref)),
     queryFn: ({ signal }) => fetchHistory(historyApiPath(kind, ref, scope.api), { signal }),
+  });
+}
+
+/** Returns each version of one tool at its latest revision, as Azathoth lists them (ADR 0015). */
+export function useToolVersions(toolId: string): UseQueryResult<ToolSummary[], ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<ToolSummary[], ApiFailure>({
+    queryKey: scoped(scope, queryKeys.toolVersions(toolId)),
+    queryFn: ({ signal }) => fetchToolVersions(toolId, { signal, base: scope.api }),
   });
 }
 

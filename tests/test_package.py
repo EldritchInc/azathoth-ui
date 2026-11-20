@@ -4,6 +4,7 @@ import ast
 import re
 import tomllib
 from importlib.metadata import requires
+from importlib.util import find_spec
 from pathlib import Path
 from typing import Final
 
@@ -113,13 +114,19 @@ def test_windows_is_given_the_time_zones_spend_is_read_in_by_azathoth() -> None:
     assert 'tzdata>=2024.1;sys_platform=="win32"' in azathoths
 
 
-def test_it_requires_exactly_its_own_minor_release_of_azathoth() -> None:
+def test_it_requires_exactly_its_own_minor_release_of_azathoth_with_mcp() -> None:
     dependencies = project()["dependencies"]
 
     assert isinstance(dependencies, list)
     assert [name for name in dependencies if name.startswith("azathoth")] == [
-        f"azathoth-ai=={minor_release(__version__)}.*"
+        f"azathoth-ai[mcp]=={minor_release(__version__)}.*"
     ]
+
+
+def test_the_mcp_sdk_is_installed_so_a_tool_can_be_made_from_a_server() -> None:
+    # The editor makes and calls tools an MCP server serves, so it brings
+    # Azathoth's mcp extra, never asking anyone to install it (ADR 0015).
+    assert find_spec("mcp") is not None
 
 
 def test_it_is_released_as_stable() -> None:
@@ -132,7 +139,7 @@ def test_it_is_released_as_stable() -> None:
 
 def test_its_server_is_starlette_on_uvicorn() -> None:
     assert project()["dependencies"] == [
-        f"azathoth-ai=={minor_release(__version__)}.*",
+        f"azathoth-ai[mcp]=={minor_release(__version__)}.*",
         "starlette>=0.40",
         "uvicorn>=0.30",
     ]

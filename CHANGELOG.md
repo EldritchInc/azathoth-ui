@@ -187,6 +187,10 @@ editor to everything the command line does, on its own instance.
   versions, downloads that are Azathoth's exports, where a model or a tool
   is used, a comparison of two revisions, goals, and a tool made from an
   MCP server.
+- The editor requires Azathoth with its `mcp` extra, so a tool can be
+  made from an MCP server, and called, with nothing more to install.
+- A tool version's page names every version of the tool, each opening its
+  own page, the one shown marked.
 
 ## 1.4.0
 
