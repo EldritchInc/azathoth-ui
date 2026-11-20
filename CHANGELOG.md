@@ -5,8 +5,8 @@
 The first pre-release of the editor for Azathoth 1.5, which brings the
 editor to everything the command line does, on its own instance.
 
-- The editor needs Azathoth 1.5, and builds on its pre-release 1.5.0a4,
-  the first with optimization in the service API: `make install` and CI
+- The editor needs Azathoth 1.5, and builds on its pre-release 1.5.0a5,
+  the first with spend in the service API: `make install` and CI
   name it, so pip takes Azathoth's pre-releases and no other package's.
 - ADR 0009 records how the editor works on any instance. Every endpoint
   that acts on an instance is built once, for one instance, and mounted at
