@@ -279,6 +279,48 @@ describe("a workflow's page", () => {
   });
 });
 
+describe("a component's download", () => {
+  it("is Azathoth's export of the revision the page shows", async () => {
+    workflowPage("?revision=1");
+
+    expect(await screen.findByRole("link", { name: "Download" })).toHaveAttribute(
+      "href",
+      `${WORKFLOW_PATH}/export?revision=1`,
+    );
+  });
+
+  it("is of one exact tool version", async () => {
+    renderAt(<App />, { path: `/tools/${TOOL_DETAIL.id}/versions/1.0.0`, answers: ANSWERS });
+
+    expect(await screen.findByRole("link", { name: "Download" })).toHaveAttribute(
+      "href",
+      `/api/tools/${TOOL_DETAIL.id}/versions/1.0.0/export?revision=1`,
+    );
+  });
+
+  it("says a restricted benchmark's file holds restricted data", async () => {
+    const path = `/api/benchmarks/${BENCHMARK_DETAIL.id}`;
+
+    renderAt(<App />, {
+      path: `/benchmarks/${BENCHMARK_DETAIL.id}/document`,
+      answers: { ...ANSWERS, [path]: [200, { ...BENCHMARK_DETAIL, sensitivity: "restricted" }] },
+    });
+
+    expect(await screen.findByText(/This document holds restricted data/)).toBeVisible();
+    expect(screen.getByRole("link", { name: "Download" })).toHaveAttribute(
+      "href",
+      `${path}/export?revision=${String(BENCHMARK_DETAIL.revision.number)}`,
+    );
+  });
+
+  it("says nothing of restricted data for a benchmark without any", async () => {
+    renderAt(<App />, { path: `/benchmarks/${BENCHMARK_DETAIL.id}/document`, answers: ANSWERS });
+
+    expect(await screen.findByRole("link", { name: "Download" })).toBeVisible();
+    expect(screen.queryByText(/holds restricted data/)).toBeNull();
+  });
+});
+
 describe("a tool version's page", () => {
   it("shows its fields, implementation and tests", async () => {
     renderAt(<App />, {

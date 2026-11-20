@@ -4,24 +4,23 @@ import { layOut, tokenize } from "../json";
 import { CopyButton } from "./CopyButton";
 import styles from "./DocumentView.module.css";
 
-/** Saves one text as a file the browser downloads. */
-function download(text: string, fileName: string): void {
-  const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-/** A component's document as Azathoth keeps it, highlighted, to copy or download. */
+/**
+ * A component's document as Azathoth keeps it, highlighted, to copy or
+ * download. Download takes the revision from the instance exactly as
+ * `azathoth … export` prints it, under the file name Azathoth suggests, so
+ * importing it again makes no revision (ADR 0015); a document holding
+ * restricted data says so beside it.
+ */
 export function DocumentView({
   document: value,
-  fileName,
+  label,
+  exportPath,
+  restricted = false,
 }: {
   readonly document: unknown;
-  readonly fileName: string;
+  readonly label: string;
+  readonly exportPath: string;
+  readonly restricted?: boolean;
 }) {
   const json = useMemo(() => layOut(value), [value]);
   const tokens = useMemo(() => tokenize(json), [json]);
@@ -34,18 +33,18 @@ export function DocumentView({
         </h2>
         <div className={styles.actions}>
           <CopyButton text={json} label="Copy document" />
-          <button
-            type="button"
-            className={styles.download}
-            onClick={() => {
-              download(`${json}\n`, fileName);
-            }}
-          >
+          <a className={styles.download} href={exportPath} download>
             Download
-          </button>
+          </a>
         </div>
       </header>
-      <pre className={styles.code} tabIndex={0} aria-label={`${fileName}, as JSON`}>
+      {restricted && (
+        <p className={styles.restricted}>
+          This document holds restricted data, and so does the file Download saves. Keep it where
+          restricted data may be kept.
+        </p>
+      )}
+      <pre className={styles.code} tabIndex={0} aria-label={`${label}, as JSON`}>
         <code>
           {tokens.map((token, index) =>
             token.kind === "space" || token.kind === "punctuation" ? (

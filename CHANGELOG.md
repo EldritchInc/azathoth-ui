@@ -191,6 +191,10 @@ editor to everything the command line does, on its own instance.
   made from an MCP server, and called, with nothing more to install.
 - A tool version's page names every version of the tool, each opening its
   own page, the one shown marked.
+- Download saves a revision exactly as `azathoth … export` prints it, from
+  the instance, under the file name Azathoth suggests, so importing it
+  again makes no revision; a restricted benchmark's says the file holds
+  restricted data.
 
 ## 1.4.0
 

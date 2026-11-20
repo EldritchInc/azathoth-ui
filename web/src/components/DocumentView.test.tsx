@@ -1,52 +1,49 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 
 import { DocumentView } from "./DocumentView";
 
 const DOCUMENT = { name: "count", cases: [1, true, null] };
 
-afterEach(() => {
-  Reflect.deleteProperty(URL, "createObjectURL");
-  Reflect.deleteProperty(URL, "revokeObjectURL");
-});
+const EXPORT = "/api/workflows/a1/export?revision=1";
 
 describe("DocumentView", () => {
   it("shows the document laid out as JSON, with keys and values marked", () => {
-    const { container } = render(<DocumentView document={DOCUMENT} fileName="count-r1.json" />);
+    const { container } = render(
+      <DocumentView document={DOCUMENT} label="count revision 1" exportPath={EXPORT} />,
+    );
     const code = container.querySelector("code");
 
     expect(code?.textContent).toBe(JSON.stringify(DOCUMENT, null, 2));
-    expect(screen.getByLabelText("count-r1.json, as JSON")).toBeVisible();
+    expect(screen.getByLabelText("count revision 1, as JSON")).toBeVisible();
     expect(container.querySelectorAll("code span")).toHaveLength(6);
   });
 
-  it("downloads the document under its file name", () => {
-    const created: Blob[] = [];
-    const clicked: string[] = [];
-    Object.defineProperty(URL, "createObjectURL", {
-      configurable: true,
-      value: (blob: Blob) => {
-        created.push(blob);
-        return "blob:document";
-      },
-    });
-    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: vi.fn() });
-    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
-      this: HTMLAnchorElement,
-    ) {
-      clicked.push(this.download);
-    });
-    render(<DocumentView document={DOCUMENT} fileName="count-r1.json" />);
+  it("downloads Azathoth's export of the revision, named as Azathoth names it", () => {
+    render(<DocumentView document={DOCUMENT} label="count revision 1" exportPath={EXPORT} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+    const download = screen.getByRole("link", { name: "Download" });
 
-    expect(clicked).toEqual(["count-r1.json"]);
-    expect(created).toHaveLength(1);
-    expect(created[0]?.type).toBe("application/json");
+    expect(download).toHaveAttribute("href", EXPORT);
+    expect(download).toHaveAttribute("download", "");
+  });
+
+  it("says nothing of restricted data unless the document holds some", () => {
+    const { rerender } = render(
+      <DocumentView document={DOCUMENT} label="count revision 1" exportPath={EXPORT} />,
+    );
+
+    expect(screen.queryByText(/holds restricted data/)).toBeNull();
+
+    rerender(
+      <DocumentView document={DOCUMENT} label="count revision 1" exportPath={EXPORT} restricted />,
+    );
+
+    expect(screen.getByText(/This document holds restricted data/)).toBeVisible();
   });
 
   it("offers the document to copy", () => {
-    render(<DocumentView document={DOCUMENT} fileName="count-r1.json" />);
+    render(<DocumentView document={DOCUMENT} label="count revision 1" exportPath={EXPORT} />);
 
     expect(screen.getByRole("button", { name: "Copy document" })).toBeEnabled();
   });

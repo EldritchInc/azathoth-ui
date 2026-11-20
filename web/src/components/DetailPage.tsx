@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 
-import type { ComponentDetail } from "../api/types";
-import { DESCRIPTIONS, parseRevision, type ComponentRef, type Kind } from "../kinds";
+import { isBenchmarkSummary, type ComponentDetail } from "../api/types";
+import { DESCRIPTIONS, exportApiPath, parseRevision, type ComponentRef, type Kind } from "../kinds";
 import { useDetail, useHistory } from "../queries";
+import { useScope } from "../scope";
 import buttons from "./Buttons.module.css";
 import { Command } from "./Command";
 import styles from "./DetailPage.module.css";
@@ -44,6 +45,7 @@ export function DetailPage({
   const asked = parseRevision(search.get("revision"));
   const detail = useDetail(kind, component, asked);
   const history = useHistory(kind, component);
+  const scope = useScope();
   const description = DESCRIPTIONS[kind];
   const [shipping, setShipping] = useState(false);
 
@@ -96,7 +98,7 @@ export function DetailPage({
   const shown = detail.data;
   const revision = shown.revision;
   const latest = revision.number === shown.latest_number;
-  const fileName = `${shown.name.replace(/[^\w.-]+/g, "-")}-${shown.version}-r${String(revision.number)}.json`;
+  const exportPath = exportApiPath(kind, component, revision.number, scope.api);
 
   return (
     <div className={styles.page}>
@@ -170,7 +172,7 @@ export function DetailPage({
         <RevisionBody
           shown={shown}
           latest={latest}
-          fileName={fileName}
+          exportPath={exportPath}
           history={history}
           body={children}
         />
@@ -185,13 +187,13 @@ export function DetailPage({
 function RevisionBody({
   shown,
   latest,
-  fileName,
+  exportPath,
   history,
   body,
 }: {
   readonly shown: ComponentDetail;
   readonly latest: boolean;
-  readonly fileName: string;
+  readonly exportPath: string;
   readonly history: ReturnType<typeof useHistory>;
   readonly body: (detail: ComponentDetail) => ReactNode;
 }) {
@@ -218,7 +220,12 @@ function RevisionBody({
       <div className={styles.body}>
         <div className={styles.main}>
           {body(shown)}
-          <DocumentView document={shown.document} fileName={fileName} />
+          <DocumentView
+            document={shown.document}
+            label={`${shown.name} revision ${String(revision.number)}`}
+            exportPath={exportPath}
+            restricted={isBenchmarkSummary(shown) && shown.sensitivity === "restricted"}
+          />
         </div>
         <aside className={styles.aside}>
           <RevisionHistory
