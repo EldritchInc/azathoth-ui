@@ -7,6 +7,7 @@ import styles from "./Benchmarks.module.css";
 import { Command } from "./Command";
 import { InstanceLink } from "./InstanceLink";
 import { Notice } from "./Notice";
+import { PromoteWinner } from "./PromoteWinner";
 import { RelativeTime } from "./RelativeTime";
 import { Restricted, RestrictedScope } from "./Restricted";
 import layout from "./RunWorkflow.module.css";
@@ -180,6 +181,7 @@ function Experiment({ experiment }: { readonly experiment: ExperimentDetail }) {
       </dl>
       <Command command={experiment.command} />
       <WinnerComparison experiment={experiment} />
+      <PromoteWinner experiment={experiment} />
       <section className={styles.section} aria-label="Candidates">
         <h2 className={styles.heading}>Candidates</h2>
         {experiment.candidates.map((candidate) => (
@@ -193,7 +195,7 @@ function Experiment({ experiment }: { readonly experiment: ExperimentDetail }) {
 /**
  * `/experiments/:id`: one experiment an optimization recorded (ADR 0013):
  * what it ran, its winner compared with what promoting it would replace,
- * and every candidate ranked, with the model each step ran on, its
+ * promoting it once it is confirmed, and every candidate ranked, with the model each step ran on, its
  * scorecard, and each case linking to its run. A restricted experiment's
  * cases stay hidden until shown (ADR 0011).
  */

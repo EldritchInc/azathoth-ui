@@ -11,10 +11,13 @@ import {
   EXPERIMENT,
   EXPERIMENT_ID,
   EXPERIMENTS,
+  NOT_PROMOTABLE,
   NOTHING_COMPARED,
   PROMOTABLE,
   WINNER,
 } from "../test/optimization";
+import { SECOND_PROMOTION } from "../test/production";
+import { recording, type Sent } from "../test/remotes";
 import { renderAt } from "../test/render";
 
 const WORKFLOW_PATH = `/api/workflows/${WORKFLOW_DETAIL.id}`;
@@ -375,5 +378,153 @@ describe("an experiment's winner, compared", () => {
 
     expect(await compared.findByText("Couldn't compare the winner")).toBeVisible();
     expect(compared.getByText("The store is unreachable.")).toBeVisible();
+  });
+});
+
+describe("promoting an experiment's winner", () => {
+  const PROMOTE_PATH = `/api/workflows/${EXPERIMENT.workflow_id}/promote`;
+
+  function opened(posts: Answers = { [PROMOTE_PATH]: [201, SECOND_PROMOTION] }): Sent[] {
+    const sent: Sent[] = [];
+
+    renderAt(<App />, {
+      path: `/experiments/${EXPERIMENT_ID}`,
+      fetcher: recording(ANSWERS, posts, sent),
+    });
+
+    return sent;
+  }
+
+  function posted(sent: readonly Sent[]): Sent[] {
+    return sent.filter((each) => each.method === "POST");
+  }
+
+  async function promoting() {
+    return within(await screen.findByRole("region", { name: "Promote" }));
+  }
+
+  it("asks whether the winner can still be promoted before offering to", async () => {
+    const sent = opened();
+    const promote = await promoting();
+
+    expect(await promote.findByRole("button", { name: "Promote the winner…" })).toBeEnabled();
+    expect(sent.map((each) => each.path)).toContain(`${EXPERIMENT_PATH}/promotable`);
+    expect(promote.getByText(PROMOTABLE.command)).toBeVisible();
+  });
+
+  it("promotes once confirmed, naming the instance and the models it will pin", async () => {
+    const sent = opened();
+    const promote = await promoting();
+
+    fireEvent.click(await promote.findByRole("button", { name: "Promote the winner…" }));
+
+    const confirm = within(promote.getByRole("group", { name: "Confirm" }));
+
+    expect(
+      confirm.getByText(
+        `Promote the winner of this experiment for ${EXPERIMENT.workflow_name} on your local instance?`,
+      ),
+    ).toBeVisible();
+    expect(confirm.getByText("openrouter/acme/small")).toBeVisible();
+    expect(posted(sent)).toEqual([]);
+
+    fireEvent.click(confirm.getByRole("button", { name: "Promote" }));
+
+    expect(await promote.findByText("The winner is in production now.")).toBeVisible();
+    expect(posted(sent)).toEqual([
+      { method: "POST", path: PROMOTE_PATH, body: { experiment_id: EXPERIMENT_ID } },
+    ]);
+    expect(promote.getByRole("link", { name: "Open the Production tab" })).toHaveAttribute(
+      "href",
+      `/workflows/${EXPERIMENT.workflow_id}/production`,
+    );
+    expect(promote.queryByRole("group", { name: "Confirm" })).toBeNull();
+  });
+
+  it("can be cancelled before it promotes", async () => {
+    const sent = opened();
+    const promote = await promoting();
+
+    fireEvent.click(await promote.findByRole("button", { name: "Promote the winner…" }));
+    fireEvent.click(
+      within(promote.getByRole("group", { name: "Confirm" })).getByRole("button", {
+        name: "Cancel",
+      }),
+    );
+
+    expect(promote.queryByRole("group", { name: "Confirm" })).toBeNull();
+    expect(posted(sent)).toEqual([]);
+  });
+
+  it("says why the winner can't be promoted, and won't offer to", async () => {
+    renderAt(<App />, {
+      path: `/experiments/${EXPERIMENT_ID}`,
+      answers: { ...ANSWERS, [`${EXPERIMENT_PATH}/promotable`]: [200, NOT_PROMOTABLE] },
+    });
+
+    const promote = await promoting();
+
+    expect(await promote.findByText("The winner can't be promoted")).toBeVisible();
+    expect(promote.getByText(NOT_PROMOTABLE.reason ?? "")).toBeVisible();
+    expect(promote.getByText("candidate_rebuild")).toBeVisible();
+    expect(promote.getByRole("button", { name: "Promote the winner…" })).toBeDisabled();
+  });
+
+  it("won't promote where it may not, and says why", async () => {
+    renderAt(<App />, {
+      path: `/experiments/${EXPERIMENT_ID}`,
+      answers: ANSWERS,
+      permissions: (_instance, action) =>
+        action === "promote"
+          ? { allowed: false, reason: "Only releasers promote." }
+          : { allowed: true },
+    });
+
+    const button = await (await promoting()).findByRole("button", { name: "Promote the winner…" });
+
+    await waitFor(() => {
+      expect(button).toHaveAccessibleDescription("Only releasers promote.");
+    });
+    expect(button).toBeDisabled();
+  });
+
+  it("says why production refused it", async () => {
+    opened({
+      [PROMOTE_PATH]: [
+        409,
+        { error: { code: "candidate_rebuild", message: "The workflow changed since." } },
+      ],
+    });
+
+    const promote = await promoting();
+
+    fireEvent.click(await promote.findByRole("button", { name: "Promote the winner…" }));
+    fireEvent.click(
+      within(promote.getByRole("group", { name: "Confirm" })).getByRole("button", {
+        name: "Promote",
+      }),
+    );
+
+    expect(await promote.findByText("Production didn't change")).toBeVisible();
+    expect(promote.getByText("The workflow changed since.")).toBeVisible();
+  });
+
+  it("says when whether it can be promoted couldn't be asked", async () => {
+    renderAt(<App />, {
+      path: `/experiments/${EXPERIMENT_ID}`,
+      answers: {
+        ...ANSWERS,
+        [`${EXPERIMENT_PATH}/promotable`]: [
+          502,
+          { error: { code: "provider_unavailable", message: "OpenRouter didn't answer." } },
+        ],
+      },
+    });
+
+    const promote = await promoting();
+
+    expect(await promote.findByText("Couldn't ask whether it can be promoted")).toBeVisible();
+    expect(promote.getByText("OpenRouter didn't answer.")).toBeVisible();
+    expect(promote.getByRole("button", { name: "Promote the winner…" })).toBeDisabled();
   });
 });
