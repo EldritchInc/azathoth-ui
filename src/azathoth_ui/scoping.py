@@ -1,15 +1,17 @@
 """Which instance a request acts on, so no endpoint assumes it is the editor's own (ADR 0009).
 
 The editor serves the same endpoints for every instance it works on: its
-own local one at `/api`, and, from Azathoth 1.6, each remote under
-`/api/remotes/{name}`. Each is built for one `InstanceContext`, which the
-request carries in its scope, so a handler is given its instance and
-everything kept with it, and reads nothing about it from the app.
+own local one at `/api`, and each remote under `/api/remotes/{name}`
+(ADR 0016). Each is served for one `InstanceContext`, which the request
+carries in its scope, so a handler is given its instance and everything
+kept with it, and reads nothing about it from the app.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Callable
+from contextlib import AbstractContextManager, nullcontext
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Final
 
 from starlette.requests import Request
@@ -32,18 +34,39 @@ class InstanceContext:
     """One instance the editor works on, and what the editor keeps for it.
 
     `name` is how the editor names it: `local`, or a remote's name.
-    `catalog` and `portfolio` are where its models are listed and
-    authorized, and `live` keeps the runs started on it from the editor.
-    `command_prefix` is what goes before an `azathoth` command so that it
-    acts on this instance.
+    `instance` answers the request: the editor's own instance, or one
+    connected to a remote for this request alone. `catalog` and `portfolio`
+    are where its models are listed and authorized, and `live` keeps the
+    runs started on it from the editor. `command_prefix` is what goes
+    before an `azathoth` command so that it acts on this instance, and
+    `command_suffix` what goes after it. `lasting` opens an instance a live
+    run may use until it ends, after the request that started it has been
+    answered: the instance itself, unless one is given.
     """
 
     name: str
-    instance: api.Azathoth
+    instance: api.Instance
     catalog: Catalog
     portfolio: PortfolioSource
     live: LiveRuns
     command_prefix: str
+    command_suffix: str = ""
+    lasting: Callable[[], AbstractContextManager[api.Instance]] | None = field(
+        default=None,
+        compare=False,
+    )
+
+    def opener(
+        self,
+    ) -> Callable[[], AbstractContextManager[api.Instance]]:
+        """Return what opens the instance a live run uses until it ends, and then closes."""
+
+        if self.lasting is not None:
+            return self.lasting
+
+        instance = self.instance
+
+        return lambda: nullcontext(instance)
 
 
 def context_of(
@@ -64,9 +87,22 @@ def context_of(
     return context
 
 
+def lasting_of(
+    request: Request,
+) -> Callable[[], AbstractContextManager[api.Instance]]:
+    """Return what opens, for a live run's thread, the instance one request acts on.
+
+    On a remote, the instance that answers a request is closed once it is
+    answered, so a live run opens one of its own, and closes it when it ends.
+    """
+
+    return context_of(request).opener()
+
+
 __all__ = [
     "INSTANCE_SCOPE_KEY",
     "LOCAL_INSTANCE",
     "InstanceContext",
     "context_of",
+    "lasting_of",
 ]

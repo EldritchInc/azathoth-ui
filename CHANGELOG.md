@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.6.0b1
+
+The first pre-release of the editor for Azathoth 1.6, which works on any
+remote as it does on its own instance.
+
+- The editor needs Azathoth 1.6, and builds on its first pre-release,
+  1.6.0b1: `make install` and CI name it, so pip takes Azathoth's
+  pre-releases and no other package's.
+- Every endpoint that acts on an instance is served for each remote the
+  editor's instance names, under `/api/remotes/{name}`, answering as it
+  does for the editor's own instance under `/api`. Each request reaches
+  the remote afresh, with the token its name's variable holds now, and
+  what answered it is closed once it is answered.
+- A run, an invocation, a benchmark run or comparison and an optimization
+  started on a remote run there, as the remote's jobs, and are watched
+  here as a live run started on the editor's own instance is.
+- `GET {instance}/commands` says what goes after a command too: nothing on
+  the editor's own instance, and `--remote <NAME>` on a remote.
+- A remote with no such name is 404, one whose token is not set is
+  refused before anything is sent, one that cannot be reached is 502, and
+  what a remote's policy refuses is 403, in the policy's words.
+
 ## 1.5.0
 
 The editor for Azathoth 1.5, which brings it to everything the command

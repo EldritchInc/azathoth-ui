@@ -32,6 +32,7 @@ from azathoth_ui.live import (
     started,
     uuid_field,
 )
+from azathoth_ui.scoping import lasting_of
 
 CREATE_FIELDS: Final = ("name", "description", "version")
 """What a body that creates a benchmark may hold."""
@@ -353,13 +354,16 @@ async def run_benchmark(
     await run_in_threadpool(instance.benchmarks.get, benchmark_id)
     await run_in_threadpool(instance.workflows.get, workflow_id)
 
+    opened = lasting_of(request)
+
     def call(
         on_event: Callable[[LiveEvent], None],
         cancel: api.CancellationToken,
     ) -> api.BenchmarkExecutionDetail:
         """Run the workflow against the benchmark, telling each case, until it ends."""
 
-        return instance.benchmarks.run(benchmark_id, workflow_id, on_event=on_event, cancel=cancel)
+        with opened() as held:
+            return held.benchmarks.run(benchmark_id, workflow_id, on_event=on_event, cancel=cancel)
 
     try:
         run = live_of(request).start(
@@ -403,20 +407,23 @@ async def compare_benchmark(
     for workflow_id in workflow_ids:
         await run_in_threadpool(instance.workflows.get, workflow_id)
 
+    opened = lasting_of(request)
+
     def call(
         on_event: Callable[[LiveEvent], None],
         cancel: api.CancellationToken,
     ) -> api.BenchmarkExecutionDetail:
         """Compare the workflows against the benchmark, telling each case, until it ends."""
 
-        return instance.benchmarks.compare(
-            benchmark_id,
-            workflow_ids,
-            target_latency_seconds=latency,
-            target_cost_usd=cost,
-            on_event=on_event,
-            cancel=cancel,
-        )
+        with opened() as held:
+            return held.benchmarks.compare(
+                benchmark_id,
+                workflow_ids,
+                target_latency_seconds=latency,
+                target_cost_usd=cost,
+                on_event=on_event,
+                cancel=cancel,
+            )
 
     try:
         run = live_of(request).start(

@@ -47,7 +47,7 @@ WHOLE_NUMBER: Final = re.compile(r"[0-9]+")
 
 def instance_of(
     request: Request,
-) -> api.Azathoth:
+) -> api.Instance:
     """Return the instance one request acts on (ADR 0009)."""
 
     return context_of(request).instance

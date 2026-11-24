@@ -45,7 +45,7 @@ from starlette.routing import Route
 from azathoth_ui.browsing import WHOLE_NUMBER, identifier, instance_of, refusal
 from azathoth_ui.catalog import body_of
 from azathoth_ui.labels import sensitivity_of
-from azathoth_ui.scoping import context_of
+from azathoth_ui.scoping import context_of, lasting_of
 
 MAX_RUNNING: Final = 4
 """How many live runs the editor runs at once."""
@@ -493,19 +493,22 @@ async def start_run(
     instance = instance_of(request)
     await run_in_threadpool(instance.workflows.get, workflow_id)
 
+    opened = lasting_of(request)
+
     def call(
         on_event: api.EventCallback,
         cancel: api.CancellationToken,
     ) -> api.RunResult:
         """Run the workflow, reporting its events, until it ends or is cancelled."""
 
-        return instance.runs.run(
-            workflow_id,
-            input=given,
-            sensitivity=sensitivity,
-            on_event=on_event,
-            cancel=cancel,
-        )
+        with opened() as held:
+            return held.runs.run(
+                workflow_id,
+                input=given,
+                sensitivity=sensitivity,
+                on_event=on_event,
+                cancel=cancel,
+            )
 
     try:
         run = live_of(request).start("run", call, workflow_id=workflow_id, sensitivity=sensitivity)
@@ -561,21 +564,24 @@ async def start_invocation(
     await run_in_threadpool(instance.production.get, workflow_id)
     value = given.payload if isinstance(given, api.RunInput) else given
 
+    opened = lasting_of(request)
+
     def call(
         on_event: api.EventCallback,
         cancel: api.CancellationToken,
     ) -> api.InvocationOutcome:
         """Invoke the workflow in production, reporting its events, until it ends."""
 
-        return instance.runs.invoke(
-            workflow_id,
-            input=value,
-            sensitivity=sensitivity,
-            idempotency_key=key,
-            caller_metadata=EDITOR_CALLER,
-            on_event=on_event,
-            cancel=cancel,
-        )
+        with opened() as held:
+            return held.runs.invoke(
+                workflow_id,
+                input=value,
+                sensitivity=sensitivity,
+                idempotency_key=key,
+                caller_metadata=EDITOR_CALLER,
+                on_event=on_event,
+                cancel=cancel,
+            )
 
     try:
         run = live_of(request).start(
@@ -608,13 +614,16 @@ async def resume_invocation(
     if detail.status != "incomplete":
         raise api.ConflictError(f"Invocation {invocation_id} has already completed.")
 
+    opened = lasting_of(request)
+
     def call(
         on_event: api.EventCallback,
         cancel: api.CancellationToken,
     ) -> api.InvocationOutcome:
         """Resume the invocation from its journal, reporting its events, until it ends."""
 
-        return instance.invocations.resume(invocation_id, on_event=on_event, cancel=cancel)
+        with opened() as held:
+            return held.invocations.resume(invocation_id, on_event=on_event, cancel=cancel)
 
     try:
         run = live_of(request).start(
@@ -672,13 +681,16 @@ async def resume_run(
             "resume it as its invocation."
         )
 
+    opened = lasting_of(request)
+
     def call(
         on_event: api.EventCallback,
         cancel: api.CancellationToken,
     ) -> api.RunResult:
         """Resume the run from its journal, reporting its events, until it ends."""
 
-        return instance.runs.resume(run_id, on_event=on_event, cancel=cancel)
+        with opened() as held:
+            return held.runs.resume(run_id, on_event=on_event, cancel=cancel)
 
     try:
         run = live_of(request).start(
@@ -695,7 +707,7 @@ async def resume_run(
 
 
 def _finished(
-    instance: api.Azathoth,
+    instance: api.Instance,
     run_id: UUID,
 ) -> bool:
     """Return whether Azathoth kept a run as finished."""
@@ -785,7 +797,7 @@ async def start_step(
     given = step_inputs(body)
     source = run_input(body)
     sensitivity = sensitivity_of(body.get("sensitivity"))
-    instance = instance_of(request)
+    opened = lasting_of(request)
 
     def call(
         on_event: api.EventCallback,
@@ -793,15 +805,16 @@ async def start_step(
     ) -> api.StepTrial:
         """Try the step, reporting its events, until it ends or is cancelled."""
 
-        return instance.runs.try_step(
-            document,
-            step_id,
-            inputs=given,
-            input=source,
-            sensitivity=sensitivity,
-            on_event=on_event,
-            cancel=cancel,
-        )
+        with opened() as held:
+            return held.runs.try_step(
+                document,
+                step_id,
+                inputs=given,
+                input=source,
+                sensitivity=sensitivity,
+                on_event=on_event,
+                cancel=cancel,
+            )
 
     try:
         run = live_of(request).start(

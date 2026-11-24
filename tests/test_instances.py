@@ -33,6 +33,7 @@ def context(
     name: str,
     instance: api.Azathoth,
     prefix: str,
+    suffix: str = "",
 ) -> InstanceContext:
     """Return the context the editor would serve one instance with."""
 
@@ -43,6 +44,7 @@ def context(
         portfolio=instance.portfolio,
         live=LiveRuns(),
         command_prefix=prefix,
+        command_suffix=suffix,
     )
 
 
@@ -74,7 +76,9 @@ def client(
     app = Starlette(
         routes=[
             *instance_routes(context(LOCAL_INSTANCE, local, "LOCAL "), prefix="/api"),
-            *instance_routes(context("staging", other, "--remote staging "), prefix="/elsewhere"),
+            *instance_routes(
+                context("staging", other, "", " --remote staging"), prefix="/elsewhere"
+            ),
         ]
     )
 
@@ -102,10 +106,15 @@ def test_each_mount_describes_its_own_instance(
 def test_each_mount_writes_commands_for_its_own_instance(
     client: TestClient,
 ) -> None:
-    assert client.get("/api/commands").json() == {"instance": "local", "prefix": "LOCAL "}
+    assert client.get("/api/commands").json() == {
+        "instance": "local",
+        "prefix": "LOCAL ",
+        "suffix": "",
+    }
     assert client.get("/elsewhere/commands").json() == {
         "instance": "staging",
-        "prefix": "--remote staging ",
+        "prefix": "",
+        "suffix": " --remote staging",
     }
 
 

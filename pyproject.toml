@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "azathoth-ui"
-version = "1.5.0"
+version = "1.6.0b1"
 description = "A local editor for Azathoth workflows, served in your browser."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -28,7 +28,7 @@ classifiers = [
     "Typing :: Typed"
 ]
 dependencies = [
-    "azathoth-ai[mcp]==1.5.*",
+    "azathoth-ai[mcp]==1.6.*",
     "starlette>=0.40",
     "uvicorn>=0.30",
 ]

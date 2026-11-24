@@ -27,6 +27,7 @@ from azathoth_ui.live import (
     started,
     uuid_field,
 )
+from azathoth_ui.scoping import lasting_of
 
 OPTIMIZE_FIELDS: Final = (
     "workflow_id",
@@ -130,21 +131,24 @@ async def optimize_workflow(
     await run_in_threadpool(instance.workflows.get, workflow_id)
     await run_in_threadpool(instance.benchmarks.get, benchmark_id)
 
+    opened = lasting_of(request)
+
     def call(
         on_event: Callable[[LiveEvent], None],
         cancel: api.CancellationToken,
     ) -> api.OptimizationSummary:
         """Optimize the workflow, telling each generation and candidate, until it ends."""
 
-        return instance.optimization.optimize(
-            workflow_id,
-            benchmark_id,
-            target_latency_seconds=latency,
-            target_cost_usd=cost,
-            generations=generations,
-            on_event=on_event,
-            cancel=cancel,
-        )
+        with opened() as held:
+            return held.optimization.optimize(
+                workflow_id,
+                benchmark_id,
+                target_latency_seconds=latency,
+                target_cost_usd=cost,
+                generations=generations,
+                on_event=on_event,
+                cancel=cancel,
+            )
 
     try:
         run = live_of(request).start(

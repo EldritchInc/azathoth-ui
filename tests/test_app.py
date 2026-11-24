@@ -242,6 +242,7 @@ def test_the_editor_describes_itself_and_its_instance_says_how_to_name_it(
         assert client.get("/api/commands").json() == {
             "instance": "local",
             "prefix": command_prefix(database, shell),
+            "suffix": "",
         }
 
 
