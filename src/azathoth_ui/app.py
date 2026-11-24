@@ -2,9 +2,11 @@
 
 The API (ADR 0003) answers from one open Azathoth instance, through
 `azathoth.api` only. The endpoints that act on an instance are built once,
-for that instance, and mounted at `/api` (ADR 0009); the editor's own, its
-description and its remotes, stay beside them. An `ApiError` answers with its stable code and exact
-message, and a status that says which kind of failure it is. Everything under
+for that instance, and mounted at `/api` (ADR 0009), and served for each
+remote it names under `/api/remotes/{name}` (ADR 0016); the editor's own,
+its description and its remotes, stay beside them. An `ApiError` answers
+with its stable code and exact message, and a status that says which kind
+of failure it is. Everything under
 `/` that is not the API is the built web app: a file it built, or, for any
 other address without a file extension, its page, which routes itself. An
 installation without a web app answers every page with one that says how to
@@ -20,7 +22,7 @@ from starlette.applications import Starlette
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
-from starlette.routing import BaseRoute, Mount, Route
+from starlette.routing import BaseRoute, Mount, Route, request_response
 from starlette.staticfiles import StaticFiles
 from starlette.types import Scope
 
@@ -32,9 +34,11 @@ from azathoth_ui.catalog import (
     model_in_use,
 )
 from azathoth_ui.commands import Shell, command_prefix, local_shell
-from azathoth_ui.instances import instance_routes
+from azathoth_ui.instances import instance_endpoints, instance_routes
 from azathoth_ui.live import LiveRuns
 from azathoth_ui.pages import ASSETS_PATH, not_built_page
+from azathoth_ui.remote_instances import REMOTE_PREFIX, RemoteInstances, RemoteLiveRuns
+from azathoth_ui.remote_service import remote_service_routes
 from azathoth_ui.remotes import remote_routes
 from azathoth_ui.scoping import LOCAL_INSTANCE, InstanceContext
 from azathoth_ui.security import API_PREFIX, LocalOnly
@@ -60,7 +64,9 @@ ERROR_STATUSES: Final[tuple[tuple[type[api.ApiError], int], ...]] = (
     (api.ContentUnavailableError, 502),
     (api.RemoteUnreachableError, 502),
     (api.RemoteProtocolError, 502),
+    (api.RemoteUnavailableError, 503),
     (api.RemoteRefusedError, 403),
+    (api.PermissionDeniedError, 403),
     (api.InstanceClosedError, 503),
     (api.InstanceUnavailableError, 503),
 )
@@ -238,6 +244,15 @@ def build_app(
     routes: list[BaseRoute] = [
         Route("/api/editor", describe_editor, methods=["GET"]),
         *remote_routes(),
+        *remote_service_routes(),
+        Mount(
+            REMOTE_PREFIX,
+            app=RemoteInstances(
+                instance_endpoints(),
+                missing=request_response(no_endpoint),
+                live=RemoteLiveRuns(),
+            ),
+        ),
         *instance_routes(local, prefix=API_PREFIX.rstrip("/")),
         Route("/api/{rest:path}", no_endpoint),
         Mount(ASSETS_PATH.rstrip("/"), StaticFiles(directory=ASSETS_DIRECTORY)),

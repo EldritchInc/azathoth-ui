@@ -130,6 +130,15 @@ documents. From an MCP server, on the Tools page, asks a server for one of
 its tools and shows the document Azathoth makes of it, to read before you
 import it
 ([ADR 0015](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0015-the-catalog-in-the-editor.md)).
+Every page works on a remote too. The switcher opens a remote on its
+overview, at `/remotes/<name>`, which says where its data is kept, the
+edition it runs and how its jobs stand, above where everything either side
+holds stands; every page below it, such as `/remotes/<name>/workflows`, is
+that remote's. Each request reaches the remote with the token its variable
+holds then, and nothing the remote sends is kept. A button there asks the
+remote's policy first, and says why when you may not, and every command
+shown ends with `--remote <name>`
+([ADR 0016](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0016-working-on-a-remote.md)).
 [ADR 0001](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0001-local-server-security.md) explains how the server
 keeps other sites and other users out.
 

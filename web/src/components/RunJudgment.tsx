@@ -5,6 +5,7 @@ import type { FeedbackDisposition, RunDetail, RunFeedback } from "../api/types";
 import { DISPOSITION_NAMES } from "../feedback";
 import { parseObject } from "../forms";
 import { useRecordFeedback, useRunFeedback } from "../queries";
+import { resource } from "../permissions";
 import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { JsonBlock } from "./JsonBlock";
@@ -164,7 +165,7 @@ function JudgeRun({ runId }: { readonly runId: string }) {
         <div className={styles.actions}>
           <ActionButton
             action="annotate_run"
-            subject={runId}
+            subject={resource("run", runId)}
             type="submit"
             className={buttons.primary}
             disabled={
@@ -218,7 +219,11 @@ export function RunJudgment({ run }: { readonly run: RunDetail }) {
         <p className={styles.quiet}>Nobody has judged this run yet.</p>
       )}
       {judgments.data !== undefined && judgments.data.length > 0 && (
-        <Restricted sensitivity={run.sensitivity} what="its judgments" subject={run.run_id}>
+        <Restricted
+          sensitivity={run.sensitivity}
+          what="its judgments"
+          subject={resource("run", run.run_id)}
+        >
           <ol className={styles.list} aria-label="Judgments">
             {judgments.data.map((judgment) => (
               <JudgmentItem key={judgment.feedback_id} judgment={judgment} />

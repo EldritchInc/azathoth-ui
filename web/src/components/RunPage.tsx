@@ -6,6 +6,7 @@ import { idOf, stepsOf, type JsonObject } from "../editing";
 import { titleOf } from "../problems";
 import { useDetail, useRun } from "../queries";
 import { duration, keptStepRun, type StepRun } from "../running";
+import { resource } from "../permissions";
 import buttons from "./Buttons.module.css";
 import { Command } from "./Command";
 import { InstanceLink } from "./InstanceLink";
@@ -104,7 +105,7 @@ function KeptRun({ run }: { readonly run: RunDetail }) {
         <Restricted
           sensitivity={run.sensitivity}
           what="the run's input, result and steps"
-          subject={run.run_id}
+          subject={resource("run", run.run_id)}
         >
           <div className={styles.pair}>
             <section className={styles.outcome} aria-labelledby="input-heading">

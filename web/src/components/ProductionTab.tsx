@@ -15,6 +15,7 @@ import {
   useWorkflowInvocations,
 } from "../queries";
 import { instanceLabel, useScope } from "../scope";
+import { resource } from "../permissions";
 import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { InstanceLink } from "./InstanceLink";
@@ -189,7 +190,7 @@ export function ProductionTab({
         <div className={styles.buttons}>
           <ActionButton
             action="promote"
-            subject={workflowId}
+            subject={resource("workflow", workflowId)}
             type="button"
             className={buttons.primary}
             disabled={change.isPending}
@@ -241,7 +242,7 @@ export function ProductionTab({
             )}
             <ActionButton
               action="promote"
-              subject={workflowId}
+              subject={resource("workflow", workflowId)}
               type="button"
               className={buttons.primary}
               disabled={change.isPending}
@@ -255,7 +256,7 @@ export function ProductionTab({
             {state !== null && previous !== null && (
               <ActionButton
                 action="promote"
-                subject={workflowId}
+                subject={resource("workflow", workflowId)}
                 type="button"
                 className={buttons.quiet}
                 disabled={change.isPending}
@@ -341,7 +342,7 @@ export function ProductionTab({
                 ) : (
                   <ActionButton
                     action="promote"
-                    subject={workflowId}
+                    subject={resource("workflow", workflowId)}
                     type="button"
                     className={buttons.quiet}
                     disabled={change.isPending}

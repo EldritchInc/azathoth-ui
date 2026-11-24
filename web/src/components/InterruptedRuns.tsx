@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import type { InterruptedRun, LiveRun } from "../api/types";
 import { useInterruptedRuns, useResumeInvocation, useResumeRun } from "../queries";
 import { usePage } from "../scope";
+import { resource } from "../permissions";
 import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import styles from "./InterruptedRuns.module.css";
@@ -46,7 +47,7 @@ function InterruptedItem({
       )}
       <ActionButton
         action={run.invocation_id === null ? "run_workflow" : "invoke"}
-        subject={run.workflow_id}
+        subject={resource("workflow", run.workflow_id)}
         type="button"
         className={buttons.quiet}
         disabled={resuming}

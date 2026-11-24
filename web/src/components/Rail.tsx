@@ -5,7 +5,7 @@ import { instanceStyle } from "../instanceColour";
 import { DESCRIPTIONS, KINDS, type Kind } from "../kinds";
 import { useAllowed } from "../permissions";
 import { useGoals, useJudges, useList, useLiveRuns, usePortfolio, useRemotes } from "../queries";
-import { LOCAL_SCOPE, useScope } from "../scope";
+import { isLocal, useScope } from "../scope";
 import type { ThemeChoice } from "../theme";
 import type { Connection } from "../useInstance";
 import { ConnectionStatus } from "./ConnectionStatus";
@@ -179,12 +179,15 @@ function SpendLink() {
   );
 }
 
-/** The remotes link, counting the remotes the editor's instance names. */
+/**
+ * The remotes link, counting the remotes the editor's instance names. It is
+ * marked on the list alone: a remote's own pages are that remote's.
+ */
 function RemotesLink() {
   const remotes = useRemotes();
 
   return (
-    <NavLink className={styles.item} to="/remotes">
+    <NavLink className={styles.item} to="/remotes" end>
       <Icon name="remotes" />
       <span className={styles.label}>Remotes</span>
       {remotes.data !== undefined && (
@@ -243,9 +246,7 @@ export function Rail({
           <Icon name="overview" />
           <span className={styles.label}>Overview</span>
         </InstanceNavLink>
-        <p className={styles.section}>
-          {scope.name === LOCAL_SCOPE.name ? "Local instance" : scope.name}
-        </p>
+        <p className={styles.section}>{isLocal(scope) ? "Local instance" : scope.name}</p>
         {KINDS.map((kind) => (
           <KindLink key={kind} kind={kind} />
         ))}

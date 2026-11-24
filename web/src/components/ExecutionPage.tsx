@@ -3,6 +3,7 @@ import { useParams } from "react-router";
 import type { BenchmarkExecutionDetail, ExecutionCandidate } from "../api/types";
 import { dollarsOf, EXECUTION_KIND_NAMES, passedOf, percentOf, scoreOf } from "../benchmarking";
 import { useBenchmarkCases, useBenchmarkExecution, useDetail } from "../queries";
+import { resource } from "../permissions";
 import styles from "./Benchmarks.module.css";
 import { Command } from "./Command";
 import { InstanceLink } from "./InstanceLink";
@@ -102,7 +103,7 @@ function Candidate({
       <Restricted
         sensitivity={execution.sensitivity}
         what={`${candidate.workflow_name}'s results`}
-        subject={execution.execution_id}
+        subject={resource("execution", execution.execution_id)}
       >
         <table className={structure.table} aria-label={`${candidate.workflow_name}'s cases`}>
           <thead>

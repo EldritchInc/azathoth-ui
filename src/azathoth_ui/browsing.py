@@ -47,7 +47,7 @@ WHOLE_NUMBER: Final = re.compile(r"[0-9]+")
 
 def instance_of(
     request: Request,
-) -> api.Azathoth:
+) -> api.Instance:
     """Return the instance one request acts on (ADR 0009)."""
 
     return context_of(request).instance
@@ -126,17 +126,15 @@ def revision_number(
 
 def may_read_restricted(
     request: Request,
+    resource: str | None = None,
 ) -> bool:
     """Return whether the person may read restricted data on the instance a request acts on.
 
-    On the editor's own instance, and on a core remote, its owner may, so
-    the answer is always yes; Azathoth 1.6 asks a remote's policy for
-    `read_restricted` instead (ADR 0009).
+    On the editor's own instance they may. On a remote, its policy is asked
+    for `read_restricted`, on `resource` when one is named (ADR 0016).
     """
 
-    context_of(request)
-
-    return True
+    return context_of(request).may("read_restricted", resource)
 
 
 def download(
@@ -474,7 +472,10 @@ def benchmark_diff(
 
     return one(
         instance_of(request).benchmarks.compare_revisions(
-            benchmark_id, before, after, include_restricted=may_read_restricted(request)
+            benchmark_id,
+            before,
+            after,
+            include_restricted=may_read_restricted(request, f"benchmark {benchmark_id}"),
         )
     )
 

@@ -1,5 +1,58 @@
 # Changelog
 
+## 1.6.0b1
+
+The first pre-release of the editor for Azathoth 1.6, which works on any
+remote as it does on its own instance.
+
+- The editor needs Azathoth 1.6, and builds on its first pre-release,
+  1.6.0b1: `make install` and CI name it, so pip takes Azathoth's
+  pre-releases and no other package's.
+- Every endpoint that acts on an instance is served for each remote the
+  editor's instance names, under `/api/remotes/{name}`, answering as it
+  does for the editor's own instance under `/api`. Each request reaches
+  the remote afresh, with the token its name's variable holds now, and
+  what answered it is closed once it is answered.
+- A run, an invocation, a benchmark run or comparison and an optimization
+  started on a remote run there, as the remote's jobs, and are watched
+  here as a live run started on the editor's own instance is.
+- `GET {instance}/commands` says what goes after a command too: nothing on
+  the editor's own instance, and `--remote <NAME>` on a remote.
+- A remote with no such name is 404, one whose token is not set is
+  refused before anything is sent, one that cannot be reached is 502, and
+  what a remote's policy refuses is 403, in the policy's words. A remote
+  that cannot answer now, as when its audit is down, is 503.
+- [ADR 0016](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0016-working-on-a-remote.md)
+  records how the editor works on a remote, and amends ADR 0009.
+- `GET /api/remotes/{name}/service` relays what a remote says at
+  `/v1/service`: its Azathoth, its protocol, the edition its policy names
+  with what it says more of it, and how its jobs stand.
+- `GET /api/remotes/{name}/permissions` relays what a remote's policy
+  lets the caller do, and `POST` there with `{"resources": [...]}` asks
+  of each resource named, from 1 to 100. The editor sends both requests
+  itself, over httpx, which it now requires.
+- Comparing a benchmark's revisions on a remote tells a restricted case's
+  values only where the remote's policy allows `read_restricted` on it.
+- Every page of the web app works on a remote, under `/remotes/<name>`,
+  taking its instance from its address; `/remotes` stays the editor's list
+  of remotes.
+- A remote opens on its overview, at `/remotes/<name>`, which describes
+  the instance there, its edition and its jobs, saying so when what waits
+  has no runner alive to start it, above where everything either side
+  holds stands.
+- A command shown on a remote ends with `--remote <name>`, dimmed, and is
+  copied with it.
+- Every button on a remote asks the remote's policy before it may be
+  pressed: of the remote in one request, and of every resource a page
+  names in another, at most 100 at a time. An answer is kept for 30
+  seconds, and asked again on switching to the remote; a push or pull
+  asks the remote it goes to.
+- What a button acts on is named as a remote's policy names it, its kind
+  and its ID, so a case's buttons ask of its benchmark and a judge's of its
+  model.
+- Each instance's answers are kept under where its endpoints are, so a
+  remote named `local` never shares the editor's own instance's.
+
 ## 1.5.0
 
 The editor for Azathoth 1.5, which brings it to everything the command

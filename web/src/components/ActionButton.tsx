@@ -1,15 +1,16 @@
 import { useId, type ButtonHTMLAttributes } from "react";
 
-import { useAllowed, type Action } from "../permissions";
+import { useAllowed, type Action, type Resource } from "../permissions";
 
 /**
  * A button's own attributes, and the action it takes, on what, and on which
- * instance. What it acts on is its `subject`, since HTML's own attributes
- * already have a `resource`.
+ * instance. What it acts on is its `subject`, as a remote's policy names it,
+ * such as `workflow <ID>`, since HTML's own attributes already have a
+ * `resource`.
  */
 export type ActionButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   readonly action: Action;
-  readonly subject?: string | null;
+  readonly subject?: Resource | null;
   readonly instance?: string;
 };
 

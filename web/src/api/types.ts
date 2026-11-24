@@ -30,10 +30,65 @@ export interface EditorDescription {
   readonly providers: readonly ProviderName[];
 }
 
-/** `GET {base}/commands`: an instance's name, and what goes before a command for it (ADR 0009). */
+/**
+ * `GET {base}/commands`: an instance's name, and what goes before and after
+ * a command so that it acts on that instance (ADR 0009): the database before
+ * it for the editor's own instance, `--remote <name>` after it for a remote.
+ */
 export interface InstanceCommands {
   readonly instance: string;
   readonly prefix: string;
+  readonly suffix: string;
+}
+
+/** Whether a remote's policy lets the caller take one action, and why not when it does not. */
+export interface ActionPermission {
+  readonly action: string;
+  readonly allowed: boolean;
+  readonly reason: string | null;
+}
+
+/** `GET /api/remotes/{name}/permissions`: every action, and whether the caller may take it. */
+export interface RemotePermissionsAnswer {
+  readonly principal: string;
+  readonly actions: readonly ActionPermission[];
+}
+
+/** What the caller may do to one resource a `POST /api/remotes/{name}/permissions` named. */
+export interface ResourcePermissions {
+  readonly resource: string;
+  readonly actions: readonly ActionPermission[];
+}
+
+/** `POST /api/remotes/{name}/permissions`: what the caller may do to each resource named. */
+export interface ResourcePermissionsAnswer {
+  readonly principal: string;
+  readonly resources: readonly ResourcePermissions[];
+}
+
+/** What a remote says the caller may do, of the remote as a whole or of each resource named. */
+export type PermissionsAnswer = RemotePermissionsAnswer | ResourcePermissionsAnswer;
+
+/** How a remote's jobs stand: how many wait and run, and the runners alive to run them. */
+export interface ServiceJobs {
+  readonly queued: number;
+  readonly running: number;
+  readonly runners: number;
+  readonly oldest_queued_at: string | null;
+}
+
+/**
+ * `GET /api/remotes/{name}/service`: what a remote says of the service API
+ * it serves, and the edition its policy names, with what it says more of it.
+ * `jobs` is null when the remote runs no jobs.
+ */
+export interface ServiceDescription {
+  readonly azathoth_version: string;
+  readonly api_stability: ApiStability;
+  readonly protocol: number;
+  readonly edition: string;
+  readonly edition_detail: string | null;
+  readonly jobs: ServiceJobs | null;
 }
 
 /** One revision of a component: its number, digest and when it was imported. */
@@ -424,7 +479,68 @@ export function isEditorDescription(value: unknown): value is EditorDescription 
 
 /** Returns whether a value is an instance's name and command prefix. */
 export function isInstanceCommands(value: unknown): value is InstanceCommands {
-  return isRecord(value) && typeof value.instance === "string" && typeof value.prefix === "string";
+  return (
+    isRecord(value) &&
+    typeof value.instance === "string" &&
+    typeof value.prefix === "string" &&
+    typeof value.suffix === "string"
+  );
+}
+
+function isActionPermissions(value: unknown): value is readonly ActionPermission[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (each) =>
+        isRecord(each) &&
+        typeof each.action === "string" &&
+        typeof each.allowed === "boolean" &&
+        (each.reason === null || typeof each.reason === "string"),
+    )
+  );
+}
+
+/** Returns whether a value is what a remote says the caller may do on it as a whole. */
+export function isRemotePermissionsAnswer(value: unknown): value is RemotePermissionsAnswer {
+  return (
+    isRecord(value) && typeof value.principal === "string" && isActionPermissions(value.actions)
+  );
+}
+
+/** Returns whether a value is what a remote says the caller may do to each resource named. */
+export function isResourcePermissionsAnswer(value: unknown): value is ResourcePermissionsAnswer {
+  return (
+    isRecord(value) &&
+    typeof value.principal === "string" &&
+    Array.isArray(value.resources) &&
+    value.resources.every(
+      (each) =>
+        isRecord(each) && typeof each.resource === "string" && isActionPermissions(each.actions),
+    )
+  );
+}
+
+function isServiceJobs(value: unknown): value is ServiceJobs {
+  return (
+    isRecord(value) &&
+    isWholeNumber(value.queued) &&
+    isWholeNumber(value.running) &&
+    isWholeNumber(value.runners) &&
+    (value.oldest_queued_at === null || typeof value.oldest_queued_at === "string")
+  );
+}
+
+/** Returns whether a value is what a remote says of the service API it serves. */
+export function isServiceDescription(value: unknown): value is ServiceDescription {
+  return (
+    isRecord(value) &&
+    typeof value.azathoth_version === "string" &&
+    (value.api_stability === "provisional" || value.api_stability === "stable") &&
+    isWholeNumber(value.protocol) &&
+    typeof value.edition === "string" &&
+    (value.edition_detail === null || typeof value.edition_detail === "string") &&
+    (value.jobs === null || isServiceJobs(value.jobs))
+  );
 }
 
 /** Returns whether a value is one revision. */

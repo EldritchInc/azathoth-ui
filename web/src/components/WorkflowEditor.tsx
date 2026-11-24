@@ -31,6 +31,7 @@ import { useDetail, useReadiness, useWorkflowCheck } from "../queries";
 import { scoped, usePage, useScope } from "../scope";
 import { browserStorage } from "../theme";
 import { useDebounced } from "../useDebounced";
+import { resource } from "../permissions";
 import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { problemsByStep, type Composing } from "./composing";
@@ -505,7 +506,7 @@ function Editor({
           )}
           <ActionButton
             action="import_workflow"
-            subject={id}
+            subject={resource("workflow", id)}
 
             type="button"
             className={buttons.primary}

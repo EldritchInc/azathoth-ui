@@ -6,7 +6,7 @@ import type { PullReport, PushReport, RemoteStatus } from "../api/types";
 import { firstRemote } from "../remotes";
 import { TOOL_DETAIL, WORKFLOW_DETAIL, WORKFLOW_HISTORY } from "../test/documents";
 import { SERVER, type Answers } from "../test/instances";
-import { AHEAD, ORIGIN, STAGING, recording, type Sent } from "../test/remotes";
+import { AHEAD, ORIGIN, STAGING, permitting, recording, type Sent } from "../test/remotes";
 import { renderAt } from "../test/render";
 
 const WORKFLOW_PATH = `/api/workflows/${WORKFLOW_DETAIL.id}`;
@@ -54,6 +54,7 @@ const ANSWERS: Answers = {
   [`/api/tools/${TOOL_DETAIL.id}/history?limit=100&version=1.0.0`]: [200, { items: [TOOL_DETAIL] }],
   "/api/remotes": [200, { items: [ORIGIN, STAGING] }],
   "/api/remotes/origin/status": [200, STANDING],
+  "/api/remotes/origin/permissions": [200, permitting()],
 };
 
 /** Opens a workflow's page, and its Ship panel. */
@@ -70,6 +71,22 @@ async function ship(posts: Answers = {}, answers: Answers = ANSWERS): Promise<Se
 }
 
 describe("Ship", () => {
+  it("won't push where the remote's policy refuses it, and says why in its words", async () => {
+    const refused = "eris may not push to origin; only release managers may.";
+    await ship(
+      {},
+      { ...ANSWERS, "/api/remotes/origin/permissions": [200, permitting({ push: refused })] },
+    );
+
+    const panel = await screen.findByRole("region", { name: "Ship" });
+    const push = await within(panel).findByRole("button", { name: "Push…" });
+
+    await waitFor(() => {
+      expect(push).toHaveAccessibleDescription(refused);
+    });
+    expect(push).toBeDisabled();
+  });
+
   it("asks the remote where this one workflow stands", async () => {
     const sent = await ship();
     const panel = await screen.findByRole("region", { name: "Ship" });

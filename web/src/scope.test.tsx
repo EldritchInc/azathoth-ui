@@ -4,7 +4,15 @@ import { describe, expect, it } from "vitest";
 import { fetchWorkflows, liveEventsPath, modelApiPath } from "./api/client";
 import { ComponentList } from "./components/ComponentList";
 import { detailApiPath, historyApiPath } from "./kinds";
-import { LOCAL_SCOPE, pageOf, scoped, type InstanceScope } from "./scope";
+import {
+  LOCAL_SCOPE,
+  isLocal,
+  pageOf,
+  remoteScope,
+  scopeAt,
+  scoped,
+  type InstanceScope,
+} from "./scope";
 import { REVIEW_WORKFLOW, SERVER, WORKFLOW, serving, urlOf } from "./test/instances";
 import { renderAt } from "./test/render";
 
@@ -26,10 +34,51 @@ describe("pageOf", () => {
   });
 });
 
+describe("remoteScope", () => {
+  it("puts a remote's endpoints and pages under its name", () => {
+    expect(remoteScope("staging")).toEqual(STAGING);
+  });
+
+  it("is never the local instance, even for a remote named local", () => {
+    expect(isLocal(LOCAL_SCOPE)).toBe(true);
+    expect(isLocal(remoteScope("local"))).toBe(false);
+    expect(remoteScope("local").api).not.toBe(LOCAL_SCOPE.api);
+  });
+});
+
+describe("scopeAt", () => {
+  it("is the local instance's at its own pages, and at the editor's", () => {
+    expect(scopeAt("/")).toEqual(LOCAL_SCOPE);
+    expect(scopeAt("/workflows/w")).toEqual(LOCAL_SCOPE);
+    expect(scopeAt("/remotes")).toEqual(LOCAL_SCOPE);
+    expect(scopeAt("/remotes/")).toEqual(LOCAL_SCOPE);
+  });
+
+  it("is a remote's at its overview and every page under it", () => {
+    expect(scopeAt("/remotes/staging")).toEqual(STAGING);
+    expect(scopeAt("/remotes/staging/")).toEqual(STAGING);
+    expect(scopeAt("/remotes/staging/workflows/w/runs")).toEqual(STAGING);
+  });
+
+  it("is the local instance's at an address that names no remote", () => {
+    expect(scopeAt("/remotes/%E0%A4%A")).toEqual(LOCAL_SCOPE);
+  });
+});
+
 describe("scoped", () => {
-  it("keeps a query under the instance's name", () => {
-    expect(scoped(LOCAL_SCOPE, ["workflows", "list"])).toEqual(["local", "workflows", "list"]);
-    expect(scoped(STAGING, ["workflows", "list"])).toEqual(["staging", "workflows", "list"]);
+  it("keeps a query under where the instance's endpoints are", () => {
+    expect(scoped(LOCAL_SCOPE, ["workflows", "list"])).toEqual(["/api", "workflows", "list"]);
+    expect(scoped(STAGING, ["workflows", "list"])).toEqual([
+      "/api/remotes/staging",
+      "workflows",
+      "list",
+    ]);
+  });
+
+  it("never mixes the local instance's answers with a remote named local", () => {
+    expect(scoped(remoteScope("local"), ["workflows"])).not.toEqual(
+      scoped(LOCAL_SCOPE, ["workflows"]),
+    );
   });
 });
 

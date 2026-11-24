@@ -2,10 +2,10 @@
 
 `instance_routes(context, prefix=...)` returns the browsing, models,
 portfolio, benchmark, optimization, spend and live-run endpoints, and the
-instance's own description and command prefix, under one prefix, each bound
-to one instance. The editor mounts them at `/api` for its own instance;
-Azathoth 1.6's remotes are mounted the same way, under
-`/api/remotes/{name}`, with nothing rebuilt.
+instance's own description and commands, under one prefix, each bound to
+one instance. The editor mounts them at `/api` for its own instance; each
+remote is served the same endpoints under `/api/remotes/{name}`, with
+nothing rebuilt (ADR 0016).
 """
 
 import inspect
@@ -44,15 +44,22 @@ def describe_instance(
 def describe_commands(
     request: Request,
 ) -> Response:
-    """`GET {prefix}/commands`: the instance's name, and what goes before a command for it.
+    """`GET {prefix}/commands`: the instance's name, and what goes before and after a command.
 
-    The server writes the prefix, quoted for this computer's shell, so the
-    web app never quotes anything itself.
+    The server writes both, quoted for this computer's shell, so the web
+    app never quotes anything itself: the local instance's database goes
+    before a command, and a remote's `--remote <NAME>` after it.
     """
 
     context = context_of(request)
 
-    return JSONResponse({"instance": context.name, "prefix": context.command_prefix})
+    return JSONResponse(
+        {
+            "instance": context.name,
+            "prefix": context.command_prefix,
+            "suffix": context.command_suffix,
+        }
+    )
 
 
 def instance_endpoints() -> list[Route]:

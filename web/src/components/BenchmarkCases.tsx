@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import type { Sensitivity } from "../api/types";
 import { describeBenchmark } from "../documents";
+import { resource } from "../permissions";
 import { useRevealing } from "../revealing";
 import { RestrictedNotice, RestrictedScope } from "./Restricted";
 import { SensitivityLabel } from "./SensitivityLabel";
@@ -14,6 +15,7 @@ import styles from "./Structure.module.css";
  * hidden until shown (ADR 0011).
  */
 export function BenchmarkCases(props: {
+  readonly benchmarkId: string;
   readonly document: Readonly<Record<string, unknown>>;
   readonly sensitivity: Sensitivity | null;
 }) {
@@ -25,9 +27,12 @@ export function BenchmarkCases(props: {
 }
 
 function Cases({
+  benchmarkId,
   document,
   sensitivity,
 }: {
+  /** The benchmark whose cases these are. */
+  readonly benchmarkId: string;
   readonly document: Readonly<Record<string, unknown>>;
   /** The benchmark's label, as Azathoth gives it. */
   readonly sensitivity: Sensitivity | null;
@@ -67,7 +72,7 @@ function Cases({
                   <td colSpan={2}>
                     <RestrictedNotice
                       what={`case ${benchmarkCase.id}`}
-                      subject={benchmarkCase.id}
+                      subject={resource("benchmark", benchmarkId)}
                       inline
                     />
                   </td>

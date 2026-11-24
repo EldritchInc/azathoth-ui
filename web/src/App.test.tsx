@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 import { App } from "./App";
 import { THEME_KEY } from "./theme";
 import { JUDGES } from "./test/evidence";
-import { SERVER } from "./test/instances";
+import { REVIEW_WORKFLOW, SERVER, WORKFLOW } from "./test/instances";
+import { ORIGIN_ANSWERS, ORIGIN_SERVICE } from "./test/remotes";
 import { FINISHED_RUN, LIVE_RUN } from "./test/runs";
 import { renderAt } from "./test/render";
 
@@ -167,5 +168,78 @@ describe("App", () => {
 
     expect(await screen.findByRole("heading", { level: 1, name: "ui.db" })).toBeVisible();
     expect(screen.queryByRole("link", { name: /running/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("App on a remote", () => {
+  it("shows a remote's pages under its name, from the remote, with the rail on it", async () => {
+    renderAt(<App />, { path: "/remotes/origin/workflows", answers: ORIGIN_ANSWERS });
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Workflows" })).toBeVisible();
+    expect(await screen.findByRole("link", { name: REVIEW_WORKFLOW.name })).toHaveAttribute(
+      "href",
+      `/remotes/origin/workflows/${REVIEW_WORKFLOW.id}`,
+    );
+    expect(screen.queryByRole("link", { name: WORKFLOW.name })).toBeNull();
+
+    const navigation = screen.getByRole("navigation", { name: "Editor" });
+    const workflows = within(navigation).getByRole("link", { name: /^Workflows/ });
+
+    expect(workflows).toHaveAttribute("href", "/remotes/origin/workflows");
+    expect(workflows).toHaveAttribute("aria-current", "page");
+    expect(within(navigation).getByRole("link", { name: "Overview" })).toHaveAttribute(
+      "href",
+      "/remotes/origin",
+    );
+    expect(within(navigation).getByText("origin")).toBeVisible();
+    expect(screen.getByTestId("instance-switcher")).toHaveAttribute("data-instance", "origin");
+  });
+
+  it("opens a remote on its overview: the instance there, its edition and its jobs", async () => {
+    renderAt(<App />, { path: "/remotes/origin", answers: ORIGIN_ANSWERS });
+
+    expect(await screen.findByRole("heading", { level: 1, name: "origin" })).toBeVisible();
+
+    const there = await screen.findByRole("region", { name: "The instance there" });
+
+    expect(await within(there).findByText("studio")).toBeVisible();
+    expect(within(there).getByText(ORIGIN_SERVICE.edition_detail ?? "")).toBeVisible();
+    expect(await within(there).findByText(/azathoth@db\.example\.com/)).toBeVisible();
+    expect(within(there).getByText("2 waiting, 1 running")).toBeVisible();
+    expect(await screen.findByRole("region", { name: "Ahead here" })).toBeVisible();
+
+    const navigation = screen.getByRole("navigation", { name: "Editor" });
+
+    expect(within(navigation).getByRole("link", { name: "Overview" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(within(navigation).getByRole("link", { name: /^Remotes/ })).not.toHaveAttribute(
+      "aria-current",
+    );
+  });
+
+  it("keeps the editor's own pages for the remotes it names", async () => {
+    renderAt(<App />, { path: "/remotes", answers: ORIGIN_ANSWERS });
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Remotes" })).toBeVisible();
+    expect(screen.getByTestId("instance-switcher")).toHaveAttribute("data-instance", "local");
+    expect(
+      within(screen.getByRole("navigation", { name: "Editor" })).getByRole("link", {
+        name: /^Remotes/,
+      }),
+    ).toHaveAttribute("aria-current", "page");
+  });
+
+  it("says when there is nothing at an address on a remote, and leads to its overview", () => {
+    renderAt(<App />, { path: "/remotes/origin/nowhere", answers: ORIGIN_ANSWERS });
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Nothing at this address" }),
+    ).toBeVisible();
+    expect(screen.getByRole("link", { name: "Go to the overview" })).toHaveAttribute(
+      "href",
+      "/remotes/origin",
+    );
   });
 });

@@ -6,6 +6,7 @@ import { targetOf } from "../benchmarking";
 import { generationCountOf } from "../optimizing";
 import { useDetail, useList, useStartOptimization } from "../queries";
 import { usePage } from "../scope";
+import { resource } from "../permissions";
 import { ActionButton } from "./ActionButton";
 import styles from "./Benchmarks.module.css";
 import buttons from "./Buttons.module.css";
@@ -176,7 +177,7 @@ export function OptimizeWorkflow() {
         <div className={layout.actions}>
           <ActionButton
             action="optimize"
-            subject={id}
+            subject={resource("workflow", id)}
             type="submit"
             className={buttons.primary}
             disabled={!ready}

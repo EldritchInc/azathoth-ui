@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 import { ActionButton } from "./components/ActionButton";
 import { ModelPage } from "./components/ModelPage";
 import { RunWorkflow } from "./components/RunWorkflow";
-import { ACTIONS, EVERYTHING, type Permissions } from "./permissions";
+import { ACTIONS, EVERYTHING, resource, type Permissions } from "./permissions";
+import { LOCAL_SCOPE, remoteScope } from "./scope";
 import { SERVER, WORKFLOW } from "./test/instances";
 import { renderAt } from "./test/render";
 import { READY, RUN_WORKFLOW } from "./test/runs";
@@ -29,7 +30,7 @@ describe("the action catalog", () => {
 
   it("is all allowed on the editor's own instance", () => {
     for (const action of ACTIONS) {
-      expect(EVERYTHING("local", action, null)).toEqual({ allowed: true });
+      expect(EVERYTHING(LOCAL_SCOPE, action, null)).toEqual({ allowed: true });
     }
   });
 });
@@ -76,14 +77,14 @@ describe("ActionButton", () => {
   it("asks about the instance the page acts on, or the one it names, and its resource", () => {
     const asked: string[] = [];
     const recording: Permissions = (instance, action, resource) => {
-      asked.push(`${instance} ${action} ${resource ?? "-"}`);
+      asked.push(`${instance.api} ${action} ${resource ?? "-"}`);
 
       return { allowed: true };
     };
 
     renderAt(
       <>
-        <ActionButton type="button" action="run_workflow" subject="w">
+        <ActionButton type="button" action="run_workflow" subject={resource("workflow", "w")}>
           Run
         </ActionButton>
         <ActionButton type="button" action="push" instance="origin">
@@ -92,12 +93,42 @@ describe("ActionButton", () => {
       </>,
       {
         permissions: recording,
-        scope: { name: "staging", api: "/api/remotes/staging", pages: "/remotes/staging" },
+        scope: remoteScope("staging"),
       },
     );
 
-    expect(asked).toContain("staging run_workflow w");
-    expect(asked).toContain("origin push -");
+    expect(asked).toContain("/api/remotes/staging run_workflow workflow w");
+    expect(asked).toContain("/api/remotes/origin push -");
+  });
+});
+
+describe("pages that act", () => {
+  it("ask about what they act on as a remote's policy names it", async () => {
+    const asked: string[] = [];
+    const recording: Permissions = (_instance, action, subject) => {
+      asked.push(`${action} ${subject ?? "-"}`);
+
+      return { allowed: true };
+    };
+
+    renderAt(
+      <Routes>
+        <Route path="/workflows/:id/run" element={<RunWorkflow />} />
+      </Routes>,
+      {
+        path: `/workflows/${WORKFLOW.id}/run`,
+        answers: {
+          ...SERVER,
+          [`/api/workflows/${WORKFLOW.id}`]: [200, RUN_WORKFLOW],
+          "/api/workflows/readiness": [200, READY],
+        },
+        permissions: recording,
+      },
+    );
+
+    await screen.findByRole("button", { name: "Run" });
+
+    expect(asked).toContain(`run_workflow workflow ${WORKFLOW.id}`);
   });
 });
 

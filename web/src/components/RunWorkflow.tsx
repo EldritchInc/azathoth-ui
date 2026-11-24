@@ -8,6 +8,7 @@ import { useDetail, useReadiness, useStartRun } from "../queries";
 import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { usePage } from "../scope";
+import { resource } from "../permissions";
 import { InstanceLink } from "./InstanceLink";
 import { Notice } from "./Notice";
 import { ReadinessList } from "./Readiness";
@@ -150,7 +151,7 @@ export function RunWorkflow() {
         <div className={styles.actions}>
           <ActionButton
             action="run_workflow"
-            subject={id}
+            subject={resource("workflow", id)}
 
             type="submit"
             className={buttons.primary}

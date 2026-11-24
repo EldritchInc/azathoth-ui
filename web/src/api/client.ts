@@ -57,7 +57,10 @@ import {
   isPortfolioRemoval,
   isPullReport,
   isPushReport,
+  isRemotePermissionsAnswer,
   isRemoteStatus,
+  isResourcePermissionsAnswer,
+  isServiceDescription,
   isSummary,
   isToolSummary,
   itemsOf,
@@ -110,13 +113,16 @@ import {
   type PortfolioRemoval,
   type PullReport,
   type PushReport,
+  type PermissionsAnswer,
   type RemoteStatus,
   type Sensitivity,
+  type ServiceDescription,
   type Summary,
   type ToolSummary,
   type WorkflowSummary,
 } from "./types";
 import type { McpToolRequest } from "../mcpTools";
+import type { Resource } from "../permissions";
 
 export const UNREACHABLE_MESSAGE = "The editor's server isn't answering.";
 
@@ -244,6 +250,55 @@ export async function fetchCommands(options: RequestOptions = {}): Promise<Insta
 
   return body;
 }
+
+/**
+ * Returns what a remote says of the service API it serves, its edition and
+ * its jobs: `GET {base}/service`, where `base` is the remote's.
+ */
+export async function fetchService(options: RequestOptions = {}): Promise<ServiceDescription> {
+  const body = await getJson(at(options, "/service"), options);
+
+  if (!isServiceDescription(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/** Asks a remote what the caller may do: of it as a whole, or of each resource named. */
+export type PermissionsAsker = (
+  resources: readonly Resource[] | null,
+  options: RequestOptions,
+) => Promise<PermissionsAnswer>;
+
+/**
+ * Asks what a remote's policy lets the caller do: `GET {base}/permissions`
+ * of the remote as a whole, or `POST {base}/permissions` of each resource
+ * named, at most as many as a remote answers about at once.
+ */
+export const askPermissions: PermissionsAsker = async (resources, options) => {
+  if (resources === null) {
+    const body = await getJson(at(options, "/permissions"), options);
+
+    if (!isRemotePermissionsAnswer(body)) {
+      throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+    }
+
+    return body;
+  }
+
+  const body = await requestJson(
+    at(options, "/permissions"),
+    { method: "POST", body: JSON.stringify({ resources }) },
+    options,
+  );
+
+  if (!isResourcePermissionsAnswer(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+};
 
 /** Returns the editor, its shell and its providers: `GET /api/editor`. */
 export async function fetchEditor(options: RequestOptions = {}): Promise<EditorDescription> {
@@ -819,6 +874,11 @@ export interface Selection {
   readonly workflows?: readonly string[];
   readonly tools?: readonly ToolVersion[];
   readonly benchmarks?: readonly string[];
+}
+
+/** Returns where the editor serves a remote's endpoints, under its name (ADR 0016). */
+export function remoteApiBase(name: string): string {
+  return `${API_BASE}/remotes/${encodeURIComponent(name)}`;
 }
 
 /** Returns where the API serves one action on a named remote. */

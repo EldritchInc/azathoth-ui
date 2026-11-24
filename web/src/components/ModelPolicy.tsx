@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { DataPolicy, PolicyAnswer, PortfolioEntry } from "../api/types";
 import { useDeclarePolicy } from "../queries";
 import { instanceLabel, useScope } from "../scope";
+import { resource } from "../permissions";
 import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import styles from "./ModelPolicy.module.css";
@@ -86,7 +87,7 @@ export function ModelPolicy({
         {entry !== undefined && drafting === null && (
           <ActionButton
             action="declare_policy"
-            subject={identifier}
+            subject={resource("model", identifier)}
             type="button"
             className={buttons.quiet}
             onClick={() => {
@@ -165,7 +166,7 @@ export function ModelPolicy({
           <div className={styles.buttons}>
             <ActionButton
               action="declare_policy"
-              subject={identifier}
+              subject={resource("model", identifier)}
               type="button"
               className={buttons.primary}
               disabled={declare.isPending}

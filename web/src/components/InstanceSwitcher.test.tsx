@@ -1,7 +1,7 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import type { InstanceScope } from "../scope";
+import { remoteScope, type InstanceScope } from "../scope";
 import { SERVER } from "../test/instances";
 import { ORIGIN, STAGING } from "../test/remotes";
 import { renderAt } from "../test/render";
@@ -71,6 +71,25 @@ describe("InstanceSwitcher", () => {
       "aria-current",
       "true",
     );
+    expect(within(instances).getByRole("link", { name: "Local" })).not.toHaveAttribute(
+      "aria-current",
+    );
+  });
+
+  it("tells a remote named local from the local instance", async () => {
+    const local = { ...ORIGIN, name: "local" };
+    renderAt(<InstanceSwitcher />, {
+      answers: { ...SERVER, "/api/remotes": [200, { items: [local] }] },
+      scope: remoteScope("local"),
+    });
+
+    expect(within(summary()).getByText("local")).toBeVisible();
+
+    const instances = opened();
+    const remote = await within(instances).findByRole("link", { name: "local" });
+
+    expect(remote).toHaveAttribute("href", "/remotes/local");
+    expect(remote).toHaveAttribute("aria-current", "true");
     expect(within(instances).getByRole("link", { name: "Local" })).not.toHaveAttribute(
       "aria-current",
     );
