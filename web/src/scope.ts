@@ -12,6 +12,8 @@
 
 import { createContext, useCallback, useContext } from "react";
 
+import { remoteApiBase } from "./api/client";
+
 /** One instance the editor works on, as a page sees it. */
 export interface InstanceScope {
   /** How the editor names it: `local`, or a remote's name. */
@@ -25,6 +27,38 @@ export interface InstanceScope {
 /** The editor's own instance, whose endpoints are at `/api` and whose pages are at the top. */
 export const LOCAL_SCOPE: InstanceScope = { name: "local", api: "/api", pages: "" };
 
+/** Returns a remote's scope: endpoints under /api/remotes/{name}, pages under /remotes/{name}. */
+export function remoteScope(name: string): InstanceScope {
+  return { name, api: remoteApiBase(name), pages: `/remotes/${encodeURIComponent(name)}` };
+}
+
+/** Returns whether a scope is the editor's own instance; a remote may be named `local` too. */
+export function isLocal(scope: InstanceScope): boolean {
+  return scope.api === LOCAL_SCOPE.api;
+}
+
+/** A remote's overview, or one of its pages: `/remotes/{name}` and what is below it. */
+const REMOTE_PAGES = /^\/remotes\/([^/]+)(?:\/|$)/;
+
+/**
+ * Returns the instance an address is on: a remote's at its overview and
+ * every page below it, and the local instance's everywhere else, the
+ * editor's own list of remotes included.
+ */
+export function scopeAt(pathname: string): InstanceScope {
+  const found = REMOTE_PAGES.exec(pathname);
+
+  if (found?.[1] === undefined) {
+    return LOCAL_SCOPE;
+  }
+
+  try {
+    return remoteScope(decodeURIComponent(found[1]));
+  } catch {
+    return LOCAL_SCOPE;
+  }
+}
+
 /** The scope every page below it acts on; the local instance unless another is given. */
 export const ScopeContext = createContext<InstanceScope>(LOCAL_SCOPE);
 
@@ -33,12 +67,15 @@ export function useScope(): InstanceScope {
   return useContext(ScopeContext);
 }
 
-/** Returns a query key kept under one instance's name, so two instances' answers never mix. */
+/**
+ * Returns a query key kept under where one instance's endpoints are, so two
+ * instances' answers never mix, not even the local one's and a remote's named `local`.
+ */
 export function scoped<const K extends readonly unknown[]>(
   scope: InstanceScope,
   key: K,
 ): readonly [string, ...K] {
-  return [scope.name, ...key];
+  return [scope.api, ...key];
 }
 
 /** Returns where one of an instance's pages is: `/workflows/<id>` locally, under a remote's own. */

@@ -38,7 +38,8 @@ function Problem({ failure }: { readonly failure: ApiFailure }) {
   );
 }
 
-function Details({ instance }: { readonly instance: InstanceDescription }) {
+/** What an instance is: where its data is kept, the Azathoth serving it, and its service API. */
+export function InstanceDetails({ instance }: { readonly instance: InstanceDescription }) {
   const stable = instance.api_stability === "stable";
 
   return (
@@ -111,7 +112,7 @@ export function Overview({ connection }: { readonly connection: Connection }) {
           <Orbits quiet={connection.state !== "connected"} />
         </div>
       </section>
-      {instance !== null && <Details instance={instance} />}
+      {instance !== null && <InstanceDetails instance={instance} />}
     </div>
   );
 }

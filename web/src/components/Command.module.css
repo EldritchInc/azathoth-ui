@@ -18,7 +18,8 @@
   overflow-wrap: anywhere;
 }
 
-.prefix {
+.prefix,
+.suffix {
   color: var(--faint);
 }
 

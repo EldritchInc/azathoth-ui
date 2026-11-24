@@ -10,6 +10,8 @@ import type {
   RemoteStatus,
 } from "../api/types";
 import { useLineageNames } from "../lineageNames";
+import { LOCAL_SCOPE, ScopeContext } from "../scope";
+import type { Connection } from "../useInstance";
 import { useEditor, usePull, useRemoteStatus, useRemotes } from "../queries";
 import {
   PULLABLE,
@@ -30,6 +32,7 @@ import { Skeleton } from "./ComponentList";
 import detail from "./DetailPage.module.css";
 import { Notice } from "./Notice";
 import { RelativeTime } from "./RelativeTime";
+import { RemoteInstance } from "./RemoteInstance";
 import { TokenState } from "./RemoteList";
 import { PullReportView } from "./SyncReports";
 import styles from "./Remotes.module.css";
@@ -433,8 +436,12 @@ function Crumbs({ name }: { readonly name: string }) {
  * One named remote: how everything either side holds relates, what needs
  * a person first and what agrees folded away last, and where each model
  * is authorized. It asks again on its own while it is shown.
+ *
+ * As a remote's overview (ADR 0016), it is given the connection to the
+ * instance there, and describes it first. What it says of each side is
+ * this editor's: a component's name and link are the local instance's.
  */
-export function RemotePage() {
+export function RemotePage({ connection }: { readonly connection?: Connection } = {}) {
   const { name = "" } = useParams();
   const remotes = useRemotes();
   const editor = useEditor();
@@ -548,7 +555,8 @@ export function RemotePage() {
           </div>
         )}
       </header>
-      {body}
+      {named.token_set && connection !== undefined && <RemoteInstance connection={connection} />}
+      <ScopeContext.Provider value={LOCAL_SCOPE}>{body}</ScopeContext.Provider>
     </div>
   );
 }

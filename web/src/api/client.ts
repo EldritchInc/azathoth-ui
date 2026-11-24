@@ -58,6 +58,7 @@ import {
   isPullReport,
   isPushReport,
   isRemoteStatus,
+  isServiceDescription,
   isSummary,
   isToolSummary,
   itemsOf,
@@ -112,6 +113,7 @@ import {
   type PushReport,
   type RemoteStatus,
   type Sensitivity,
+  type ServiceDescription,
   type Summary,
   type ToolSummary,
   type WorkflowSummary,
@@ -239,6 +241,20 @@ export async function fetchCommands(options: RequestOptions = {}): Promise<Insta
   const body = await getJson(at(options, "/commands"), options);
 
   if (!isInstanceCommands(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+}
+
+/**
+ * Returns what a remote says of the service API it serves, its edition and
+ * its jobs: `GET {base}/service`, where `base` is the remote's.
+ */
+export async function fetchService(options: RequestOptions = {}): Promise<ServiceDescription> {
+  const body = await getJson(at(options, "/service"), options);
+
+  if (!isServiceDescription(body)) {
     throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
   }
 
@@ -819,6 +835,11 @@ export interface Selection {
   readonly workflows?: readonly string[];
   readonly tools?: readonly ToolVersion[];
   readonly benchmarks?: readonly string[];
+}
+
+/** Returns where the editor serves a remote's endpoints, under its name (ADR 0016). */
+export function remoteApiBase(name: string): string {
+  return `${API_BASE}/remotes/${encodeURIComponent(name)}`;
 }
 
 /** Returns where the API serves one action on a named remote. */

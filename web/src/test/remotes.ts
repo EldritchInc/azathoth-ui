@@ -1,5 +1,20 @@
-import type { ComponentStatus, NamedRemote, RemoteStatus } from "../api/types";
-import { SERVER, TOOL, WORKFLOW, answering, serving, urlOf, type Answers } from "./instances";
+import type {
+  ComponentStatus,
+  InstanceDescription,
+  NamedRemote,
+  RemoteStatus,
+  ServiceDescription,
+} from "../api/types";
+import {
+  REVIEW_WORKFLOW,
+  SERVER,
+  TOOL,
+  WORKFLOW,
+  answering,
+  serving,
+  urlOf,
+  type Answers,
+} from "./instances";
 
 /** A remote named `origin`, whose token is set. */
 export const ORIGIN: NamedRemote = {
@@ -83,6 +98,43 @@ export const REMOTES: Answers = {
   ...SERVER,
   "/api/remotes": [200, { items: [ORIGIN, STAGING] }],
   "/api/remotes/origin/status": [200, REACHED],
+};
+
+/** The instance `origin` serves, as `GET /api/remotes/origin/instance` describes it. */
+export const ORIGIN_INSTANCE: InstanceDescription = {
+  database: "postgresql://azathoth@db.example.com:5432/azathoth",
+  backend: "postgres",
+  azathoth_version: "1.6.0b1",
+  schema_version: 31,
+  api_stability: "provisional",
+};
+
+/** What `origin` says of the service API it serves: a licensed edition, and its jobs. */
+export const ORIGIN_SERVICE: ServiceDescription = {
+  azathoth_version: "1.6.0b1",
+  api_stability: "provisional",
+  protocol: 3,
+  edition: "studio",
+  edition_detail: "Licensed to the Miskatonic reading room until 2027-01-01.",
+  jobs: { queued: 2, running: 1, runners: 3, oldest_queued_at: "2026-11-24T09:00:00Z" },
+};
+
+/** `origin`'s own answers, as the editor relays them under its name. */
+export const ORIGIN_ANSWERS: Answers = {
+  ...REMOTES,
+  "/api/remotes/origin/instance": [200, ORIGIN_INSTANCE],
+  "/api/remotes/origin/service": [200, ORIGIN_SERVICE],
+  "/api/remotes/origin/commands": [
+    200,
+    { instance: "origin", prefix: "", suffix: " --remote origin" },
+  ],
+  "/api/remotes/origin/workflows": [200, { items: [REVIEW_WORKFLOW] }],
+  "/api/remotes/origin/tools": [200, { items: [] }],
+  "/api/remotes/origin/benchmarks": [200, { items: [] }],
+  "/api/remotes/origin/goals": [200, { items: [] }],
+  "/api/remotes/origin/judges": [200, { items: [] }],
+  "/api/remotes/origin/local/portfolio": [200, { items: [] }],
+  "/api/remotes/origin/live": [200, { items: [] }],
 };
 
 /** One request the fake server was sent. */

@@ -1,9 +1,20 @@
 import { act, fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { remoteScope } from "../scope";
 import { COMMANDS, SERVER } from "../test/instances";
 import { renderAt } from "../test/render";
 import { Command } from "./Command";
+
+const STAGING = remoteScope("staging");
+
+const STAGING_ANSWERS = {
+  ...SERVER,
+  "/api/remotes/staging/commands": [
+    200,
+    { instance: "staging", prefix: "", suffix: " --remote staging" },
+  ],
+} as const;
 
 afterEach(() => {
   Reflect.deleteProperty(navigator, "clipboard");
@@ -39,19 +50,33 @@ describe("Command", () => {
     expect(container.querySelector("code")).toHaveTextContent(/^azathoth tool list$/);
   });
 
-  it("asks the instance the page acts on what goes before its commands", async () => {
-    renderAt(<Command command="azathoth workflow list" />, {
-      scope: { name: "staging", api: "/api/remotes/staging", pages: "/remotes/staging" },
-      answers: {
-        ...SERVER,
-        "/api/remotes/staging/commands": [
-          200,
-          { instance: "staging", prefix: "--remote staging " },
-        ],
-      },
+  it("asks the instance the page acts on what goes around its commands", async () => {
+    const { container } = renderAt(<Command command="azathoth workflow list" />, {
+      scope: STAGING,
+      answers: STAGING_ANSWERS,
     });
 
     expect(await screen.findByText("--remote staging")).toBeVisible();
     expect(screen.queryByText(COMMANDS.prefix.trim())).toBeNull();
+    expect(container.querySelector("code")).toHaveTextContent(
+      /^azathoth workflow list --remote staging$/,
+    );
+  });
+
+  it("copies the command with what goes after it, for a remote", async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    renderAt(<Command command="azathoth workflow list" />, {
+      scope: STAGING,
+      answers: STAGING_ANSWERS,
+    });
+    await screen.findByText("--remote staging");
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copy command" }));
+      await Promise.resolve();
+    });
+
+    expect(writeText).toHaveBeenCalledWith("azathoth workflow list --remote staging");
   });
 });

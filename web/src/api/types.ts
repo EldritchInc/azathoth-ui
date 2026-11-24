@@ -30,10 +30,37 @@ export interface EditorDescription {
   readonly providers: readonly ProviderName[];
 }
 
-/** `GET {base}/commands`: an instance's name, and what goes before a command for it (ADR 0009). */
+/**
+ * `GET {base}/commands`: an instance's name, and what goes before and after
+ * a command so that it acts on that instance (ADR 0009): the database before
+ * it for the editor's own instance, `--remote <name>` after it for a remote.
+ */
 export interface InstanceCommands {
   readonly instance: string;
   readonly prefix: string;
+  readonly suffix: string;
+}
+
+/** How a remote's jobs stand: how many wait and run, and the runners alive to run them. */
+export interface ServiceJobs {
+  readonly queued: number;
+  readonly running: number;
+  readonly runners: number;
+  readonly oldest_queued_at: string | null;
+}
+
+/**
+ * `GET /api/remotes/{name}/service`: what a remote says of the service API
+ * it serves, and the edition its policy names, with what it says more of it.
+ * `jobs` is null when the remote runs no jobs.
+ */
+export interface ServiceDescription {
+  readonly azathoth_version: string;
+  readonly api_stability: ApiStability;
+  readonly protocol: number;
+  readonly edition: string;
+  readonly edition_detail: string | null;
+  readonly jobs: ServiceJobs | null;
 }
 
 /** One revision of a component: its number, digest and when it was imported. */
@@ -424,7 +451,35 @@ export function isEditorDescription(value: unknown): value is EditorDescription 
 
 /** Returns whether a value is an instance's name and command prefix. */
 export function isInstanceCommands(value: unknown): value is InstanceCommands {
-  return isRecord(value) && typeof value.instance === "string" && typeof value.prefix === "string";
+  return (
+    isRecord(value) &&
+    typeof value.instance === "string" &&
+    typeof value.prefix === "string" &&
+    typeof value.suffix === "string"
+  );
+}
+
+function isServiceJobs(value: unknown): value is ServiceJobs {
+  return (
+    isRecord(value) &&
+    isWholeNumber(value.queued) &&
+    isWholeNumber(value.running) &&
+    isWholeNumber(value.runners) &&
+    (value.oldest_queued_at === null || typeof value.oldest_queued_at === "string")
+  );
+}
+
+/** Returns whether a value is what a remote says of the service API it serves. */
+export function isServiceDescription(value: unknown): value is ServiceDescription {
+  return (
+    isRecord(value) &&
+    typeof value.azathoth_version === "string" &&
+    (value.api_stability === "provisional" || value.api_stability === "stable") &&
+    isWholeNumber(value.protocol) &&
+    typeof value.edition === "string" &&
+    (value.edition_detail === null || typeof value.edition_detail === "string") &&
+    (value.jobs === null || isServiceJobs(value.jobs))
+  );
 }
 
 /** Returns whether a value is one revision. */

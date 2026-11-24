@@ -38,6 +38,7 @@ import {
   fetchPromotability,
   fetchWorkflowExperiments,
   fetchCommands,
+  fetchService,
   fetchDetail,
   fetchInterruptedRuns,
   fetchInvocation,
@@ -120,6 +121,7 @@ import type {
   DataPolicy,
   EditorDescription,
   InstanceCommands,
+  ServiceDescription,
   InterruptedRun,
   InvocationDetail,
   InvocationSummary,
@@ -164,12 +166,13 @@ import {
   type Kind,
   type SummaryOf,
 } from "./kinds";
-import { LOCAL_SCOPE, scoped, useScope } from "./scope";
+import { LOCAL_SCOPE, isLocal, scoped, useScope } from "./scope";
 
 /** The keys the editor's data is kept under. */
 export const queryKeys = {
   editor: ["editor"] as const,
   commands: ["commands"] as const,
+  service: ["service"] as const,
   list: (kind: Kind) => [kind, "list"] as const,
   detail: (kind: Kind, ref: ComponentRef, revision: number | null) =>
     [kind, "detail", ref.id, ref.version ?? null, revision] as const,
@@ -283,6 +286,21 @@ export function useCommands(): UseQueryResult<InstanceCommands, ApiFailure> {
     queryKey: scoped(scope, queryKeys.commands),
     queryFn: ({ signal }) => fetchCommands({ signal, base: scope.api }),
     staleTime: Infinity,
+  });
+}
+
+/**
+ * Returns what the remote the page acts on says of the service API it
+ * serves, its edition and its jobs. The local instance serves none, so
+ * nothing is asked there.
+ */
+export function useService(): UseQueryResult<ServiceDescription, ApiFailure> {
+  const scope = useScope();
+
+  return useQuery<ServiceDescription, ApiFailure>({
+    queryKey: scoped(scope, queryKeys.service),
+    queryFn: ({ signal }) => fetchService({ signal, base: scope.api }),
+    enabled: !isLocal(scope),
   });
 }
 

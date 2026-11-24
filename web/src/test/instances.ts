@@ -25,10 +25,11 @@ export const EDITOR: EditorDescription = {
   providers: ["openrouter", "bedrock"],
 };
 
-/** The local instance's name and command prefix, as `GET /api/commands` gives them on macOS. */
+/** The local instance's name and what goes around a command, as `GET /api/commands` gives them. */
 export const COMMANDS: InstanceCommands = {
   instance: "local",
   prefix: "AZATHOTH_DATABASE='/Users/eris/Library/Application Support/Azathoth/ui.db' ",
+  suffix: "",
 };
 
 /** A workflow imported twice, identically. */
