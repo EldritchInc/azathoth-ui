@@ -29,6 +29,7 @@ classifiers = [
 ]
 dependencies = [
     "azathoth-ai[mcp]==1.6.*",
+    "httpx>=0.28,<1",
     "starlette>=0.40",
     "uvicorn>=0.30",
 ]

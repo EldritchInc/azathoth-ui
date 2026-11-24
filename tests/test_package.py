@@ -137,9 +137,12 @@ def test_it_is_released_as_stable() -> None:
     assert not [each for each in classifiers if "Beta" in each or "Alpha" in each]
 
 
-def test_its_server_is_starlette_on_uvicorn() -> None:
+def test_its_server_is_starlette_on_uvicorn_and_it_asks_remotes_over_httpx() -> None:
+    # The editor reads what a remote says of itself and of its caller over
+    # httpx, which Azathoth reaches remotes over too (ADR 0016).
     assert project()["dependencies"] == [
         f"azathoth-ai[mcp]=={minor_release(__version__)}.*",
+        "httpx>=0.28,<1",
         "starlette>=0.40",
         "uvicorn>=0.30",
     ]

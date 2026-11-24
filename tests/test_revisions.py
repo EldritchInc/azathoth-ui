@@ -236,7 +236,7 @@ def test_a_restricted_case_is_withheld_where_it_may_not_be_read(
     client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("azathoth_ui.browsing.may_read_restricted", lambda request: False)
+    monkeypatch.setattr("azathoth_ui.browsing.may_read_restricted", lambda *_: False)
     instance.benchmarks.import_document(json.dumps(restricted_benchmark("patient 412")))
     instance.benchmarks.import_document(json.dumps(restricted_benchmark("patient 413")))
 

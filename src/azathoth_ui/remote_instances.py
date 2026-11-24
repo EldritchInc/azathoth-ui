@@ -17,7 +17,9 @@ runs started on each remote are kept by its name, so the run can be watched.
 A name the editor's instance does not give is 404, and a name whose token
 is not set is refused as an invalid argument, before anything is sent. A
 remote that cannot be reached is 502, and one whose policy refuses the
-caller is 403, saying why in the policy's words.
+caller is 403, saying why in the policy's words. What the person may do
+there is asked of the remote's policy, as `/api/remotes/{name}/permissions`
+asks it, so a restricted case is compared only where they may read it.
 """
 
 import threading
@@ -30,6 +32,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from azathoth_ui.catalog import Catalog
 from azathoth_ui.live import LiveRuns
+from azathoth_ui.remote_service import service_of
 from azathoth_ui.remotes import reached
 from azathoth_ui.scoping import INSTANCE_SCOPE_KEY, InstanceContext
 
@@ -81,6 +84,7 @@ def remote_context(
 
     remote = reached(request)
     name = request.path_params["name"]
+    service = service_of(request)
     instance = remote.connect()
 
     return InstanceContext(
@@ -92,6 +96,7 @@ def remote_context(
         command_prefix="",
         command_suffix=remote_suffix(name),
         lasting=remote.connect,
+        allows=service.allows,
     )
 
 

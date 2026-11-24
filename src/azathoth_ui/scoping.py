@@ -41,7 +41,10 @@ class InstanceContext:
     before an `azathoth` command so that it acts on this instance, and
     `command_suffix` what goes after it. `lasting` opens an instance a live
     run may use until it ends, after the request that started it has been
-    answered: the instance itself, unless one is given.
+    answered: the instance itself, unless one is given. `allows` says
+    whether the person may take an action of Azathoth's action catalog, on
+    a resource the policy names or on none: on the editor's own instance,
+    with none given, they may take every one.
     """
 
     name: str
@@ -55,6 +58,19 @@ class InstanceContext:
         default=None,
         compare=False,
     )
+    allows: Callable[[str, str | None], bool] | None = field(
+        default=None,
+        compare=False,
+    )
+
+    def may(
+        self,
+        action: str,
+        resource: str | None = None,
+    ) -> bool:
+        """Return whether the person may take one action here, on a resource or on none."""
+
+        return True if self.allows is None else self.allows(action, resource)
 
     def opener(
         self,

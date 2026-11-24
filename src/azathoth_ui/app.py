@@ -38,6 +38,7 @@ from azathoth_ui.instances import instance_endpoints, instance_routes
 from azathoth_ui.live import LiveRuns
 from azathoth_ui.pages import ASSETS_PATH, not_built_page
 from azathoth_ui.remote_instances import REMOTE_PREFIX, RemoteInstances, RemoteLiveRuns
+from azathoth_ui.remote_service import remote_service_routes
 from azathoth_ui.remotes import remote_routes
 from azathoth_ui.scoping import LOCAL_INSTANCE, InstanceContext
 from azathoth_ui.security import API_PREFIX, LocalOnly
@@ -63,6 +64,7 @@ ERROR_STATUSES: Final[tuple[tuple[type[api.ApiError], int], ...]] = (
     (api.ContentUnavailableError, 502),
     (api.RemoteUnreachableError, 502),
     (api.RemoteProtocolError, 502),
+    (api.RemoteUnavailableError, 503),
     (api.RemoteRefusedError, 403),
     (api.PermissionDeniedError, 403),
     (api.InstanceClosedError, 503),
@@ -242,6 +244,7 @@ def build_app(
     routes: list[BaseRoute] = [
         Route("/api/editor", describe_editor, methods=["GET"]),
         *remote_routes(),
+        *remote_service_routes(),
         Mount(
             REMOTE_PREFIX,
             app=RemoteInstances(
