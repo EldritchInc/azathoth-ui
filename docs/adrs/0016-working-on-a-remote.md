@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted
+Accepted; amended by [ADR 0017](0017-a-remotes-token-from-its-command.md), which
+reaches a name whose token a command prints as Azathoth does.
 
 ## Context
 

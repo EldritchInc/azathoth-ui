@@ -13,7 +13,8 @@ the editor makes of a remote is still asked of its policy there.
 
 The editor reads these answers itself, as JSON, since they are no call of
 the service API, and relays each as the remote gave it. A remote is reached
-afresh for each, with the token its name's variable holds now. A refusal is
+afresh for each, with the token its name's variable holds now, or its
+token command prints (Azathoth's ADR 0141). A refusal is
 answered as the service API's error it is: what the policy refuses is 403
 in its words, a remote that cannot be reached or answers as none does is
 502, and one that cannot answer now is 503.
@@ -27,7 +28,6 @@ from typing import Any, Final
 
 import httpx
 from azathoth import api
-from azathoth.api.remote import no_token_message
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
@@ -229,18 +229,19 @@ class RemoteService:
 def service_of(
     request: Request,
 ) -> RemoteService:
-    """Return the remote the path names, reached with the token its variable holds.
+    """Return the remote the path names, reached with its token now.
+
+    It is the one its variable holds, or its token command prints, kept by
+    Azathoth until shortly before it expires (Azathoth's ADR 0141).
 
     Raises:
         NotFoundError: The editor's instance gives no remote this name.
-        InvalidArgumentError: Its token variable is not set.
+        InvalidArgumentError: Its token variable is not set, or its token
+            command printed no token; nothing is sent.
     """
 
     named = instance_of(request).remotes.get(request.path_params["name"])
-    token = environ_of(request).get(named.token_variable)
-
-    if not token:
-        raise api.InvalidArgumentError(no_token_message(named.token_variable))
+    token = api.token_of(named, environ=environ_of(request))
 
     return RemoteService(named.url, token, http=remote_http_of(request))
 

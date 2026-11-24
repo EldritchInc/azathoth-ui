@@ -87,6 +87,33 @@ export function lineageKey(lineage: Lineage): string {
   return `${lineage.kind}:${lineage.id}@${lineage.version ?? ""}`;
 }
 
+/** The characters an argument may hold and still be shown unquoted, as Python's `shlex` keeps. */
+const UNQUOTED = /^[A-Za-z0-9_@%+=:,./-]+$/;
+
+/**
+ * Returns a token command as a shell would read it, each argument quoted
+ * only where it must be, as Azathoth shows one (`shlex.join`).
+ */
+export function shellJoin(command: readonly string[]): string {
+  return command
+    .map((argument) =>
+      UNQUOTED.test(argument) ? argument : `'${argument.replaceAll("'", `'"'"'`)}'`,
+    )
+    .join(" ");
+}
+
+/** Returns whether the editor can reach a remote: its variable is set, or a command prints it. */
+export function reachable(remote: NamedRemote): boolean {
+  return remote.token_command !== null || remote.token_set === true;
+}
+
+/** Returns whether a remote's token is read from a variable the editor's environment lacks. */
+export function variableUnset(
+  remote: NamedRemote,
+): remote is NamedRemote & { readonly token_variable: string } {
+  return remote.token_variable !== null && remote.token_set === false;
+}
+
 /** Returns the line that sets a token's variable in the shell the editor writes commands for. */
 export function tokenCommand(variable: string, shell: Shell): string {
   return shell === "powershell" ? `$env:${variable} = "<TOKEN>"` : `export ${variable}=<TOKEN>`;
@@ -111,9 +138,9 @@ export function lineageLabel(lineage: Lineage, name: string | null): string {
   return lineage.version === null ? label : `${label} ${lineage.version}`;
 }
 
-/** Returns the remote Ship starts on: the first whose token is set, or else the first. */
+/** Returns the remote Ship starts on: the first the editor can reach, or else the first. */
 export function firstRemote(remotes: readonly NamedRemote[]): NamedRemote | undefined {
-  return remotes.find((remote) => remote.token_set) ?? remotes[0];
+  return remotes.find(reachable) ?? remotes[0];
 }
 
 /** The relations a pull changes something for: the remote holds revisions this instance lacks. */

@@ -10,8 +10,9 @@ from azathoth import api
 from starlette.testclient import TestClient
 
 from azathoth_ui.app import build_app
-from azathoth_ui.remotes import ADD_MESSAGE, REMOVE_MESSAGE
+from azathoth_ui.remotes import ADD_MESSAGE, REMOVE_MESSAGE, TOKEN_COMMAND_MESSAGE
 from tests.test_app import ORIGIN, PORT, TOKEN
+from tests.test_remote_instances import printing, runs
 
 ORIGIN_URL = "https://azathoth.example.com"
 
@@ -115,6 +116,59 @@ def test_a_remote_is_named_and_listed_with_whether_its_token_is_set(
         "origin",
         "staging",
     ]
+
+
+def test_a_remote_whose_token_a_command_prints_is_listed_with_its_command_never_run(
+    client: TestClient,
+    instance: api.Azathoth,
+    tmp_path: Path,
+) -> None:
+    count = tmp_path / "count"
+    command = printing(count, "azr_printed")
+    instance.remotes.add("sso", ORIGIN_URL, token_command=command)
+
+    (listed,) = client.get("/api/remotes").json()["items"]
+
+    assert {
+        key: listed[key] for key in ("name", "token_variable", "token_command", "token_set")
+    } == {
+        "name": "sso",
+        "token_variable": None,
+        "token_command": command,
+        "token_set": None,
+    }
+    assert runs(count) == 0
+
+
+def test_a_remote_named_by_variable_is_listed_with_no_command(
+    client: TestClient,
+) -> None:
+    named = post(client, "/api/remotes", {"name": "origin", "url": ORIGIN_URL}).json()
+
+    assert (named["token_variable"], named["token_command"]) == ("AZATHOTH_REMOTE_TOKEN", None)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [["gcloud", "auth", "print-identity-token"], "gcloud auth print-identity-token", None],
+)
+def test_the_editor_never_names_a_remote_by_a_token_command(
+    client: TestClient,
+    command: object,
+) -> None:
+    response = post(
+        client,
+        "/api/remotes",
+        {"name": "sso", "url": ORIGIN_URL, "token_command": command},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == error("invalid_argument", TOKEN_COMMAND_MESSAGE)
+    assert TOKEN_COMMAND_MESSAGE == (
+        "The editor does not name a remote by a token command; name it from a terminal with "
+        'azathoth remote add <NAME> <URL> --token-command "<COMMAND>".'
+    )
+    assert client.get("/api/remotes").json() == {"items": []}
 
 
 def test_no_token_ever_reaches_the_browser(

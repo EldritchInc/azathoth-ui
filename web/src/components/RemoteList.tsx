@@ -3,7 +3,7 @@ import { Link } from "react-router";
 
 import type { NamedRemote, Shell } from "../api/types";
 import { useEditor, useRemoteChange, useRemotes } from "../queries";
-import { tokenCommand } from "../remotes";
+import { shellJoin, tokenCommand, variableUnset } from "../remotes";
 import buttons from "./Buttons.module.css";
 import list from "./ComponentList.module.css";
 import { Skeleton } from "./ComponentList";
@@ -15,10 +15,15 @@ import styles from "./Remotes.module.css";
 /** The default variable a remote's token is read from, as Azathoth's is. */
 export const DEFAULT_TOKEN_VARIABLE = "AZATHOTH_REMOTE_TOKEN";
 
+/** How a remote whose token a command prints is named, from a terminal (ADR 0017). */
+export const TOKEN_COMMAND_LINE = 'azathoth remote add <NAME> <URL> --token-command "<COMMAND>"';
+
 /**
  * Whether the editor can reach a remote with its token, and when it cannot,
  * the line that sets the variable. The editor reads the variable when it
  * asks, so setting it means relaunching the editor from a shell that has it.
+ * A remote whose token a command prints shows the command, which Azathoth
+ * runs when the remote is reached; there is nothing to set.
  */
 export function TokenState({
   remote,
@@ -27,19 +32,30 @@ export function TokenState({
   readonly remote: NamedRemote;
   readonly shell: Shell;
 }) {
-  if (remote.token_set) {
+  if (remote.token_command !== null) {
     return (
-      <span className={styles.token} data-set="true">
-        <code className={styles.mono}>{remote.token_variable}</code>
+      <span className={styles.token} data-set="command">
+        <span className={styles.when}>printed by</span>{" "}
+        <code className={styles.mono}>{shellJoin(remote.token_command)}</code>
       </span>
     );
   }
 
-  const command = tokenCommand(remote.token_variable, shell);
+  const variable = remote.token_variable ?? "";
+
+  if (remote.token_set === true) {
+    return (
+      <span className={styles.token} data-set="true">
+        <code className={styles.mono}>{variable}</code>
+      </span>
+    );
+  }
+
+  const command = tokenCommand(variable, shell);
 
   return (
     <span className={styles.token} data-set="false">
-      <code className={styles.mono}>{remote.token_variable}</code>
+      <code className={styles.mono}>{variable}</code>
       <span className={styles.unset}>not set</span>
       <CopyButton text={command} label={`Copy: ${command}`} />
     </span>
@@ -177,6 +193,10 @@ function AddRemote() {
           Name remote
         </button>
       </form>
+      <p className={styles.meaning}>
+        A remote whose token a command prints, such as one behind single sign-on, is named from a
+        terminal: <code className={styles.mono}>{TOKEN_COMMAND_LINE}</code>
+      </p>
       {failed !== null && <Notice title="Couldn't name the remote">{failed.message}</Notice>}
     </>
   );
@@ -238,7 +258,7 @@ export function RemoteList() {
     );
   }
 
-  const unset = (remotes.data ?? []).some((remote) => !remote.token_set);
+  const unset = (remotes.data ?? []).some(variableUnset);
 
   return (
     <div className={list.page}>
@@ -246,8 +266,9 @@ export function RemoteList() {
         <div className={list.titles}>
           <h1 className={list.title}>Remotes</h1>
           <p className={list.lead}>
-            The shared instances your workflows ship to. Each is named here with the environment
-            variable its token is read from; the editor never sees the token itself.
+            The shared instances your workflows ship to. Each is named with the environment variable
+            its token is read from, or the command that prints it; the editor never sees the token
+            itself.
           </p>
         </div>
       </header>

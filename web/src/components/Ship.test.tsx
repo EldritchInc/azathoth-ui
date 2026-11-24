@@ -6,7 +6,7 @@ import type { PullReport, PushReport, RemoteStatus } from "../api/types";
 import { firstRemote } from "../remotes";
 import { TOOL_DETAIL, WORKFLOW_DETAIL, WORKFLOW_HISTORY } from "../test/documents";
 import { SERVER, type Answers } from "../test/instances";
-import { AHEAD, ORIGIN, STAGING, permitting, recording, type Sent } from "../test/remotes";
+import { AHEAD, ORIGIN, SSO, STAGING, permitting, recording, type Sent } from "../test/remotes";
 import { renderAt } from "../test/render";
 
 const WORKFLOW_PATH = `/api/workflows/${WORKFLOW_DETAIL.id}`;
@@ -221,6 +221,23 @@ describe("Ship", () => {
     expect(sent.some((request) => request.path.startsWith("/api/remotes/staging"))).toBe(false);
   });
 
+  it("asks a remote whose token a command prints where the workflow stands", async () => {
+    const sent = await ship(
+      {},
+      {
+        ...ANSWERS,
+        "/api/remotes": [200, { items: [SSO, STAGING] }],
+        "/api/remotes/sso/status": [200, { ...STANDING, remote: SSO.url }],
+        "/api/remotes/sso/permissions": [200, permitting()],
+      },
+    );
+    const panel = await screen.findByRole("region", { name: "Ship" });
+
+    expect(await within(panel).findByRole("button", { name: "Push…" })).toBeVisible();
+    expect(within(panel).queryByRole("note")).toBeNull();
+    expect(sent.some((request) => request.path === "/api/remotes/sso/status")).toBe(true);
+  });
+
   it("says when the remote isn't answering, and still offers the push", async () => {
     await ship(
       {},
@@ -271,6 +288,7 @@ describe("Ship", () => {
 describe("firstRemote", () => {
   it("starts on the first remote whose token is set, or else the first", () => {
     expect(firstRemote([STAGING, ORIGIN])).toBe(ORIGIN);
+    expect(firstRemote([STAGING, SSO])).toBe(SSO);
     expect(firstRemote([STAGING])).toBe(STAGING);
     expect(firstRemote([])).toBeUndefined();
   });

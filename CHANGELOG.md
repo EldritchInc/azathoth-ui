@@ -5,8 +5,8 @@
 The first pre-release of the editor for Azathoth 1.6, which works on any
 remote as it does on its own instance.
 
-- The editor needs Azathoth 1.6, and builds on its first pre-release,
-  1.6.0b1: `make install` and CI name it, so pip takes Azathoth's
+- The editor needs Azathoth 1.6, and builds on its second pre-release,
+  1.6.0b2: `make install` and CI name it, so pip takes Azathoth's
   pre-releases and no other package's.
 - Every endpoint that acts on an instance is served for each remote the
   editor's instance names, under `/api/remotes/{name}`, answering as it
@@ -52,6 +52,19 @@ remote as it does on its own instance.
   model.
 - Each instance's answers are kept under where its endpoints are, so a
   remote named `local` never shares the editor's own instance's.
+- A remote named, from a terminal, with the command that prints its token
+  (`azathoth remote add <NAME> <URL> --token-command "<COMMAND>"`) is
+  reached as Azathoth reaches it: Azathoth runs the command and keeps its
+  token, asking again before each request. A command that prints no token
+  is refused in Azathoth's words before anything is sent
+  ([ADR 0017](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0017-a-remotes-token-from-its-command.md)).
+- `GET /api/remotes` gives each name's `token_command`, or null, and a
+  null `token_set` for a command, which listing never runs. The Remotes
+  page shows the command, quoted as a shell reads it, with nothing to set
+  ([ADR 0017](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0017-a-remotes-token-from-its-command.md)).
+- The editor never names a remote by a token command: `POST /api/remotes`
+  refuses one, and the Remotes page says to name it from a terminal
+  ([ADR 0017](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0017-a-remotes-token-from-its-command.md)).
 
 ## 1.5.0
 

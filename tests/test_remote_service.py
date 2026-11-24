@@ -28,6 +28,8 @@ from tests.test_remote_instances import (
     Remote,
     Unreachable,
     post,
+    printing,
+    runs,
     signed_in,
     stocked,
 )
@@ -210,6 +212,26 @@ def test_an_ask_names_resources_and_no_more_than_a_remote_answers_before_anythin
     assert response.status_code == 422
     assert response.json()["error"] == {"code": "invalid_argument", "message": PERMISSIONS_MESSAGE}
     assert MAX_RESOURCES == MAX_PERMISSION_RESOURCES
+
+
+def test_a_remote_whose_token_a_command_prints_says_what_it_serves_and_permits(
+    licensed: Remote,
+    tmp_path: Path,
+) -> None:
+    count = tmp_path / "count"
+    database = tmp_path / "ui.db"
+    api.initialize(database)
+
+    with api.open(database) as instance:
+        instance.remotes.add("sso", URL, token_command=printing(count, licensed.token))
+        client = signed_in(instance, tmp_path, environ={}, http=lambda: licensed.client)
+        service = client.get("/api/remotes/sso/service")
+        permissions = client.get("/api/remotes/sso/permissions")
+
+    assert service.status_code == 200
+    assert service.json() == directly(licensed, "GET", "/v1/service")
+    assert permissions.json() == directly(licensed, "GET", "/v1/permissions")
+    assert runs(count) == 1
 
 
 def test_a_restricted_case_is_withheld_where_the_remotes_policy_refuses_reading_it(

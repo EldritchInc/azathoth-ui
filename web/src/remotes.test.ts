@@ -1,15 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import type { ComponentStatus, Lineage, Relation } from "./api/types";
+import { isNamedRemote, type ComponentStatus, type Lineage, type Relation } from "./api/types";
 import {
   RELATION_ORDER,
   RELATION_TEXT,
   groupByRelation,
   lineageKey,
   lineagePath,
+  reachable,
+  shellJoin,
   shortDigest,
   tokenCommand,
+  variableUnset,
 } from "./remotes";
+import { ORIGIN, SSO, SSO_COMMAND, STAGING } from "./test/remotes";
 
 const WORKFLOW: Lineage = {
   kind: "workflow",
@@ -98,5 +102,46 @@ describe("tokenCommand", () => {
     expect(tokenCommand("AZATHOTH_REMOTE_TOKEN", "powershell")).toBe(
       '$env:AZATHOTH_REMOTE_TOKEN = "<TOKEN>"',
     );
+  });
+});
+
+describe("shellJoin", () => {
+  it("quotes each argument as a shell would read it, as Azathoth shows a token command", () => {
+    expect(shellJoin(["gcloud", "auth", "print-identity-token"])).toBe(
+      "gcloud auth print-identity-token",
+    );
+    expect(shellJoin(SSO.token_command ?? [])).toBe(SSO_COMMAND);
+    expect(shellJoin(["printf", "two words"])).toBe("printf 'two words'");
+    expect(shellJoin(["echo", "it's"])).toBe(`echo 'it'"'"'s'`);
+    expect(shellJoin(["echo", ""])).toBe("echo ''");
+    expect(shellJoin(["a=b,c:d@e%f+g/h.i-j_k"])).toBe("a=b,c:d@e%f+g/h.i-j_k");
+    expect(shellJoin(["$HOME;x"])).toBe("'$HOME;x'");
+  });
+});
+
+describe("reachable and variableUnset", () => {
+  it("reaches a remote whose variable is set, or whose token a command prints", () => {
+    expect([ORIGIN, STAGING, SSO].map(reachable)).toEqual([true, false, true]);
+  });
+
+  it("says a token is unset only of a variable, never of a command", () => {
+    expect([ORIGIN, STAGING, SSO].map(variableUnset)).toEqual([false, true, false]);
+  });
+});
+
+describe("isNamedRemote", () => {
+  it("takes a remote named by a variable or by a command", () => {
+    expect([ORIGIN, STAGING, SSO].every(isNamedRemote)).toBe(true);
+  });
+
+  it("refuses one named by both, by neither, or with a command that is not its arguments", () => {
+    expect(isNamedRemote({ ...SSO, token_variable: "AZATHOTH_REMOTE_TOKEN" })).toBe(false);
+    expect(isNamedRemote({ ...ORIGIN, token_variable: null })).toBe(false);
+    expect(isNamedRemote({ ...SSO, token_command: "gcloud auth print-identity-token" })).toBe(
+      false,
+    );
+    expect(isNamedRemote({ ...SSO, token_command: ["gcloud", 1] })).toBe(false);
+    expect(isNamedRemote({ ...SSO, token_set: true })).toBe(false);
+    expect(isNamedRemote({ ...ORIGIN, token_set: null })).toBe(false);
   });
 });

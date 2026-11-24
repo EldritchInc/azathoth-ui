@@ -4,7 +4,14 @@ import { Link } from "react-router";
 import type { ComponentStatus, Relation } from "../api/types";
 import { DESCRIPTIONS, type ComponentRef, type Kind } from "../kinds";
 import { usePull, usePush, useRemoteStatus, useRemotes } from "../queries";
-import { RELATION_TEXT, firstRemote, selectionOf, shortDigest } from "../remotes";
+import {
+  RELATION_TEXT,
+  firstRemote,
+  reachable,
+  selectionOf,
+  shortDigest,
+  variableUnset,
+} from "../remotes";
 import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { Notice } from "./Notice";
@@ -116,7 +123,7 @@ export function Ship({
   const remote = all.find((each) => each.name === chosen) ?? firstRemote(all);
   const selection = selectionOf(kind, component);
   const status = useRemoteStatus(remote?.name ?? "", selection, {
-    enabled: remote?.token_set === true,
+    enabled: remote !== undefined && reachable(remote),
   });
   const singular = DESCRIPTIONS[kind].singular;
 
@@ -145,7 +152,7 @@ export function Ship({
   const standing = status.data?.components[0];
   const relation = standing?.relation ?? null;
   const canPush =
-    remote.token_set && status.isSuccess && (relation === null || !NOTHING_TO_PUSH.has(relation));
+    reachable(remote) && status.isSuccess && (relation === null || !NOTHING_TO_PUSH.has(relation));
   const diverged =
     relation === "diverged" || (push.isError && push.error.code === "remote_diverged");
 
@@ -179,7 +186,7 @@ export function Ship({
           Everything at {remote.name}
         </Link>
       </div>
-      {!remote.token_set ? (
+      {variableUnset(remote) ? (
         <Notice title={`${remote.token_variable} isn't set`} tone="note">
           <p>
             The editor reads {remote.name}&apos;s token from {remote.token_variable}. Set it in a
@@ -252,7 +259,7 @@ export function Ship({
               Push…
             </ActionButton>
           )}
-          {diverged && remote.token_set && (
+          {diverged && reachable(remote) && (
             <ActionButton
               action="pull"
               instance={remote.name}
