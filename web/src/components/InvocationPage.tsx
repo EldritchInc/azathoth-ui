@@ -5,6 +5,7 @@ import { callerName, INVOCATION_STATUS_NAMES } from "../invocations";
 import { useDetail, useInvocation, useResumeInvocation } from "../queries";
 import { duration } from "../running";
 import { usePage } from "../scope";
+import { resource } from "../permissions";
 import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { Command } from "./Command";
@@ -122,7 +123,7 @@ function Invocation({ invocation }: { readonly invocation: InvocationDetail }) {
           {incomplete ? (
             <ActionButton
               action="invoke"
-              subject={invocation.workflow_id}
+              subject={resource("workflow", invocation.workflow_id)}
               type="button"
               className={buttons.primary}
               disabled={resume.isPending}
@@ -186,7 +187,7 @@ function Invocation({ invocation }: { readonly invocation: InvocationDetail }) {
       <Restricted
         sensitivity={invocation.sensitivity}
         what="the invocation's input and result"
-        subject={invocation.invocation_id}
+        subject={resource("invocation", invocation.invocation_id)}
       >
         <div className={page.pair}>
           <section className={page.outcome} aria-labelledby="input-heading">

@@ -27,9 +27,21 @@ export interface InstanceScope {
 /** The editor's own instance, whose endpoints are at `/api` and whose pages are at the top. */
 export const LOCAL_SCOPE: InstanceScope = { name: "local", api: "/api", pages: "" };
 
+/** Each remote's scope, made once, so a page on the same remote is given the same scope. */
+const REMOTE_SCOPES = new Map<string, InstanceScope>();
+
 /** Returns a remote's scope: endpoints under /api/remotes/{name}, pages under /remotes/{name}. */
 export function remoteScope(name: string): InstanceScope {
-  return { name, api: remoteApiBase(name), pages: `/remotes/${encodeURIComponent(name)}` };
+  const known = REMOTE_SCOPES.get(name);
+
+  if (known !== undefined) {
+    return known;
+  }
+
+  const scope = { name, api: remoteApiBase(name), pages: `/remotes/${encodeURIComponent(name)}` };
+  REMOTE_SCOPES.set(name, scope);
+
+  return scope;
 }
 
 /** Returns whether a scope is the editor's own instance; a remote may be named `local` too. */

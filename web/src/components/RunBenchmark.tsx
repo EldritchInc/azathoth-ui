@@ -5,6 +5,7 @@ import { isBenchmarkSummary } from "../api/types";
 import { targetOf } from "../benchmarking";
 import { useDetail, useList, useStartBenchmarkRun, useStartComparison } from "../queries";
 import { usePage } from "../scope";
+import { resource } from "../permissions";
 import { ActionButton } from "./ActionButton";
 import styles from "./Benchmarks.module.css";
 import buttons from "./Buttons.module.css";
@@ -222,7 +223,7 @@ export function RunBenchmark({ comparing = false }: { readonly comparing?: boole
         <div className={layout.actions}>
           <ActionButton
             action="run_benchmark"
-            subject={id}
+            subject={resource("benchmark", id)}
             type="submit"
             className={buttons.primary}
             disabled={!ready}

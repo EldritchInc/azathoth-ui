@@ -41,6 +41,34 @@ export interface InstanceCommands {
   readonly suffix: string;
 }
 
+/** Whether a remote's policy lets the caller take one action, and why not when it does not. */
+export interface ActionPermission {
+  readonly action: string;
+  readonly allowed: boolean;
+  readonly reason: string | null;
+}
+
+/** `GET /api/remotes/{name}/permissions`: every action, and whether the caller may take it. */
+export interface RemotePermissionsAnswer {
+  readonly principal: string;
+  readonly actions: readonly ActionPermission[];
+}
+
+/** What the caller may do to one resource a `POST /api/remotes/{name}/permissions` named. */
+export interface ResourcePermissions {
+  readonly resource: string;
+  readonly actions: readonly ActionPermission[];
+}
+
+/** `POST /api/remotes/{name}/permissions`: what the caller may do to each resource named. */
+export interface ResourcePermissionsAnswer {
+  readonly principal: string;
+  readonly resources: readonly ResourcePermissions[];
+}
+
+/** What a remote says the caller may do, of the remote as a whole or of each resource named. */
+export type PermissionsAnswer = RemotePermissionsAnswer | ResourcePermissionsAnswer;
+
 /** How a remote's jobs stand: how many wait and run, and the runners alive to run them. */
 export interface ServiceJobs {
   readonly queued: number;
@@ -456,6 +484,39 @@ export function isInstanceCommands(value: unknown): value is InstanceCommands {
     typeof value.instance === "string" &&
     typeof value.prefix === "string" &&
     typeof value.suffix === "string"
+  );
+}
+
+function isActionPermissions(value: unknown): value is readonly ActionPermission[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (each) =>
+        isRecord(each) &&
+        typeof each.action === "string" &&
+        typeof each.allowed === "boolean" &&
+        (each.reason === null || typeof each.reason === "string"),
+    )
+  );
+}
+
+/** Returns whether a value is what a remote says the caller may do on it as a whole. */
+export function isRemotePermissionsAnswer(value: unknown): value is RemotePermissionsAnswer {
+  return (
+    isRecord(value) && typeof value.principal === "string" && isActionPermissions(value.actions)
+  );
+}
+
+/** Returns whether a value is what a remote says the caller may do to each resource named. */
+export function isResourcePermissionsAnswer(value: unknown): value is ResourcePermissionsAnswer {
+  return (
+    isRecord(value) &&
+    typeof value.principal === "string" &&
+    Array.isArray(value.resources) &&
+    value.resources.every(
+      (each) =>
+        isRecord(each) && typeof each.resource === "string" && isActionPermissions(each.actions),
+    )
   );
 }
 

@@ -3,6 +3,7 @@ import { useParams } from "react-router";
 import type { ExperimentCandidate, ExperimentDetail } from "../api/types";
 import { dollarsOf, scoreOf } from "../benchmarking";
 import { useDetail, useExperiment } from "../queries";
+import { resource } from "../permissions";
 import styles from "./Benchmarks.module.css";
 import { Command } from "./Command";
 import { InstanceLink } from "./InstanceLink";
@@ -97,7 +98,7 @@ function Candidate({
       <Restricted
         sensitivity={experiment.sensitivity}
         what="its cases"
-        subject={experiment.experiment_id}
+        subject={resource("experiment", experiment.experiment_id)}
       >
         <table className={structure.table} aria-label="Its cases">
           <thead>

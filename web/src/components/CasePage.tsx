@@ -18,6 +18,7 @@ import {
   useRemoveBenchmarkCase,
 } from "../queries";
 import { instanceLabel, usePage, useScope } from "../scope";
+import { resource } from "../permissions";
 import { ActionButton } from "./ActionButton";
 import styles from "./Benchmarks.module.css";
 import buttons from "./Buttons.module.css";
@@ -104,7 +105,7 @@ function EditCase({
       <div className={styles.actions}>
         <ActionButton
           action="edit_benchmark"
-          subject={benchmarkId}
+          subject={resource("benchmark", benchmarkId)}
           type="submit"
           className={buttons.primary}
           disabled={sent === null || unchanged || edit.isPending}
@@ -250,7 +251,7 @@ export function CasePage() {
             <div className={styles.actions}>
               <ActionButton
                 action="edit_benchmark"
-                subject={id}
+                subject={resource("benchmark", id)}
                 type="button"
                 className={buttons.quiet}
                 aria-expanded={editing}
@@ -263,7 +264,7 @@ export function CasePage() {
               </ActionButton>
               <ActionButton
                 action="edit_benchmark"
-                subject={id}
+                subject={resource("benchmark", id)}
                 type="button"
                 className={buttons.danger}
                 disabled={remove.isPending}
@@ -302,7 +303,7 @@ export function CasePage() {
             <div className={styles.actions}>
               <ActionButton
                 action="edit_benchmark"
-                subject={id}
+                subject={resource("benchmark", id)}
                 type="button"
                 className={buttons.danger}
                 onClick={() => {
@@ -331,7 +332,11 @@ export function CasePage() {
         {remove.isError && <Notice title="The case wasn't removed">{remove.error.message}</Notice>}
         <Command command={shown.command} />
         {editing && (
-          <Restricted sensitivity={shown.sensitivity} what="the case" subject={shown.case_id}>
+          <Restricted
+            sensitivity={shown.sensitivity}
+            what="the case"
+            subject={resource("benchmark", id)}
+          >
             <EditCase
               benchmarkId={id}
               detail={shown}
@@ -346,7 +351,7 @@ export function CasePage() {
           <Restricted
             sensitivity={shown.sensitivity}
             what="the case's input"
-            subject={shown.case_id}
+            subject={resource("benchmark", id)}
           >
             <JsonBlock value={shown.input} label="The case's input, as JSON" />
           </Restricted>
@@ -356,7 +361,7 @@ export function CasePage() {
           <Restricted
             sensitivity={shown.sensitivity}
             what="what the case expects"
-            subject={shown.case_id}
+            subject={resource("benchmark", id)}
           >
             <JsonBlock value={shown.expected} label="What the case expects, as JSON" />
           </Restricted>

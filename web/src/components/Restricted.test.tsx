@@ -1,7 +1,7 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import type { Permissions } from "../permissions";
+import { resource, type Permissions } from "../permissions";
 import { renderAt } from "../test/render";
 import { Restricted, RestrictedScope } from "./Restricted";
 
@@ -15,10 +15,15 @@ function open({
 } = {}) {
   return renderAt(
     <RestrictedScope>
-      <Restricted sensitivity={sensitivity} what="the run's input" subject="r1">
+      <Restricted sensitivity={sensitivity} what="the run's input" subject={resource("run", "r1")}>
         <p>The input</p>
       </Restricted>
-      <Restricted sensitivity={sensitivity} what="the run's result" subject="r1" inline>
+      <Restricted
+        sensitivity={sensitivity}
+        what="the run's result"
+        subject={resource("run", "r1")}
+        inline
+      >
         <p>The result</p>
       </Restricted>
     </RestrictedScope>,

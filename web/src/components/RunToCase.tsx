@@ -3,6 +3,7 @@ import { useId, useState } from "react";
 import type { CaseComparison, RunDetail } from "../api/types";
 import { expectedOf } from "../benchmarking";
 import { useAddBenchmarkCase, useList, useRunFeedback } from "../queries";
+import { resource } from "../permissions";
 import { ActionButton } from "./ActionButton";
 import styles from "./Benchmarks.module.css";
 import buttons from "./Buttons.module.css";
@@ -131,7 +132,7 @@ function AddRun({
         <div className={styles.actions}>
           <ActionButton
             action="edit_benchmark"
-            subject={benchmarkId}
+            subject={resource("benchmark", benchmarkId)}
             type="submit"
             className={buttons.primary}
             disabled={!ready || add.isPending}

@@ -8,6 +8,7 @@ import { dollarsOf } from "../benchmarking";
 import { comparedResult, costSaving, projectionLine, timeSaving } from "../optimizing";
 import { useComparison } from "../queries";
 import { lengthOf } from "../running";
+import { resource } from "../permissions";
 import styles from "./Benchmarks.module.css";
 import { Notice } from "./Notice";
 import { Restricted } from "./Restricted";
@@ -96,7 +97,7 @@ function Compared({
       <Restricted
         sensitivity={experiment.sensitivity}
         what="its cases on both sides"
-        subject={experiment.experiment_id}
+        subject={resource("experiment", experiment.experiment_id)}
       >
         <table className={structure.table} aria-label="Cases on both sides">
           <thead>

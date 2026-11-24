@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { ExperimentDetail } from "../api/types";
 import { usePromotability, useProductionChange } from "../queries";
 import { instanceLabel, useScope } from "../scope";
+import { resource } from "../permissions";
 import { ActionButton } from "./ActionButton";
 import styles from "./Benchmarks.module.css";
 import buttons from "./Buttons.module.css";
@@ -45,7 +46,7 @@ export function PromoteWinner({ experiment }: { readonly experiment: ExperimentD
       <div className={production.buttons}>
         <ActionButton
           action="promote"
-          subject={experiment.workflow_id}
+          subject={resource("workflow", experiment.workflow_id)}
           type="button"
           className={buttons.primary}
           disabled={!promotable || confirming || change.isPending}
@@ -108,7 +109,7 @@ export function PromoteWinner({ experiment }: { readonly experiment: ExperimentD
           <div className={production.buttons}>
             <ActionButton
               action="promote"
-              subject={experiment.workflow_id}
+              subject={resource("workflow", experiment.workflow_id)}
               type="button"
               className={buttons.primary}
               disabled={change.isPending}

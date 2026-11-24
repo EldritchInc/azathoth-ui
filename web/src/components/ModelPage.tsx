@@ -5,6 +5,7 @@ import type { ModelSummary } from "../api/types";
 import { formatPrice, formatTokens, labelOf, nameOf } from "../models";
 import { useModels, usePortfolio, usePortfolioChange, useWorkflowDocuments } from "../queries";
 import { stepsThatCouldUse, type Use } from "../selection";
+import { resource } from "../permissions";
 import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { Command } from "./Command";
@@ -69,7 +70,7 @@ function PortfolioPanel({
       </p>
       <ActionButton
         action="authorize_model"
-        subject={identifier}
+        subject={resource("model", identifier)}
 
         type="button"
         className={held ? buttons.quiet : buttons.primary}

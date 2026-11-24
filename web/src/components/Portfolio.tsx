@@ -9,6 +9,7 @@ import {
   type ProductionDependent,
 } from "../api/types";
 import { nameOf } from "../models";
+import { resource } from "../permissions";
 import type { PortfolioChange } from "../queries";
 import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
@@ -45,7 +46,7 @@ export function PortfolioToggle({
   return (
     <ActionButton
       action="authorize_model"
-      subject={model.identifier}
+      subject={resource("model", model.identifier)}
 
       type="button"
       className={styles.toggle}
@@ -115,7 +116,7 @@ export function PortfolioOutcome({
         <div className={styles.actions}>
           <ActionButton
             action="authorize_model"
-            subject={variables.identifier}
+            subject={resource("model", variables.identifier)}
 
             type="button"
             className={buttons.danger}

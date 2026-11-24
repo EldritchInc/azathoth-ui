@@ -4,6 +4,7 @@ import type { JudgeSummary, ModelSummary } from "../api/types";
 import { modelPath, nameOf } from "../models";
 import { useJudgeChange, useJudges, useModels } from "../queries";
 import { instanceLabel, useScope } from "../scope";
+import { resource } from "../permissions";
 import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { Command } from "./Command";
@@ -53,7 +54,7 @@ function JudgeRow({
       <td>
         <ActionButton
           action="manage_judges"
-          subject={judge.identifier}
+          subject={resource("model", judge.identifier)}
           type="button"
           className={buttons.quiet}
           disabled={removing}
@@ -133,7 +134,7 @@ function AddJudge({
         </label>
         <ActionButton
           action="manage_judges"
-          subject={identifier}
+          subject={resource("model", identifier)}
           type="submit"
           className={buttons.primary}
           disabled={change.isPending}
@@ -231,7 +232,7 @@ export function JudgeList() {
           <div className={styles.actions}>
             <ActionButton
               action="manage_judges"
-              subject={confirming.identifier}
+              subject={resource("model", confirming.identifier)}
               type="button"
               className={buttons.danger}
               onClick={() => {

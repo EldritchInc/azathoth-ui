@@ -2,9 +2,11 @@ import type {
   ComponentStatus,
   InstanceDescription,
   NamedRemote,
+  RemotePermissionsAnswer,
   RemoteStatus,
   ServiceDescription,
 } from "../api/types";
+import { ACTIONS } from "../permissions";
 import {
   REVIEW_WORKFLOW,
   SERVER,
@@ -93,11 +95,26 @@ export const UNREACHED: RemoteStatus = {
   portfolio_synced_at: "2026-11-12T15:30:00Z",
 };
 
-/** The editor's answers with `origin` and `staging` named. */
+/** What a remote's policy says when it lets the caller take every action, or all but some. */
+export function permitting(
+  refused: Readonly<Record<string, string>> = {},
+): RemotePermissionsAnswer {
+  return {
+    principal: "eris",
+    actions: ACTIONS.map((action) => ({
+      action,
+      allowed: !(action in refused),
+      reason: refused[action] ?? null,
+    })),
+  };
+}
+
+/** The editor's answers with `origin` and `staging` named, `origin` allowing everything. */
 export const REMOTES: Answers = {
   ...SERVER,
   "/api/remotes": [200, { items: [ORIGIN, STAGING] }],
   "/api/remotes/origin/status": [200, REACHED],
+  "/api/remotes/origin/permissions": [200, permitting()],
 };
 
 /** The instance `origin` serves, as `GET /api/remotes/origin/instance` describes it. */

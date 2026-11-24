@@ -1,6 +1,7 @@
 import { useContext, useMemo, useState, type ReactNode } from "react";
 
 import type { Sensitivity } from "../api/types";
+import type { Resource } from "../permissions";
 import { RevealingContext, useRevealing } from "../revealing";
 import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
@@ -38,8 +39,8 @@ export function RestrictedNotice({
 }: {
   /** What is hidden, as a sentence names it: "the run's input". */
   readonly what: string;
-  /** What the data belongs to, such as a run's id. */
-  readonly subject: string;
+  /** What the data belongs to, as a remote's policy names it, such as `run <ID>`. */
+  readonly subject: Resource;
   /** Whether it stands in a table's cell, where room is short. */
   readonly inline?: boolean;
 }) {
@@ -80,7 +81,7 @@ export function RestrictedNotice({
 interface RestrictedProps {
   readonly sensitivity: Sensitivity;
   readonly what: string;
-  readonly subject: string;
+  readonly subject: Resource;
   readonly inline?: boolean;
   readonly children: ReactNode;
 }

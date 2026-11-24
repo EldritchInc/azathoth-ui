@@ -5,6 +5,7 @@ import type { Sensitivity } from "../api/types";
 import { givenOf, NEW_DRAFT, type InputDraft } from "../runInput";
 import { useDetail, useInvoke, useProduction } from "../queries";
 import { instanceLabel, usePage, useScope } from "../scope";
+import { resource } from "../permissions";
 import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { InstanceLink } from "./InstanceLink";
@@ -145,7 +146,7 @@ export function InvokeWorkflow() {
         <div className={page.actions}>
           <ActionButton
             action="invoke"
-            subject={id}
+            subject={resource("workflow", id)}
             type="submit"
             className={buttons.primary}
             disabled={given === null || invoke.isPending || production.isPending || absent}

@@ -11,6 +11,7 @@ import {
 import { useCancelRun, useDetail } from "../queries";
 import { duration, LIVE_STATE_NAMES } from "../running";
 import { useLiveEvents } from "../useLiveEvents";
+import { resource } from "../permissions";
 import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { InstanceLink } from "./InstanceLink";
@@ -203,7 +204,7 @@ export function LiveOptimizationView({
           {running ? (
             <ActionButton
               action="optimize"
-              subject={live.workflow_id}
+              subject={resource("workflow", live.workflow_id)}
               type="button"
               className={buttons.danger}
               disabled={cancel.isPending}

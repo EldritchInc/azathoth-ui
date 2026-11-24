@@ -5,6 +5,7 @@ import { caseProgressOf, type CaseRun, type WorkflowCases } from "../benchmarkin
 import { useBenchmarkCases, useCancelRun, useDetail, useList } from "../queries";
 import { duration, LIVE_STATE_NAMES } from "../running";
 import { useLiveEvents } from "../useLiveEvents";
+import { resource } from "../permissions";
 import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { InstanceLink } from "./InstanceLink";
@@ -220,7 +221,7 @@ export function LiveBenchmarkView({
           {running ? (
             <ActionButton
               action="run_benchmark"
-              subject={benchmarkId}
+              subject={resource("benchmark", benchmarkId)}
               type="button"
               className={buttons.danger}
               disabled={cancel.isPending}

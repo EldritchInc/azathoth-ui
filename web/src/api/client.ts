@@ -57,7 +57,9 @@ import {
   isPortfolioRemoval,
   isPullReport,
   isPushReport,
+  isRemotePermissionsAnswer,
   isRemoteStatus,
+  isResourcePermissionsAnswer,
   isServiceDescription,
   isSummary,
   isToolSummary,
@@ -111,6 +113,7 @@ import {
   type PortfolioRemoval,
   type PullReport,
   type PushReport,
+  type PermissionsAnswer,
   type RemoteStatus,
   type Sensitivity,
   type ServiceDescription,
@@ -119,6 +122,7 @@ import {
   type WorkflowSummary,
 } from "./types";
 import type { McpToolRequest } from "../mcpTools";
+import type { Resource } from "../permissions";
 
 export const UNREACHABLE_MESSAGE = "The editor's server isn't answering.";
 
@@ -260,6 +264,41 @@ export async function fetchService(options: RequestOptions = {}): Promise<Servic
 
   return body;
 }
+
+/** Asks a remote what the caller may do: of it as a whole, or of each resource named. */
+export type PermissionsAsker = (
+  resources: readonly Resource[] | null,
+  options: RequestOptions,
+) => Promise<PermissionsAnswer>;
+
+/**
+ * Asks what a remote's policy lets the caller do: `GET {base}/permissions`
+ * of the remote as a whole, or `POST {base}/permissions` of each resource
+ * named, at most as many as a remote answers about at once.
+ */
+export const askPermissions: PermissionsAsker = async (resources, options) => {
+  if (resources === null) {
+    const body = await getJson(at(options, "/permissions"), options);
+
+    if (!isRemotePermissionsAnswer(body)) {
+      throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+    }
+
+    return body;
+  }
+
+  const body = await requestJson(
+    at(options, "/permissions"),
+    { method: "POST", body: JSON.stringify({ resources }) },
+    options,
+  );
+
+  if (!isResourcePermissionsAnswer(body)) {
+    throw new ApiFailure("invalid_response", INVALID_RESPONSE_MESSAGE, 200);
+  }
+
+  return body;
+};
 
 /** Returns the editor, its shell and its providers: `GET /api/editor`. */
 export async function fetchEditor(options: RequestOptions = {}): Promise<EditorDescription> {

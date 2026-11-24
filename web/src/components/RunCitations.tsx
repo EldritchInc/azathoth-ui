@@ -3,6 +3,7 @@ import { useId } from "react";
 import type { RunDetail } from "../api/types";
 import { citationOf, collectionLabel, isWebLink, type Citation } from "../citations";
 import { useRunAnnotations } from "../queries";
+import { resource } from "../permissions";
 import { Command } from "./Command";
 import { Restricted } from "./Restricted";
 import styles from "./RunEvidence.module.css";
@@ -64,7 +65,11 @@ export function RunCitations({ run }: { readonly run: RunDetail }) {
           {citations.length === 0 ? (
             <p className={styles.muted}>No step of this run kept a verified citation.</p>
           ) : (
-            <Restricted sensitivity={run.sensitivity} what="its citations" subject={run.run_id}>
+            <Restricted
+              sensitivity={run.sensitivity}
+              what="its citations"
+              subject={resource("run", run.run_id)}
+            >
               <ol className={styles.list} aria-label="Citations">
                 {citations.map((citation, index) => (
                   <CitationItem key={citation.id ?? String(index)} citation={citation} />

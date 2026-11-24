@@ -27,6 +27,7 @@ import { SpendPage } from "./components/SpendPage";
 import { InvocationPage } from "./components/InvocationPage";
 import { InvokeWorkflow } from "./components/InvokeWorkflow";
 import { OptimizeWorkflow } from "./components/OptimizeWorkflow";
+import { PermissionsProvider } from "./components/PermissionsProvider";
 import { RunWorkflow } from "./components/RunWorkflow";
 import { NewWorkflow, WorkflowEditor } from "./components/WorkflowEditor";
 import { ScopeContext, scopeAt } from "./scope";
@@ -129,7 +130,9 @@ export function App() {
 
   return (
     <ScopeContext.Provider value={scope}>
-      <Editor />
+      <PermissionsProvider>
+        <Editor />
+      </PermissionsProvider>
     </ScopeContext.Provider>
   );
 }

@@ -7,6 +7,7 @@ import { expectedOf } from "../benchmarking";
 import { useAddBenchmarkCase, useDetail } from "../queries";
 import { givenOf, NEW_DRAFT, type InputDraft } from "../runInput";
 import { usePage } from "../scope";
+import { resource } from "../permissions";
 import { ActionButton } from "./ActionButton";
 import buttons from "./Buttons.module.css";
 import { ComparisonField, DescriptionField, JsonField } from "./CaseFields";
@@ -131,7 +132,7 @@ export function AddCase() {
         <div className={layout.actions}>
           <ActionButton
             action="edit_benchmark"
-            subject={id}
+            subject={resource("benchmark", id)}
             type="submit"
             className={buttons.primary}
             disabled={!ready || add.isPending}

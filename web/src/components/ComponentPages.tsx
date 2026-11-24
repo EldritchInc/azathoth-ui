@@ -174,6 +174,7 @@ export function BenchmarkPage({ tab = "cases" }: { readonly tab?: BenchmarkTab }
     >
       {(detail) => (
         <BenchmarkCases
+          benchmarkId={detail.id}
           document={detail.document}
           sensitivity={isBenchmarkSummary(detail) ? detail.sensitivity : null}
         />
