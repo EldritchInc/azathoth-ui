@@ -4,7 +4,17 @@ import { describe, expect, it } from "vitest";
 
 import { TOOL, WORKFLOW } from "../test/instances";
 import type { PullReport } from "../api/types";
-import { AHEAD, REACHED, REMOTES, THEIRS, UNREACHED, recording, type Sent } from "../test/remotes";
+import {
+  AHEAD,
+  REACHED,
+  REMOTES,
+  SSO_ANSWERS,
+  SSO_COMMAND,
+  THEIRS,
+  UNREACHED,
+  recording,
+  type Sent,
+} from "../test/remotes";
 import { renderAt } from "../test/render";
 import { RemotePage } from "./RemotePage";
 
@@ -126,6 +136,18 @@ describe("RemotePage", () => {
     expect(await screen.findByRole("note")).toHaveTextContent("AZATHOTH_STAGING_TOKEN isn't set");
     expect(sent.some((request) => request.path.startsWith("/api/remotes/staging"))).toBe(false);
     expect(screen.queryByRole("button", { name: "Refresh" })).toBeNull();
+  });
+
+  it("asks a remote whose token a command prints, saying which command", async () => {
+    const sent: Sent[] = [];
+    open("/remotes/sso", recording(SSO_ANSWERS, {}, sent));
+
+    expect(await screen.findByRole("heading", { level: 1, name: "sso" })).toBeVisible();
+    await screen.findByRole("region", { name: "Ahead here" });
+    expect(screen.getByText(SSO_COMMAND)).toBeVisible();
+    expect(screen.queryByText(/isn't set/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Refresh" })).toBeVisible();
+    expect(sent.some((request) => request.path === "/api/remotes/sso/status")).toBe(true);
   });
 
   it("says when no remote has the name", async () => {

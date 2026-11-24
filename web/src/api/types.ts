@@ -941,25 +941,46 @@ export function isWorkflowReadiness(value: unknown): value is WorkflowReadiness 
   );
 }
 
-/** A remote the editor's instance names: its URL, and the variable its token is read from. */
+/**
+ * A remote the editor's instance names: its URL, and where its token comes
+ * from, the variable it is read from or the command that prints it, never
+ * both (Azathoth's ADR 0141).
+ */
 export interface NamedRemote {
   readonly name: string;
   readonly url: string;
-  readonly token_variable: string;
+  /** The variable its token is read from, or null when a command prints it. */
+  readonly token_variable: string | null;
+  /** The arguments of the command that prints its token, or null when a variable holds it. */
+  readonly token_command: readonly string[] | null;
   readonly added_at: string;
-  /** Whether that variable is set in the editor's environment; its value never leaves it. */
-  readonly token_set: boolean;
+  /**
+   * Whether its variable is set in the editor's environment, its value never
+   * leaving it; null for a command, which listing remotes never runs.
+   */
+  readonly token_set: boolean | null;
 }
 
 /** Returns whether a value is a remote the editor's instance names. */
 export function isNamedRemote(value: unknown): value is NamedRemote {
+  if (
+    !isRecord(value) ||
+    typeof value.name !== "string" ||
+    typeof value.url !== "string" ||
+    typeof value.added_at !== "string"
+  ) {
+    return false;
+  }
+
+  if (value.token_command === null) {
+    return typeof value.token_variable === "string" && typeof value.token_set === "boolean";
+  }
+
   return (
-    isRecord(value) &&
-    typeof value.name === "string" &&
-    typeof value.url === "string" &&
-    typeof value.token_variable === "string" &&
-    typeof value.added_at === "string" &&
-    typeof value.token_set === "boolean"
+    Array.isArray(value.token_command) &&
+    value.token_command.every((each) => typeof each === "string") &&
+    value.token_variable === null &&
+    value.token_set === null
   );
 }
 

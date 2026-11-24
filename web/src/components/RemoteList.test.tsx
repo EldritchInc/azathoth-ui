@@ -2,7 +2,16 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { EDITOR, SERVER } from "../test/instances";
-import { ORIGIN, REMOTES, STAGING, recording, type Sent } from "../test/remotes";
+import {
+  ORIGIN,
+  REMOTES,
+  SSO,
+  SSO_ANSWERS,
+  SSO_COMMAND,
+  STAGING,
+  recording,
+  type Sent,
+} from "../test/remotes";
 import { renderAt } from "../test/render";
 import { RemoteList } from "./RemoteList";
 
@@ -33,6 +42,42 @@ describe("RemoteList", () => {
       }),
     ).toBeVisible();
     expect(screen.getByRole("note")).toHaveTextContent("A token isn't set");
+  });
+
+  it("shows the command a remote's token is printed by, with nothing to set", async () => {
+    renderAt(<RemoteList />, { answers: SSO_ANSWERS });
+
+    const table = await screen.findByRole("table");
+    const row = within(table).getAllByRole("row")[3];
+
+    if (row === undefined) {
+      throw new Error("A third remote was expected.");
+    }
+
+    expect(within(row).getByRole("link", { name: "sso" })).toBeVisible();
+    expect(row).toHaveTextContent(`printed by ${SSO_COMMAND}`);
+    expect(row).not.toHaveTextContent("not set");
+    expect(within(row).queryByRole("button", { name: /^Copy/ })).toBeNull();
+  });
+
+  it("says no token is unset when every remote is set or printed by a command", async () => {
+    renderAt(<RemoteList />, {
+      answers: { ...SSO_ANSWERS, "/api/remotes": [200, { items: [ORIGIN, SSO] }] },
+    });
+
+    expect(await screen.findByRole("table")).toBeVisible();
+    expect(screen.queryByRole("note")).toBeNull();
+  });
+
+  it("says how to name a remote whose token a command prints, from a terminal", async () => {
+    renderAt(<RemoteList />, { answers: SERVER });
+
+    const form = await screen.findByRole("form", { name: "Name a remote" });
+
+    expect(
+      screen.getByText('azathoth remote add <NAME> <URL> --token-command "<COMMAND>"'),
+    ).toBeVisible();
+    expect(within(form).queryByLabelText(/command/i)).toBeNull();
   });
 
   it("writes the token line for PowerShell on Windows", async () => {

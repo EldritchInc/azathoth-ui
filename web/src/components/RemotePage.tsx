@@ -20,8 +20,10 @@ import {
   lineageKey,
   lineageLabel,
   lineagePath,
+  reachable,
   selectionFor,
   shortDigest,
+  variableUnset,
   type RelationGroup,
 } from "../remotes";
 import { classNames } from "../classNames";
@@ -446,7 +448,13 @@ export function RemotePage({ connection }: { readonly connection?: Connection } 
   const remotes = useRemotes();
   const editor = useEditor();
   const named = remotes.data?.find((remote) => remote.name === name);
-  const status = useRemoteStatus(name, {}, { enabled: named?.token_set === true });
+  const status = useRemoteStatus(
+    name,
+    {},
+    {
+      enabled: named !== undefined && reachable(named),
+    },
+  );
   const lineageName = useLineageNames();
   const nameOf = (component: ComponentStatus): string | null => lineageName(component.lineage);
   const pull = usePull();
@@ -484,7 +492,7 @@ export function RemotePage({ connection }: { readonly connection?: Connection } 
 
   let body: ReactNode;
 
-  if (!named.token_set) {
+  if (variableUnset(named)) {
     body = (
       <Notice title={`${named.token_variable} isn't set`} tone="note">
         <p>
@@ -534,7 +542,7 @@ export function RemotePage({ connection }: { readonly connection?: Connection } 
           </p>
           <TokenState remote={named} shell={editor.data?.shell ?? "posix"} />
         </div>
-        {named.token_set && (
+        {reachable(named) && (
           <div className={list.actions}>
             {asOf !== null && (
               <span className={styles.when}>
@@ -555,7 +563,7 @@ export function RemotePage({ connection }: { readonly connection?: Connection } 
           </div>
         )}
       </header>
-      {named.token_set && connection !== undefined && <RemoteInstance connection={connection} />}
+      {reachable(named) && connection !== undefined && <RemoteInstance connection={connection} />}
       <ScopeContext.Provider value={LOCAL_SCOPE}>{body}</ScopeContext.Provider>
     </div>
   );

@@ -23,6 +23,7 @@ export const ORIGIN: NamedRemote = {
   name: "origin",
   url: "https://azathoth.example.com",
   token_variable: "AZATHOTH_REMOTE_TOKEN",
+  token_command: null,
   added_at: "2026-11-12T15:00:00Z",
   token_set: true,
 };
@@ -32,9 +33,23 @@ export const STAGING: NamedRemote = {
   name: "staging",
   url: "https://staging.example.com",
   token_variable: "AZATHOTH_STAGING_TOKEN",
+  token_command: null,
   added_at: "2026-11-12T15:05:00Z",
   token_set: false,
 };
+
+/** A remote named `sso`, whose token a command prints; whether it prints one is never asked. */
+export const SSO: NamedRemote = {
+  name: "sso",
+  url: "https://team.example.com",
+  token_variable: null,
+  token_command: ["gcloud", "auth", "print-identity-token", "--audiences", "https://team example"],
+  added_at: "2026-11-12T15:10:00Z",
+  token_set: null,
+};
+
+/** How the Remotes page shows `sso`'s command: as a shell would read it, as Azathoth does. */
+export const SSO_COMMAND = "gcloud auth print-identity-token --audiences 'https://team example'";
 
 const A = "a".repeat(64);
 const B = "b".repeat(64);
@@ -115,6 +130,14 @@ export const REMOTES: Answers = {
   "/api/remotes": [200, { items: [ORIGIN, STAGING] }],
   "/api/remotes/origin/status": [200, REACHED],
   "/api/remotes/origin/permissions": [200, permitting()],
+};
+
+/** The editor's answers with `sso` named too, its token printed by a command. */
+export const SSO_ANSWERS: Answers = {
+  ...REMOTES,
+  "/api/remotes": [200, { items: [ORIGIN, STAGING, SSO] }],
+  "/api/remotes/sso/status": [200, { ...REACHED, remote: SSO.url }],
+  "/api/remotes/sso/permissions": [200, permitting()],
 };
 
 /** The instance `origin` serves, as `GET /api/remotes/origin/instance` describes it. */
