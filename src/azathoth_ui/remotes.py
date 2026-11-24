@@ -2,14 +2,18 @@
 
 A remote is reached by a name the editor's own instance gives it, as
 `azathoth remote add` gives one (Azathoth's ADR 0126): a name for its URL
-and the environment variable its token is read from. The editor never
+and where its token comes from, the environment variable it is read from
+or the command that prints it (Azathoth's ADR 0141). The editor never
 handles a token. It reads each name's variable from its own environment,
-as the command line does, and says only whether that variable is set, so
-no token reaches the browser, its requests or its storage.
+as the command line does, and says only whether that variable is set; a
+command's token Azathoth runs and keeps itself, and listing remotes never
+runs one. No token reaches the browser, its requests or its storage.
 
 Naming and forgetting a name are `POST`s with a JSON body, as every change
 to the editor's instance is (ADR 0003). Nothing at a remote changes when a
-name is given or forgotten.
+name is given or forgotten. The editor names a remote by a variable only:
+a command saved over its HTTP API would be a program its server runs, so
+a remote whose token a command prints is named from a terminal (ADR 0017).
 
 A remote's status, a push to it and a pull from it are `POST`s under its
 name, each naming the workflows, tool versions and benchmarks it is about,
@@ -24,7 +28,6 @@ from typing import Any, Final
 from uuid import UUID
 
 from azathoth import api
-from azathoth.api.remote import no_token_message
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
@@ -33,6 +36,12 @@ from starlette.routing import BaseRoute, Route
 from azathoth_ui.catalog import body_of
 
 ADD_MESSAGE: Final = 'Send {"name", "url"}, and "token_variable" to read its token from another.'
+
+TOKEN_COMMAND_MESSAGE: Final = (
+    "The editor does not name a remote by a token command; name it from a terminal with "
+    'azathoth remote add <NAME> <URL> --token-command "<COMMAND>".'
+)
+"""Why the editor refuses to name a remote by the command that prints its token."""
 
 REMOVE_MESSAGE: Final = 'Send {"name"}, the name to forget.'
 
@@ -84,10 +93,17 @@ def described(
     """Return one named remote as the API answers it, with whether its token is set.
 
     `token_set` says only whether its variable holds anything; the editor
-    never reads a token out.
+    never reads a token out. A remote whose token a command prints has no
+    variable, and `token_set` is null: whether the command prints one is
+    known only by running it, which listing never does.
     """
 
-    return {**remote.model_dump(mode="json"), "token_set": bool(environ.get(remote.token_variable))}
+    variable = remote.token_variable
+
+    return {
+        **remote.model_dump(mode="json"),
+        "token_set": None if variable is None else bool(environ.get(variable)),
+    }
 
 
 def text_of(
@@ -128,9 +144,14 @@ async def add_remote(
     """`POST /api/remotes` `{"name", "url", "token_variable"}`: name a remote: 201.
 
     Without `token_variable`, its token is read from `AZATHOTH_REMOTE_TOKEN`.
+    A body naming a `token_command` is refused, saying to name it from a
+    terminal (ADR 0017).
     """
 
     body = await body_of(request, message=ADD_MESSAGE)
+
+    if "token_command" in body:
+        raise api.InvalidArgumentError(TOKEN_COMMAND_MESSAGE)
 
     if not set(body) <= {"name", "url", "token_variable"}:
         raise api.InvalidArgumentError(ADD_MESSAGE)
@@ -178,23 +199,29 @@ async def remove_remote(
 def reached(
     request: Request,
 ) -> api.Remote:
-    """Return the remote the path names, with the token its variable holds for the editor.
+    """Return the remote the path names, reached with its token.
 
-    Only a name the instance gives is reached, never a URL a request spells
-    out.
+    A name's variable is read from the editor's environment. A name whose
+    token a command prints is reached as Azathoth reaches it: the command
+    is run now, unless a token it printed is still kept, and asked again
+    before each request, so a live run outlasts one token (Azathoth's ADR
+    0141). Only a name the instance gives is reached, never a URL a request
+    spells out.
 
     Raises:
         NotFoundError: No remote has the name.
-        InvalidArgumentError: Its token variable is not set.
+        InvalidArgumentError: Its token variable is not set, or its token
+            command printed no token; nothing is sent.
     """
 
     name: str = request.path_params["name"]
     instance = instance_of(request)
     named = instance.remotes.get(name)
-    token = environ_of(request).get(named.token_variable)
 
-    if not token:
-        raise api.InvalidArgumentError(no_token_message(named.token_variable))
+    if named.token_command is not None:
+        return instance.remote(named.name, http=remote_http_of(request))
+
+    token = api.token_of(named, environ=environ_of(request))
 
     return instance.remote(named.name, token=token, http=remote_http_of(request))
 
@@ -358,6 +385,7 @@ __all__ = [
     "PULL_MESSAGE",
     "REMOVE_MESSAGE",
     "SELECTION_MESSAGE",
+    "TOKEN_COMMAND_MESSAGE",
     "described",
     "remote_routes",
     "selection_of",

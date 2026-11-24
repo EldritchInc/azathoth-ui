@@ -8,6 +8,7 @@ editor whose own instance is that database answers under `/api/...`.
 
 import json
 import re
+import sys
 import time
 from collections.abc import Iterator
 from pathlib import Path
@@ -111,6 +112,33 @@ class Remote:
         self.runners = JobRunners(
             self.jobs, instances, count=2, poll_seconds=0.02, beat_seconds=0.05
         )
+
+
+def printing(
+    count: Path,
+    token: str,
+) -> list[str]:
+    """Return a token command that prints `token`, counting its runs in the file `count`.
+
+    It is run without a shell, as Azathoth runs every token command
+    (Azathoth's ADR 0141), so it is Python's own interpreter, given a line.
+    """
+
+    source = (
+        "import pathlib, sys; count = pathlib.Path(sys.argv[1]); "
+        "count.write_text(str(int(count.read_text()) + 1 if count.exists() else 1)); "
+        "print(sys.argv[2])"
+    )
+
+    return [sys.executable, "-c", source, str(count), token]
+
+
+def runs(
+    count: Path,
+) -> int:
+    """Return how many times a command `printing` made was run."""
+
+    return int(count.read_text()) if count.exists() else 0
 
 
 def stocked(
@@ -374,6 +402,49 @@ def test_a_remote_whose_token_is_not_set_is_refused_before_anything_is_sent(
         "code": "invalid_argument",
         "message": no_token_message("AZATHOTH_REMOTE_TOKEN"),
     }
+
+
+def test_a_remote_whose_token_a_command_prints_is_read_with_it(
+    local: api.Azathoth,
+    remote: Remote,
+    beside: TestClient,
+    tmp_path: Path,
+) -> None:
+    count = tmp_path / "count"
+    local.remotes.add("sso", URL, token_command=printing(count, remote.token))
+    client = signed_in(local, tmp_path / "sso", environ={}, http=lambda: remote.client)
+
+    there = client.get("/api/remotes/sso/workflows")
+    again = client.get(f"/api/remotes/sso/workflows/{WORKFLOW_ID}")
+
+    assert answer(there) == answer(beside.get("/api/workflows"))
+    assert again.status_code == 200
+    assert runs(count) == 1
+
+
+def test_a_remote_whose_command_prints_no_token_is_refused_before_anything_is_sent(
+    local: api.Azathoth,
+    tmp_path: Path,
+) -> None:
+    command = [
+        sys.executable,
+        "-c",
+        "import sys; sys.stderr.write('Run gcloud auth login.'); sys.exit(1)",
+    ]
+    local.remotes.add("sso", URL, token_command=command)
+
+    def unreached() -> Any:
+        raise AssertionError("Nothing is sent to a remote without its token.")
+
+    client = signed_in(local, tmp_path, environ={}, http=unreached)
+    response = client.get("/api/remotes/sso/workflows")
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_argument"
+    assert response.json()["error"]["message"].startswith("Token command `")
+    assert response.json()["error"]["message"].endswith(
+        "` exited with status 1: Run gcloud auth login."
+    )
 
 
 class Unreachable:
