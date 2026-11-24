@@ -139,6 +139,13 @@ holds then, and nothing the remote sends is kept. A button there asks the
 remote's policy first, and says why when you may not, and every command
 shown ends with `--remote <name>`
 ([ADR 0016](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0016-working-on-a-remote.md)).
+A remote behind single sign-on can be named, from a terminal, with the
+command that prints its token, such as
+`azathoth remote add team <URL> --token-command "gcloud auth print-identity-token"`;
+the editor then reaches it as Azathoth does, running that command when it
+needs a fresh token, and the Remotes page shows the command instead of a
+variable
+([ADR 0017](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0017-a-remotes-token-from-its-command.md)).
 [ADR 0001](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0001-local-server-security.md) explains how the server
 keeps other sites and other users out.
 

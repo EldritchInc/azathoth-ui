@@ -23,3 +23,4 @@ the editor follows them, and the one it rests on is
 | [0014](0014-spend-in-the-editor.md) | Spend in the Editor | Accepted |
 | [0015](0015-the-catalog-in-the-editor.md) | The Catalog in the Editor | Accepted |
 | [0016](0016-working-on-a-remote.md) | Working on a Remote | Accepted |
+| [0017](0017-a-remotes-token-from-its-command.md) | A Remote's Token from Its Command | Accepted |
