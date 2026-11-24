@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted
+Accepted; amended by [ADR 0016](0016-working-on-a-remote.md), which serves
+every page on a remote and asks its policy what each button may do.
 
 ## Context
 

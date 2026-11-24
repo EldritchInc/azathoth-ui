@@ -49,8 +49,8 @@ TIMEOUT_SECONDS: Final = 30.0
 """How long the editor waits for a remote to answer one of these requests."""
 
 PERMISSIONS_MESSAGE: Final = (
-    f'Send {{"resources": [<resource>]}}, from 1 to {MAX_RESOURCES} resources, '
-    'each its kind and its ID, such as "benchmark <ID>".'
+    f'Send {{"resources": [<resource>]}}, 1 to {MAX_RESOURCES}, each a kind and an ID: '
+    '"benchmark <ID>".'
 )
 
 REFUSED_KINDS: Final[dict[str, type[api.ApiError]]] = {

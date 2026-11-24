@@ -20,7 +20,38 @@ remote as it does on its own instance.
   the editor's own instance, and `--remote <NAME>` on a remote.
 - A remote with no such name is 404, one whose token is not set is
   refused before anything is sent, one that cannot be reached is 502, and
-  what a remote's policy refuses is 403, in the policy's words.
+  what a remote's policy refuses is 403, in the policy's words. A remote
+  that cannot answer now, as when its audit is down, is 503.
+- [ADR 0016](https://github.com/EldritchInc/azathoth-ui/blob/main/docs/adrs/0016-working-on-a-remote.md)
+  records how the editor works on a remote, and amends ADR 0009.
+- `GET /api/remotes/{name}/service` relays what a remote says at
+  `/v1/service`: its Azathoth, its protocol, the edition its policy names
+  with what it says more of it, and how its jobs stand.
+- `GET /api/remotes/{name}/permissions` relays what a remote's policy
+  lets the caller do, and `POST` there with `{"resources": [...]}` asks
+  of each resource named, from 1 to 100. The editor sends both requests
+  itself, over httpx, which it now requires.
+- Comparing a benchmark's revisions on a remote tells a restricted case's
+  values only where the remote's policy allows `read_restricted` on it.
+- Every page of the web app works on a remote, under `/remotes/<name>`,
+  taking its instance from its address; `/remotes` stays the editor's list
+  of remotes.
+- A remote opens on its overview, at `/remotes/<name>`, which describes
+  the instance there, its edition and its jobs, saying so when what waits
+  has no runner alive to start it, above where everything either side
+  holds stands.
+- A command shown on a remote ends with `--remote <name>`, dimmed, and is
+  copied with it.
+- Every button on a remote asks the remote's policy before it may be
+  pressed: of the remote in one request, and of every resource a page
+  names in another, at most 100 at a time. An answer is kept for 30
+  seconds, and asked again on switching to the remote; a push or pull
+  asks the remote it goes to.
+- What a button acts on is named as a remote's policy names it, its kind
+  and its ID, so a case's buttons ask of its benchmark and a judge's of its
+  model.
+- Each instance's answers are kept under where its endpoints are, so a
+  remote named `local` never shares the editor's own instance's.
 
 ## 1.5.0
 
