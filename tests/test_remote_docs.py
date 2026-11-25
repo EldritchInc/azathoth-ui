@@ -160,4 +160,4 @@ def test_the_readme_and_changelog_say_a_remotes_token_may_come_from_a_command() 
     assert f"([ADR 0017]({COMMAND_LINK}))" in readme
     assert "--token-command" in readme
     assert f"({COMMAND_LINK})" in entry
-    assert "1.6.0b2" in entry
+    assert "--token-command" in entry
