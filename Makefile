@@ -5,7 +5,7 @@
 # pre-release the editor needs lets pip take Azathoth's pre-releases, and no
 # other package's; a final release needs nothing named.
 install:
-	python -m pip install "azathoth-ai>=1.6.0b2,==1.6.*" -e ".[dev]"
+	python -m pip install -e ".[dev]"
 
 # The web app's dependencies, exactly as web/package-lock.json pins them.
 install-web:

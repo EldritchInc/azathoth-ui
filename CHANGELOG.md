@@ -1,13 +1,12 @@
 # Changelog
 
-## 1.6.0b1
+## 1.6.0
 
-The first pre-release of the editor for Azathoth 1.6, which works on any
-remote as it does on its own instance.
+The editor for Azathoth 1.6, which works on any remote as it does on its
+own instance.
 
-- The editor needs Azathoth 1.6, and builds on its second pre-release,
-  1.6.0b2: `make install` and CI name it, so pip takes Azathoth's
-  pre-releases and no other package's.
+- The editor needs Azathoth 1.6, which its own requirement brings from
+  PyPI: `make install` and CI name no version of Azathoth.
 - Every endpoint that acts on an instance is served for each remote the
   editor's instance names, under `/api/remotes/{name}`, answering as it
   does for the editor's own instance under `/api`. Each request reaches

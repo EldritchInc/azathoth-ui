@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "azathoth-ui"
-version = "1.6.0b1"
+version = "1.6.0"
 description = "A local editor for Azathoth workflows, served in your browser."
 readme = "README.md"
 requires-python = ">=3.11"
